@@ -219,6 +219,13 @@
   .et{font-size:14px;font-weight:700;color:var(--text-mid);margin-bottom:3px}
   .es{font-size:12px}
 
+  /* MINI CUR TOGGLE */
+  .mini-cur{display:inline-flex;background:var(--bg);border-radius:16px;padding:2px;gap:0;vertical-align:middle}
+  .mini-cur-btn{padding:3px 9px;border-radius:12px;border:none;font-family:inherit;font-size:10px;font-weight:700;cursor:pointer;background:transparent;color:var(--text-muted);transition:all .15s}
+  .mini-cur-btn.on{background:var(--white);color:var(--accent);box-shadow:0 1px 3px rgba(0,0,0,.1)}
+  .mini-cur-btn.on-uyu{background:var(--white);color:var(--green)}
+  .fl-row{display:flex;align-items:center;justify-content:space-between;gap:6px;margin-bottom:3px}
+
   @media(min-width:481px){body{border-left:1px solid var(--border);border-right:1px solid var(--border)}}
 </style>
 </head>
@@ -241,7 +248,7 @@
   <div class="modal"><div class="mh"></div>
     <div class="mt">💼 Salario mensual</div>
     <div class="ms">Se usa para calcular tu disponible.</div>
-    <div class="fld" style="margin-bottom:14px"><div class="fl">Monto</div><input type="number" class="fi" id="salaryInput" placeholder="6300"></div>
+    <div class="fld" style="margin-bottom:14px"><div class="fl cur-lbl">Monto (USD)</div><input type="number" class="fi" id="salaryInput" placeholder="6300"></div>
     <button class="btn bp" onclick="saveSalary()" style="width:100%">Guardar</button>
   </div>
 </div>
@@ -286,7 +293,7 @@
     <div class="mt">Nueva categoría</div>
     <div class="fr" style="margin-bottom:8px">
       <div class="fld"><div class="fl">Nombre</div><input type="text" class="fi" id="ncName" placeholder="Farmacia"></div>
-      <div class="fld"><div class="fl">Presupuesto</div><input type="number" class="fi" id="ncBudget" placeholder="0"></div>
+      <div class="fld"><div class="fl cur-lbl">Presupuesto (USD)</div><input type="number" class="fi" id="ncBudget" placeholder="0"></div>
     </div>
     <div class="fld" style="margin-bottom:14px"><div class="fl">Emoji</div><input type="text" class="fi" id="ncEmoji" placeholder="💊" maxlength="2"></div>
     <div style="display:flex;gap:8px">
@@ -299,7 +306,7 @@
 <div class="mo hid" id="mEditBudget">
   <div class="modal"><div class="mh"></div>
     <div class="mt" id="ebTitle">Editar presupuesto</div>
-    <div class="fld" style="margin-bottom:14px"><div class="fl">Presupuesto mensual</div><input type="number" class="fi" id="ebInput" placeholder="0"></div>
+    <div class="fld" style="margin-bottom:14px"><div class="fl cur-lbl">Presupuesto mensual (USD)</div><input type="number" class="fi" id="ebInput" placeholder="0"></div>
     <div style="display:flex;gap:8px">
       <button class="btn bp" onclick="saveEditBudget()">Guardar</button>
       <button class="btn bg" onclick="closeM('mEditBudget')">Cancelar</button>
@@ -315,8 +322,14 @@
       <div class="fld"><div class="fl">Emoji</div><input type="text" class="fi" id="gEmoji" placeholder="✈️" maxlength="2"></div>
     </div>
     <div class="fr" style="margin-bottom:14px">
-      <div class="fld"><div class="fl">Meta</div><input type="number" class="fi" id="gTarget" placeholder="2000"></div>
-      <div class="fld"><div class="fl">Ya ahorrado</div><input type="number" class="fi" id="gSaved" placeholder="0"></div>
+      <div class="fld">
+        <div class="fl-row"><div class="fl">Meta</div><div class="mini-cur" id="cur-gtarget"><button class="mini-cur-btn on" onclick="selTxCur('gtarget','USD',this)">USD</button><button class="mini-cur-btn" onclick="selTxCur('gtarget','UYU',this)">UYU</button></div></div>
+        <input type="number" class="fi" id="gTarget" placeholder="2000">
+      </div>
+      <div class="fld">
+        <div class="fl-row"><div class="fl">Ya ahorrado</div><div class="mini-cur" id="cur-gsaved"><button class="mini-cur-btn on" onclick="selTxCur('gsaved','USD',this)">USD</button><button class="mini-cur-btn" onclick="selTxCur('gsaved','UYU',this)">UYU</button></div></div>
+        <input type="number" class="fi" id="gSaved" placeholder="0">
+      </div>
     </div>
     <div style="display:flex;gap:8px">
       <button class="btn bgn" onclick="saveGoal()">Guardar</button>
@@ -328,7 +341,10 @@
 <div class="mo hid" id="mAddGoal">
   <div class="modal"><div class="mh"></div>
     <div class="mt" id="agTitle">Agregar ahorro</div>
-    <div class="fld" style="margin-bottom:14px"><div class="fl">Monto a agregar</div><input type="number" class="fi" id="agAmt" placeholder="0"></div>
+    <div class="fld" style="margin-bottom:14px">
+      <div class="fl-row"><div class="fl">Monto a agregar</div><div class="mini-cur" id="cur-addgoal"><button class="mini-cur-btn on" onclick="selTxCur('addgoal','USD',this)">USD</button><button class="mini-cur-btn" onclick="selTxCur('addgoal','UYU',this)">UYU</button></div></div>
+      <input type="number" class="fi" id="agAmt" placeholder="0">
+    </div>
     <div style="display:flex;gap:8px">
       <button class="btn bgn" onclick="confirmAddGoal()">Agregar</button>
       <button class="btn bg" onclick="closeM('mAddGoal')">Cancelar</button>
@@ -348,12 +364,15 @@
       <button class="icon-btn" onclick="openM('mApiKey')">🔑</button>
     </div>
   </div>
+  <div style="font-size:10px;color:var(--text-muted);text-align:right;padding:0 16px 8px;margin-top:-6px" class="tc-display">cargando TC...</div>
   <div class="nav-tabs">
     <button class="nav-tab on" onclick="tab('resumen')">Resumen</button>
     <button class="nav-tab" onclick="tab('gastos')">Gastos</button>
     <button class="nav-tab" onclick="tab('escanear')">Escanear</button>
+    <button class="nav-tab" onclick="tab('ingresos')">Ingresos</button>
     <button class="nav-tab" onclick="tab('credito')">Crédito</button>
     <button class="nav-tab" onclick="tab('ahorros')">Ahorros</button>
+    <button class="nav-tab" onclick="tab('anual')">Anual</button>
     <button class="nav-tab" onclick="tab('presupuestos')">Presupuestos</button>
   </div>
 </div>
@@ -369,9 +388,9 @@
     </div>
     <div class="sg">
       <div class="sc ab"><div class="sl li">Gastado</div><div class="sv li" id="sumSpent">$0</div><div class="ss li" id="sumCount">0 gastos</div></div>
-      <div class="sc"><div class="sl">Salario</div><div class="sv" id="sumSalary">$0</div><div class="ss">mensual</div></div>
+      <div class="sc gb" style="cursor:pointer" onclick="tab('ingresos')"><div class="sl li" id="sumSalaryLbl">Ingreso mensual</div><div class="sv li" id="sumSalary">$0</div><div class="ss li">tocá para ver detalle</div></div>
       <div class="sc"><div class="sl">Presupuesto</div><div class="sv" id="sumBudget">$0</div><div class="ss">total asignado</div></div>
-      <div class="sc"><div class="sl">Disponible</div><div class="sv" id="sumLeft">$0</div><div class="ss" id="sumLeftLbl">del presupuesto</div></div>
+      <div class="sc"><div class="sl">Disponible</div><div class="sv" id="sumLeft">$0</div><div class="ss" id="sumLeftLbl">del salario</div></div>
     </div>
     <div class="cbox" id="creditBox" style="display:none">
       <div class="cbox-icon">🟣</div>
@@ -402,7 +421,7 @@
       onclick="document.getElementById('fi').click()"
       ondragover="evDrag(event)" ondrop="evDrop(event)"
       ondragleave="document.getElementById('scanArea').classList.remove('dov')">
-      <input type="file" id="fi" accept="image/*" capture="environment" onchange="handleFile(this.files[0])">
+      <input type="file" id="fi" accept="image/*" onchange="handleFile(this.files[0])">
       <div class="scan-emoji">📸</div>
       <div class="scan-lbl">Fotografiá o subí un recibo / captura</div>
       <div class="scan-sub">La IA extrae los datos automáticamente</div>
@@ -413,7 +432,10 @@
       <div class="prevb">
         <div class="fr">
           <div class="fld"><div class="fl">Descripción</div><input type="text" class="fi" id="pd" placeholder="¿Qué fue?"></div>
-          <div class="fld"><div class="fl">Monto</div><input type="number" class="fi" id="pa" placeholder="0"></div>
+          <div class="fld">
+            <div class="fl-row"><div class="fl">Monto</div><div class="mini-cur" id="cur-scan"><button class="mini-cur-btn on" onclick="selTxCur('scan','USD',this)">USD</button><button class="mini-cur-btn" onclick="selTxCur('scan','UYU',this)">UYU</button></div></div>
+            <input type="number" class="fi" id="pa" placeholder="0">
+          </div>
         </div>
         <div class="fr">
           <div class="fld"><div class="fl">Categoría</div><select class="fi" id="pc"></select></div>
@@ -430,7 +452,10 @@
       <div class="ft">Carga manual</div>
       <div class="fr">
         <div class="fld"><div class="fl">Descripción</div><input type="text" class="fi" id="md" placeholder="¿Qué fue?"></div>
-        <div class="fld"><div class="fl">Monto</div><input type="number" class="fi" id="ma" placeholder="0"></div>
+        <div class="fld">
+            <div class="fl-row"><div class="fl">Monto</div><div class="mini-cur" id="cur-manual"><button class="mini-cur-btn on" onclick="selTxCur('manual','USD',this)">USD</button><button class="mini-cur-btn" onclick="selTxCur('manual','UYU',this)">UYU</button></div></div>
+            <input type="number" class="fi" id="ma" placeholder="0">
+          </div>
       </div>
       <div class="fr">
         <div class="fld"><div class="fl">Categoría</div><select class="fi" id="mc"></select></div>
@@ -443,7 +468,62 @@
     </div>
   </div>
 
-  <!-- CRÉDITO -->
+  <!-- INGRESOS -->
+  <div id="t-ingresos" style="display:none">
+    <div class="mnav">
+      <button class="marr" onclick="chM(-1)">‹</button>
+      <div class="mlbl" id="mlbl3"></div>
+      <button class="marr" onclick="chM(1)">›</button>
+    </div>
+    <!-- salary card -->
+    <div class="salary-card" style="margin-bottom:10px">
+      <div><div class="sal-lbl">Salario base mensual</div><div class="sal-val" id="salDisp2">USD 6,300</div></div>
+      <button class="sal-edit" onclick="openM('mSalary')">Editar</button>
+    </div>
+    <!-- extra income this month -->
+    <div class="fc">
+      <div class="ft">Ingresos extra este mes</div>
+      <div class="fr">
+        <div class="fld"><div class="fl">Descripción</div><input type="text" class="fi" id="id" placeholder="Freelance, bono..."></div>
+        <div class="fld">
+            <div class="fl-row"><div class="fl">Monto</div><div class="mini-cur" id="cur-ingreso"><button class="mini-cur-btn on" onclick="selTxCur('ingreso','USD',this)">USD</button><button class="mini-cur-btn" onclick="selTxCur('ingreso','UYU',this)">UYU</button></div></div>
+            <input type="number" class="fi" id="ia" placeholder="0">
+          </div>
+      </div>
+      <div class="fr" style="margin-bottom:10px">
+        <div class="fld"><div class="fl">Fecha</div><input type="date" class="fi" id="if"></div>
+        <div class="fld"><div class="fl">Nota</div><input type="text" class="fi" id="in2" placeholder="Opcional..."></div>
+      </div>
+      <button class="btn bgn" onclick="addIngreso()" style="width:100%">+ Agregar ingreso</button>
+    </div>
+    <div id="ingresoList"></div>
+  </div>
+
+  <!-- ANUAL -->
+  <div id="t-anual" style="display:none">
+    <div class="mnav" style="justify-content:space-between">
+      <button class="marr" onclick="chY(-1)">‹</button>
+      <div class="mlbl" id="yearLbl"></div>
+      <button class="marr" onclick="chY(1)">›</button>
+    </div>
+    <!-- yearly totals -->
+    <div class="sg" style="margin-bottom:12px">
+      <div class="sc ab"><div class="sl li">Gastado en el año</div><div class="sv li" id="ySpent">$0</div></div>
+      <div class="sc gb"><div class="sl li">Ingresos del año</div><div class="sv li" id="yIncome">$0</div></div>
+      <div class="sc"><div class="sl">Ahorro neto</div><div class="sv" id="yNet">$0</div><div class="ss" id="yNetLbl"></div></div>
+      <div class="sc pb"><div class="sl li">Crédito pendiente</div><div class="sv li" id="yCredit">$0</div></div>
+    </div>
+    <!-- month by month table -->
+    <div style="background:var(--white);border-radius:var(--R);overflow:hidden;box-shadow:var(--sh)">
+      <div style="display:grid;grid-template-columns:80px 1fr 1fr 1fr;padding:10px 14px;border-bottom:1px solid var(--border)">
+        <div style="font-size:10px;font-weight:700;color:var(--text-muted);text-transform:uppercase">Mes</div>
+        <div style="font-size:10px;font-weight:700;color:var(--text-muted);text-transform:uppercase;text-align:right">Ingresos</div>
+        <div style="font-size:10px;font-weight:700;color:var(--text-muted);text-transform:uppercase;text-align:right">Gastos</div>
+        <div style="font-size:10px;font-weight:700;color:var(--text-muted);text-transform:uppercase;text-align:right">Balance</div>
+      </div>
+      <div id="annualRows"></div>
+    </div>
+  </div>
   <div id="t-credito" style="display:none">
     <div class="sg" style="margin-bottom:10px">
       <div class="sc pb"><div class="sl li">Total pendiente</div><div class="sv li" id="crTot">$0</div><div class="ss li" id="crTotSub"></div></div>
@@ -491,7 +571,7 @@ const DEF = {
     {name:'Ropa',emoji:'👗',color:'#ec4899',budget:0},
     {name:'Otros',emoji:'📦',color:'#6b7280',budget:0},
   ],
-  gastos:[],goals:[],salary:6300,currency:'USD',apiKey:''
+  gastos:[],goals:[],ingresos:[],salary:6300,currency:'USD',apiKey:''
 };
 let S={};
 let CM=new Date().getMonth(), CY=new Date().getFullYear();
@@ -501,7 +581,49 @@ let pendG=null,   // waiting for category pick
     pendC=null,   // waiting for pay type
     pendSrc=null; // 'scan'|'manual'
 const MOS=['Enero','Febrero','Marzo','Abril','Mayo','Junio','Julio','Agosto','Septiembre','Octubre','Noviembre','Diciembre'];
-const XR=40; // 1 USD = 40 UYU
+let XR=40; // fallback, updated from BCU on init
+
+// ============================================================
+// EXCHANGE RATE — BCU API
+// ============================================================
+async function fetchTC(){
+  const today=new Date().toISOString().split('T')[0];
+  const cached=localStorage.getItem('bcu_tc');
+  if(cached){const p=JSON.parse(cached);if(p.date===today){XR=p.rate;updTCDisplay();return;}}
+  try{
+    // BCU WSDL/REST — use open proxy to their XML feed
+    const url='https://api.allorigins.win/get?url='+encodeURIComponent('https://www.bcu.gub.uy/Comunicaciones/Paginas/Cotizaciones.aspx');
+    const res=await fetch(url,{signal:AbortSignal.timeout(6000)});
+    const data=await res.json();
+    // Parse USD compra/venta from HTML table
+    const html=data.contents;
+    const m=html.match(/Dólar USA[\s\S]*?<td[^>]*>([\d,.]+)<\/td>[\s\S]*?<td[^>]*>([\d,.]+)<\/td>/i);
+    if(m){
+      const compra=parseFloat(m[1].replace(',','.'));
+      const venta=parseFloat(m[2].replace(',','.'));
+      const mid=(compra+venta)/2;
+      if(mid>1){XR=mid;localStorage.setItem('bcu_tc',JSON.stringify({date:today,rate:XR}));updTCDisplay();return;}
+    }
+    throw new Error('parse fail');
+  }catch(e){
+    // Fallback: try BCU's web service endpoint
+    try{
+      const url2='https://api.allorigins.win/get?url='+encodeURIComponent('https://cotizaciones.bcu.gub.uy/wsDivisas.asmx/getCotizaciones?Fecha='+today+'&Moneda=2222');
+      const res2=await fetch(url2,{signal:AbortSignal.timeout(5000)});
+      const d2=await res2.json();
+      const xml=d2.contents;
+      const mv=xml.match(/<arbitraje>([\d.]+)<\/arbitraje>/i)||xml.match(/<compra>([\d.]+)<\/compra>/i);
+      if(mv&&+mv[1]>1){XR=+mv[1];localStorage.setItem('bcu_tc',JSON.stringify({date:today,rate:XR}));updTCDisplay();return;}
+    }catch(e2){}
+    // Use last known or fallback
+    if(cached){const p=JSON.parse(cached);XR=p.rate;}
+    updTCDisplay();
+  }
+}
+
+function updTCDisplay(){
+  document.querySelectorAll('.tc-display').forEach(el=>el.textContent=`1 USD = $U ${XR.toFixed(1)}`);
+}
 
 // ============================================================
 // PERSIST
@@ -514,6 +636,7 @@ function load(){
   else if(old){const o=JSON.parse(old);S={...JSON.parse(JSON.stringify(DEF)),...o,goals:[]};}
   else{S=JSON.parse(JSON.stringify(DEF));}
   if(!S.goals)S.goals=[];
+  if(!S.ingresos)S.ingresos=[];
   if(!S.currency)S.currency='USD';
   if(!S.salary)S.salary=6300;
   if(!S.categories?.length)S.categories=JSON.parse(JSON.stringify(DEF.categories));
@@ -529,22 +652,32 @@ function init(){
   setToday();
   popCats();
   updCurUI();
+  updCurLabels();
+  fetchTC();
   renderAll();
   if(!S.apiKey&&!localStorage.getItem('mg_vis')){localStorage.setItem('mg_vis','1');openM('mApiKey');}
 }
 
 function setToday(){
   const t=new Date().toISOString().split('T')[0];
-  ['pf','mf'].forEach(id=>{const e=document.getElementById(id);if(e)e.value=t;});
+  ['pf','mf','if'].forEach(id=>{const e=document.getElementById(id);if(e)e.value=t;});
 }
 
 // ============================================================
 // CURRENCY
 // ============================================================
-function setCur(c){S.currency=c;save();updCurUI();renderAll();}
+function setCur(c){S.currency=c;save();updCurUI();updCurLabels();renderAll();}
 function updCurUI(){
   document.getElementById('btnUSD').classList.toggle('on',S.currency==='USD');
   document.getElementById('btnUYU').classList.toggle('on',S.currency==='UYU');
+}
+function updCurLabels(){
+  const sym=S.currency==='UYU'?'UYU':'USD';
+  // Update all amount field labels to show active currency
+  document.querySelectorAll('.cur-lbl').forEach(el=>el.textContent=`Monto (${sym})`);
+  // Update salary input placeholder
+  const si=document.getElementById('salaryInput');
+  if(si)si.placeholder=S.currency==='UYU'?'252000':'6300';
 }
 function disp(usd){return S.currency==='UYU'?usd*XR:usd;}
 function fmt(usd){
@@ -553,17 +686,158 @@ function fmt(usd){
   return sym+n.toLocaleString('es-UY',{minimumFractionDigits:0,maximumFractionDigits:0});
 }
 
-// ============================================================
-// MONTH
-// ============================================================
+// Convert display amount to USD for storage — accepts explicit currency or uses active
+function toUSD(n,cur){const c=cur||S.currency;return c==='UYU'?(+n||0)/XR:(+n||0);}
+// Format a stored USD amount for display
+
 function chM(d){
   CM+=d;
   if(CM>11){CM=0;CY++;}if(CM<0){CM=11;CY--;}
   renderAll();
 }
+// Returns debit gastos of the month + a virtual entry per credit installment due this month
 function mGastos(){
-  return S.gastos.filter(g=>{const d=new Date(g.date+'T12:00:00');return d.getMonth()===CM&&d.getFullYear()===CY;});
+  const debits=S.gastos.filter(g=>{
+    const d=new Date(g.date+'T12:00:00');
+    return d.getMonth()===CM&&d.getFullYear()===CY&&g.payType!=='credit';
+  });
+  // For credit: create a virtual entry for the installment due this month
+  const creditDue=[];
+  S.gastos.filter(g=>g.payType==='credit').forEach(g=>{
+    const start=new Date(g.date+'T12:00:00');
+    const inst=+g.installments||1;
+    const diff=(CY-start.getFullYear())*12+(CM-start.getMonth());
+    if(diff>=0&&diff<inst){
+      // This gasto has an installment due this month
+      creditDue.push({...g,_isInstallment:true,_instNum:diff+1,_instTotal:inst,_cuota:g.amount/inst});
+    }
+  });
+  return [...debits,...creditDue];
 }
+
+// ============================================================
+// TX LIST
+// ============================================================
+function rTxList(){
+  const con=document.getElementById('txList');
+  const chEl=document.getElementById('chips');
+  if(!con)return;
+  let gs=mGastos();
+  const cats=['Todos',...S.categories.map(c=>c.name),'Crédito'];
+  if(chEl)chEl.innerHTML=cats.map(c=>`<button class="chip${filt===c?' on':''}" onclick="setF('${c}')">${c}</button>`).join('');
+
+  if(filt==='Crédito')gs=gs.filter(g=>g.payType==='credit');
+  else if(filt!=='Todos')gs=gs.filter(g=>g.category===filt);
+  gs=[...gs].sort((a,b)=>new Date(b.date)-new Date(a.date));
+
+  if(!gs.length){
+    con.innerHTML=`<div class="empty"><div class="ee">🧾</div><div class="et">Sin gastos este mes</div><div class="es">Escaneá un recibo o cargá uno manualmente</div></div>`;
+    return;
+  }
+
+  // Group by display date: installments group under their original purchase date label but show cuota info
+  const grp={};
+  gs.forEach(g=>{
+    // For installments shown in future months, use a synthetic "due this month" date for grouping
+    const key=g._isInstallment?`inst-${g.id}`:g.date;
+    if(!grp[key])grp[key]=[];
+    grp[key].push(g);
+  });
+
+  let h='<div class="txl">';
+  // Sort group keys: real dates first sorted desc, then installment groups
+  const keys=Object.keys(grp).sort((a,b)=>{
+    const da=a.startsWith('inst-')?'0000-00-00':a;
+    const db=b.startsWith('inst-')?'0000-00-00':b;
+    return db.localeCompare(da);
+  });
+
+  keys.forEach(key=>{
+    const its=grp[key];
+    if(key.startsWith('inst-')){
+      h+=`<div class="txg">Cuota del mes</div>`;
+    } else {
+      const d=new Date(key+'T12:00:00');
+      h+=`<div class="txg">${d.toLocaleDateString('es-UY',{weekday:'short',day:'numeric',month:'short'})}</div>`;
+    }
+    its.forEach(g=>{
+      const cat=S.categories.find(c=>c.name===g.category);
+      const em=cat?cat.emoji:'📦';const col=cat?cat.color:'#6b7280';
+      const isCr=g.payType==='credit';
+      const isInst=g._isInstallment;
+      const inst=g._instTotal||+g.installments||1;
+      const cuota=g._cuota||g.amount/inst;
+      const instNum=g._instNum||1;
+
+      const badge=isCr
+        ? isInst
+          ? `<span class="bdg bdg-cr">🟣 Cuota ${instNum}/${inst}</span>`
+          : `<span class="bdg bdg-cr">🟣 Crédito — ${inst} cuota${inst>1?'s':''}</span>`
+        : `<span class="bdg bdg-db">💳 Débito</span>`;
+
+      // Amount to show: for installments, show the cuota amount; for original purchase entry, show total
+      const displayAmt=isInst?fmt(cuota):fmt(g.amount);
+      const subAmt=isInst
+        ?`<div style="font-size:10px;color:var(--text-muted)">Total: ${fmt(g.amount)}</div>`
+        :(isCr&&inst>1?`<div style="font-size:10px;color:var(--purple)">${fmt(cuota)}/mes</div>`:'');
+
+      // Only show delete on original purchase entry, not on virtual installment rows
+      const del=!isInst?`<button class="txdel" onclick="delG('${g.id}')">✕</button>`:'';
+
+      h+=`<div class="txi"${isInst?' style="border-left:3px solid var(--purple)"':''}>
+        <div class="txico" style="background:${col}22">${em}</div>
+        <div class="txb">
+          <div class="txd">${g.desc}</div>
+          <div class="txm">${badge}<span>${g.category}</span>${g.note?`<span>· ${g.note}</span>`:''}</div>
+        </div>
+        <div class="txr">
+          <div class="txa" style="${isInst?'color:var(--purple)':''}">${displayAmt}</div>
+          ${subAmt}
+        </div>
+        ${del}
+      </div>`;
+    });
+  });
+  h+='</div>';con.innerHTML=h;
+}
+  const budTot=S.categories.reduce((s,c)=>s+(+c.budget||0),0);
+  const sal=+S.salary||0;
+  // Extra income this month
+  const extraInc=S.ingresos.filter(i=>{const d=new Date(i.date+'T12:00:00');return d.getMonth()===CM&&d.getFullYear()===CY;}).reduce((s,i)=>s+(+i.amount),0);
+  const totalIncome=sal+extraInc;
+  // Total saved across all goals (already allocated money)
+  const totalSaved=S.goals.reduce((s,g)=>s+(+g.saved||0),0);
+  const left=totalIncome-spent-totalSaved;
+
+  document.getElementById('sumSpent').textContent=fmt(spent);
+  document.getElementById('sumCount').textContent=`${gs.length} gasto${gs.length!==1?'s':''}`;
+  document.getElementById('sumSalary').textContent=fmt(totalIncome);
+  document.getElementById('sumSalaryLbl').textContent=extraInc>0?'salario + extras':'ingreso mensual';
+  document.getElementById('sumBudget').textContent=fmt(budTot);
+  document.getElementById('sumLeft').textContent=fmt(Math.abs(left));
+  document.getElementById('sumLeftLbl').textContent=left<0?'en exceso':(totalSaved>0?'descontando ahorros':'disponible');
+  document.getElementById('sumLeft').className='sv '+(left<0?'rd':'gn');
+  document.getElementById('salDisp').textContent=fmt(S.salary);
+
+  const cdue=crDue(CM,CY);
+  const cbox=document.getElementById('creditBox');
+  if(cdue.length>0){
+    const cs=cdue.reduce((s,g)=>s+(+g.amount/(+g.installments||1)),0);
+    cbox.style.display='flex';
+    document.getElementById('cboxAmt').textContent=fmt(cs);
+    document.getElementById('cboxSub').textContent=`${cdue.length} cuota${cdue.length!==1?'s':''} pendiente${cdue.length!==1?'s':''}`;
+  } else {
+    cbox.style.display='none';
+  }
+
+  const pct=budTot>0?Math.min((spent/budTot)*100,100):0;
+  document.getElementById('progPct').textContent=Math.round(pct)+'%';
+  const f=document.getElementById('progFill');
+  f.style.width=pct+'%';
+  f.className='pbf'+(pct>90?' ov':pct>70?' wa':'');
+}
+
+
 function crDue(m,y){
   return S.gastos.filter(g=>{
     if(g.payType!=='credit')return false;
@@ -580,7 +854,9 @@ function renderAll(){
   const lbl=`${MOS[CM]} ${CY}`;
   document.getElementById('mlbl').textContent=lbl;
   const m2=document.getElementById('mlbl2');if(m2)m2.textContent=lbl;
-  rSummary();rCatRows();rTxList();rCredit();rSavings();rBudget();
+  const m3=document.getElementById('mlbl3');if(m3)m3.textContent=lbl;
+  const sd2=document.getElementById('salDisp2');if(sd2)sd2.textContent=fmt(S.salary);
+  rSummary();rCatRows();rTxList();rIngresos();rCredit();rSavings();rBudget();rAnual();
 }
 
 // ============================================================
@@ -591,15 +867,22 @@ function rSummary(){
   const debitGs=gs.filter(g=>g.payType!=='credit');
   const spent=debitGs.reduce((s,g)=>s+(+g.amount),0);
   const budTot=S.categories.reduce((s,c)=>s+(+c.budget||0),0);
-  const left=budTot-spent;
   const sal=+S.salary||0;
+  const extraInc=S.ingresos.filter(i=>{const d=new Date(i.date+'T12:00:00');return d.getMonth()===CM&&d.getFullYear()===CY;}).reduce((s,i)=>s+(+i.amount),0);
+  const totalIncome=sal+extraInc;
+  const totalSaved=S.goals.reduce((s,g)=>s+(+g.saved||0),0);
+  // Also deduct credit installments due this month
+  const creditThisMonth=crDue(CM,CY).reduce((s,g)=>s+(+g.amount/(+g.installments||1)),0);
+  const left=totalIncome-spent-totalSaved-creditThisMonth;
 
   document.getElementById('sumSpent').textContent=fmt(spent);
-  document.getElementById('sumCount').textContent=`${gs.length} gasto${gs.length!==1?'s':''}`;
-  document.getElementById('sumSalary').textContent=fmt(sal);
+  document.getElementById('sumCount').textContent=`${S.gastos.filter(g=>{const d=new Date(g.date+'T12:00:00');return d.getMonth()===CM&&d.getFullYear()===CY;}).length} gasto${gs.length!==1?'s':''}`;
+  document.getElementById('sumSalary').textContent=fmt(totalIncome);
+  document.getElementById('sumSalaryLbl').textContent=extraInc>0?'salario + extras':'ingreso mensual';
   document.getElementById('sumBudget').textContent=fmt(budTot);
   document.getElementById('sumLeft').textContent=fmt(Math.abs(left));
-  document.getElementById('sumLeftLbl').textContent=left<0?'en exceso':'disponible';
+  const leftLbl=left<0?'en exceso':(totalSaved>0||creditThisMonth>0?'descontando compromisos':'disponible');
+  document.getElementById('sumLeftLbl').textContent=leftLbl;
   document.getElementById('sumLeft').className='sv '+(left<0?'rd':'gn');
   document.getElementById('salDisp').textContent=fmt(S.salary);
 
@@ -640,59 +923,7 @@ function rCatRows(){
   }).join('');
 }
 
-// ============================================================
-// TX LIST
-// ============================================================
-function rTxList(){
-  const con=document.getElementById('txList');
-  const chEl=document.getElementById('chips');
-  if(!con)return;
-  let gs=mGastos();
-  const cats=['Todos',...S.categories.map(c=>c.name),'Crédito'];
-  if(chEl)chEl.innerHTML=cats.map(c=>`<button class="chip${filt===c?' on':''}" onclick="setF('${c}')">${c}</button>`).join('');
 
-  if(filt==='Crédito')gs=gs.filter(g=>g.payType==='credit');
-  else if(filt!=='Todos')gs=gs.filter(g=>g.category===filt);
-  gs=[...gs].sort((a,b)=>new Date(b.date)-new Date(a.date));
-
-  if(!gs.length){
-    con.innerHTML=`<div class="empty"><div class="ee">🧾</div><div class="et">Sin gastos este mes</div><div class="es">Escaneá un recibo o cargá uno manualmente</div></div>`;
-    return;
-  }
-  const grp={};
-  gs.forEach(g=>{if(!grp[g.date])grp[g.date]=[];grp[g.date].push(g);});
-  let h='<div class="txl">';
-  Object.entries(grp).forEach(([dt,its])=>{
-    const d=new Date(dt+'T12:00:00');
-    h+=`<div class="txg">${d.toLocaleDateString('es-UY',{weekday:'short',day:'numeric',month:'short'})}</div>`;
-    its.forEach(g=>{
-      const cat=S.categories.find(c=>c.name===g.category);
-      const em=cat?cat.emoji:'📦';const col=cat?cat.color:'#6b7280';
-      const isCr=g.payType==='credit';
-      const inst=+g.installments||1;
-      const cuota=g.amount/inst;
-      const badge=isCr?`<span class="bdg bdg-cr">🟣 Crédito${inst>1?' ÷'+inst:''}</span>`:`<span class="bdg bdg-db">💳 Débito</span>`;
-      h+=`<div class="txi">
-        <div class="txico" style="background:${col}22">${em}</div>
-        <div class="txb">
-          <div class="txd">${g.desc}</div>
-          <div class="txm">${badge}<span>${g.category}</span>${g.note?`<span>· ${g.note}</span>`:''}</div>
-        </div>
-        <div class="txr">
-          <div class="txa">${fmt(g.amount)}</div>
-          ${isCr&&inst>1?`<div style="font-size:10px;color:var(--purple)">${fmt(cuota)}/mes</div>`:''}
-        </div>
-        <button class="txdel" onclick="delG('${g.id}')">✕</button>
-      </div>`;
-    });
-  });
-  h+='</div>';con.innerHTML=h;
-}
-
-// ============================================================
-// CREDIT TAB
-// ============================================================
-function rCredit(){
   const now=new Date();
   const crGs=S.gastos.filter(g=>g.payType==='credit');
   const active=crGs.filter(g=>{
@@ -794,6 +1025,16 @@ function popCats(){
   ['pc','mc'].forEach(id=>{const e=document.getElementById(id);if(e)e.innerHTML=o;});
 }
 
+// Per-transaction currency state
+const txCur={scan:'USD',manual:'USD',ingreso:'USD',gtarget:'USD',gsaved:'USD',addgoal:'USD'};
+function selTxCur(key,cur,btn){
+  txCur[key]=cur;
+  const container=btn.closest('.mini-cur');
+  container.querySelectorAll('.mini-cur-btn').forEach(b=>{
+    b.className='mini-cur-btn'+(b.textContent===cur?(cur==='UYU'?' on-uyu':' on'):'');
+  });
+}
+
 // ============================================================
 // GASTO FLOW
 // ============================================================
@@ -817,12 +1058,13 @@ function goConfirm(src){
     note=document.getElementById('mn').value.trim();
   }
   if(!desc||isNaN(amt)||!date){toast('Completá descripción, monto y fecha');return;}
-  pendC={desc,amount:amt,category:cat,date,note};pendSrc=src;
+  const cur=src==='scan'?txCur.scan:txCur.manual;
+  pendC={desc,amount:toUSD(amt,cur),category:cat,date,note,origAmount:amt,origCur:cur};pendSrc=src;
   // reset pay type UI
   document.getElementById('btnDb').className='pt-btn';
   document.getElementById('btnCr').className='pt-btn';
   document.getElementById('instRow').classList.remove('sh');
-  document.getElementById('ptDesc').textContent=`"${desc}" — ${fmt(amt)}`;
+  document.getElementById('ptDesc').textContent=`"${desc}" — ${cur==='UYU'?'$U ':' USD '}${amt}`;
   openM('mPayType');
 }
 
@@ -858,7 +1100,7 @@ function cancelPrev(){
 function saveSalary(){
   const v=parseFloat(document.getElementById('salaryInput').value);
   if(isNaN(v)||v<0){toast('Monto inválido');return;}
-  S.salary=v;save();renderAll();closeM('mSalary');toast('Salario actualizado');
+  S.salary=toUSD(v);save();renderAll();closeM('mSalary');toast('Salario actualizado');
 }
 
 // ============================================================
@@ -882,8 +1124,8 @@ function openEditGoal(i){
 function saveGoal(){
   const name=document.getElementById('gName').value.trim();
   const emoji=document.getElementById('gEmoji').value.trim()||'🎯';
-  const target=parseFloat(document.getElementById('gTarget').value)||0;
-  const saved=parseFloat(document.getElementById('gSaved').value)||0;
+  const target=toUSD(parseFloat(document.getElementById('gTarget').value)||0,txCur.gtarget);
+  const saved=toUSD(parseFloat(document.getElementById('gSaved').value)||0,txCur.gsaved);
   if(!name){toast('Ingresá un nombre');return;}
   if(eGoalIdx!==null)S.goals[eGoalIdx]={...S.goals[eGoalIdx],name,emoji,target,saved};
   else S.goals.push({id:Date.now().toString(),name,emoji,target,saved});
@@ -893,7 +1135,7 @@ function openAddGoal(i){addGoalIdx=i;document.getElementById('agTitle').textCont
 function confirmAddGoal(){
   const v=parseFloat(document.getElementById('agAmt').value);
   if(isNaN(v)||v<=0){toast('Ingresá un monto');return;}
-  S.goals[addGoalIdx].saved=(+S.goals[addGoalIdx].saved||0)+v;
+  S.goals[addGoalIdx].saved=(+S.goals[addGoalIdx].saved||0)+toUSD(v,txCur.addgoal);
   save();rSavings();closeM('mAddGoal');toast('Ahorro registrado ✓');
 }
 function delGoal(i){if(!confirm(`¿Eliminar "${S.goals[i].name}"?`))return;S.goals.splice(i,1);save();rSavings();toast('Objetivo eliminado');}
@@ -903,7 +1145,7 @@ function delGoal(i){if(!confirm(`¿Eliminar "${S.goals[i].name}"?`))return;S.goa
 // ============================================================
 function saveNewCat(){
   const name=document.getElementById('ncName').value.trim();
-  const budget=parseFloat(document.getElementById('ncBudget').value)||0;
+  const budget=toUSD(parseFloat(document.getElementById('ncBudget').value)||0);
   const emoji=document.getElementById('ncEmoji').value.trim()||'📦';
   if(!name){toast('Ingresá un nombre');return;}
   if(S.categories.find(c=>c.name.toLowerCase()===name.toLowerCase())){toast('Ya existe');return;}
@@ -913,7 +1155,7 @@ function saveNewCat(){
   save();popCats();renderAll();closeM('mNewCat');toast(`"${name}" agregada`);
 }
 function openEB(i){eCatIdx=i;document.getElementById('ebTitle').textContent=`Presupuesto — ${S.categories[i].name}`;document.getElementById('ebInput').value=S.categories[i].budget||0;openM('mEditBudget');}
-function saveEditBudget(){const v=parseFloat(document.getElementById('ebInput').value)||0;S.categories[eCatIdx].budget=v;save();renderAll();closeM('mEditBudget');toast('Presupuesto actualizado');}
+function saveEditBudget(){const v=parseFloat(document.getElementById('ebInput').value)||0;S.categories[eCatIdx].budget=toUSD(v);save();renderAll();closeM('mEditBudget');toast('Presupuesto actualizado');}
 function delCat(i){if(!confirm(`¿Eliminar "${S.categories[i].name}"?`))return;S.categories.splice(i,1);save();popCats();renderAll();toast('Categoría eliminada');}
 
 // ============================================================
@@ -989,15 +1231,106 @@ function showPreview(data){
 function toB64(file){return new Promise((res,rej)=>{const r=new FileReader();r.onload=()=>res(r.result.split(',')[1]);r.onerror=rej;r.readAsDataURL(file);});}
 
 // ============================================================
-// MODALS & TABS
+// INGRESOS
 // ============================================================
+function addIngreso(){
+  const desc=document.getElementById('id').value.trim();
+  const amt=parseFloat(document.getElementById('ia').value);
+  const date=document.getElementById('if').value;
+  const note=document.getElementById('in2').value.trim();
+  if(!desc||isNaN(amt)||!date){toast('Completá descripción, monto y fecha');return;}
+  S.ingresos.push({id:Date.now().toString(),desc,amount:toUSD(amt,txCur.ingreso),date,note,origAmount:amt,origCur:txCur.ingreso});
+  ['id','ia','in2'].forEach(i=>document.getElementById(i).value='');
+  save();renderAll();toast('Ingreso agregado ✓');
+}
+
+function delIngreso(id){
+  S.ingresos=S.ingresos.filter(i=>i.id!==id);
+  save();renderAll();toast('Ingreso eliminado');
+}
+
+function rIngresos(){
+  const con=document.getElementById('ingresoList');if(!con)return;
+  const inc=S.ingresos.filter(i=>{const d=new Date(i.date+'T12:00:00');return d.getMonth()===CM&&d.getFullYear()===CY;});
+  inc.sort((a,b)=>new Date(b.date)-new Date(a.date));
+  if(!inc.length){
+    con.innerHTML=`<div class="empty"><div class="ee">💸</div><div class="et">Sin ingresos extra este mes</div><div class="es">Agregá freelances, bonos u otros ingresos</div></div>`;
+    return;
+  }
+  const tot=inc.reduce((s,i)=>s+(+i.amount),0);
+  con.innerHTML=`<div style="background:var(--white);border-radius:var(--R);overflow:hidden;box-shadow:var(--sh)">
+    ${inc.map(i=>`<div class="txi" style="border-radius:0;margin-bottom:0;border-bottom:1px solid var(--border)">
+      <div class="txico" style="background:#22c55e22">💸</div>
+      <div class="txb"><div class="txd">${i.desc}</div><div class="txm"><span>${new Date(i.date+'T12:00:00').toLocaleDateString('es-UY',{day:'2-digit',month:'short'})}</span>${i.note?`<span>· ${i.note}</span>`:''}</div></div>
+      <div class="txr"><div class="txa" style="color:var(--green)">${fmt(i.amount)}</div></div>
+      <button class="txdel" onclick="delIngreso('${i.id}')">✕</button>
+    </div>`).join('')}
+    <div style="padding:10px 14px;display:flex;justify-content:space-between;align-items:center">
+      <span style="font-size:11px;font-weight:700;color:var(--text-muted);text-transform:uppercase">Total extra</span>
+      <span style="font-size:15px;font-weight:700;color:var(--green)">${fmt(tot)}</span>
+    </div>
+  </div>`;
+}
+
+// ============================================================
+// ANUAL
+// ============================================================
+let CY_annual=new Date().getFullYear();
+
+function chY(d){CY_annual+=d;rAnual();}
+
+function rAnual(){
+  const yl=document.getElementById('yearLbl');if(!yl)return;
+  yl.textContent=CY_annual;
+
+  let ySpent=0,yIncome=0;
+  const rows=MOS.map((mName,m)=>{
+    const gs=S.gastos.filter(g=>{const d=new Date(g.date+'T12:00:00');return d.getMonth()===m&&d.getFullYear()===CY_annual&&g.payType!=='credit';});
+    const spent=gs.reduce((s,g)=>s+(+g.amount),0);
+    const extraInc=S.ingresos.filter(i=>{const d=new Date(i.date+'T12:00:00');return d.getMonth()===m&&d.getFullYear()===CY_annual;}).reduce((s,i)=>s+(+i.amount),0);
+    const income=(+S.salary||0)+extraInc;
+    const bal=income-spent;
+    ySpent+=spent;yIncome+=income;
+    const isCurrentM=m===CM&&CY_annual===CY;
+    const hasTx=spent>0||extraInc>0;
+    return `<div style="display:grid;grid-template-columns:80px 1fr 1fr 1fr;padding:9px 14px;${isCurrentM?'background:var(--accent-light);':''}${hasTx?'':'opacity:.45;'}border-bottom:1px solid var(--border)">
+      <div style="font-size:12px;font-weight:${isCurrentM?700:500};color:${isCurrentM?'var(--accent)':'var(--text)'}">${mName.substring(0,3)}</div>
+      <div style="font-size:12px;font-weight:600;color:var(--green);text-align:right">${hasTx||income>0?fmt(income):'—'}</div>
+      <div style="font-size:12px;font-weight:600;color:var(--red);text-align:right">${spent>0?fmt(spent):'—'}</div>
+      <div style="font-size:12px;font-weight:700;color:${bal>=0?'var(--green)':'var(--red)'};text-align:right">${hasTx||income>0?(bal>=0?'+':'')+fmt(bal):'—'}</div>
+    </div>`;
+  });
+
+  document.getElementById('annualRows').innerHTML=rows.join('');
+  document.getElementById('ySpent').textContent=fmt(ySpent);
+  document.getElementById('yIncome').textContent=fmt(yIncome);
+  const yNet=yIncome-ySpent;
+  document.getElementById('yNet').textContent=fmt(Math.abs(yNet));
+  document.getElementById('yNet').className='sv '+(yNet>=0?'gn':'rd');
+  document.getElementById('yNetLbl').textContent=yNet>=0?'ahorrado':'en rojo';
+
+  // total credit pending
+  const now=new Date();
+  const crGs=S.gastos.filter(g=>g.payType==='credit');
+  const crPend=crGs.reduce((s,g)=>{
+    const st=new Date(g.date+'T12:00:00');
+    const inst=+g.installments||1;
+    const cuota=g.amount/inst;
+    const diff=(now.getFullYear()-st.getFullYear())*12+(now.getMonth()-st.getMonth());
+    return s+Math.max(0,inst-diff)*cuota;
+  },0);
+  document.getElementById('yCredit').textContent=fmt(crPend);
+}
+
+
 function openM(id){document.getElementById(id).classList.remove('hid');}
 function closeM(id){document.getElementById(id).classList.add('hid');}
 
-const TABS=['resumen','gastos','escanear','credito','ahorros','presupuestos'];
+const TABS=['resumen','gastos','escanear','ingresos','credito','ahorros','anual','presupuestos'];
 function tab(name){
   TABS.forEach(t=>document.getElementById('t-'+t).style.display=t===name?'block':'none');
   document.querySelectorAll('.nav-tab').forEach(b=>b.classList.toggle('on',b.getAttribute('onclick').includes(name)));
+  if(name==='anual')rAnual();
 }
 
 // ============================================================
