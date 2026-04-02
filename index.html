@@ -590,35 +590,19 @@ async function fetchTC(){
   const today=new Date().toISOString().split('T')[0];
   const cached=localStorage.getItem('bcu_tc');
   if(cached){const p=JSON.parse(cached);if(p.date===today){XR=p.rate;updTCDisplay();return;}}
+  // Try exchangerate-api (free, no key needed, CORS-friendly)
   try{
-    // BCU WSDL/REST — use open proxy to their XML feed
-    const url='https://api.allorigins.win/get?url='+encodeURIComponent('https://www.bcu.gub.uy/Comunicaciones/Paginas/Cotizaciones.aspx');
-    const res=await fetch(url,{signal:AbortSignal.timeout(6000)});
+    const res=await fetch('https://open.er-api.com/v6/latest/USD',{signal:AbortSignal.timeout(5000)});
     const data=await res.json();
-    // Parse USD compra/venta from HTML table
-    const html=data.contents;
-    const m=html.match(/Dólar USA[\s\S]*?<td[^>]*>([\d,.]+)<\/td>[\s\S]*?<td[^>]*>([\d,.]+)<\/td>/i);
-    if(m){
-      const compra=parseFloat(m[1].replace(',','.'));
-      const venta=parseFloat(m[2].replace(',','.'));
-      const mid=(compra+venta)/2;
-      if(mid>1){XR=mid;localStorage.setItem('bcu_tc',JSON.stringify({date:today,rate:XR}));updTCDisplay();return;}
+    if(data.rates&&data.rates.UYU){
+      XR=data.rates.UYU;
+      localStorage.setItem('bcu_tc',JSON.stringify({date:today,rate:XR}));
+      updTCDisplay();return;
     }
-    throw new Error('parse fail');
-  }catch(e){
-    // Fallback: try BCU's web service endpoint
-    try{
-      const url2='https://api.allorigins.win/get?url='+encodeURIComponent('https://cotizaciones.bcu.gub.uy/wsDivisas.asmx/getCotizaciones?Fecha='+today+'&Moneda=2222');
-      const res2=await fetch(url2,{signal:AbortSignal.timeout(5000)});
-      const d2=await res2.json();
-      const xml=d2.contents;
-      const mv=xml.match(/<arbitraje>([\d.]+)<\/arbitraje>/i)||xml.match(/<compra>([\d.]+)<\/compra>/i);
-      if(mv&&+mv[1]>1){XR=+mv[1];localStorage.setItem('bcu_tc',JSON.stringify({date:today,rate:XR}));updTCDisplay();return;}
-    }catch(e2){}
-    // Use last known or fallback
-    if(cached){const p=JSON.parse(cached);XR=p.rate;}
-    updTCDisplay();
-  }
+  }catch(e){}
+  // Fallback: use last cached regardless of date
+  if(cached){const p=JSON.parse(cached);XR=p.rate;}
+  updTCDisplay();
 }
 
 function updTCDisplay(){
@@ -653,7 +637,7 @@ function init(){
   popCats();
   updCurUI();
   updCurLabels();
-  fetchTC();
+  fetchTC().catch(()=>{}); // fire and forget, never blocks
   renderAll();
   if(!S.apiKey&&!localStorage.getItem('mg_vis')){localStorage.setItem('mg_vis','1');openM('mApiKey');}
 }
