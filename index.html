@@ -6,7 +6,6 @@
 <title>Mis Gastos</title>
 <!-- Firebase SDKs -->
 <script type="module">
-// ===== FIREBASE CONFIG =====
 import { initializeApp } from 'https://www.gstatic.com/firebasejs/10.12.0/firebase-app.js';
 import { getAuth, GoogleAuthProvider, signInWithPopup, signOut, onAuthStateChanged }
   from 'https://www.gstatic.com/firebasejs/10.12.0/firebase-auth.js';
@@ -16,7 +15,6 @@ import { getFirestore, doc, getDoc, setDoc }
 const firebaseConfig = {
   apiKey: "AIzaSyCPbuVFlXFau8yOmGjDWK_KkpDk-kgKZNw",
   authDomain: "mis-gastos-46e07.firebaseapp.com",
-  databaseURL: "https://mis-gastos-46e07-default-rtdb.firebaseio.com",
   projectId: "mis-gastos-46e07",
   storageBucket: "mis-gastos-46e07.firebasestorage.app",
   messagingSenderId: "1017573151990",
@@ -28,39 +26,32 @@ const auth = getAuth(app);
 const db = getFirestore(app);
 const provider = new GoogleAuthProvider();
 
-// Expose to global scope so non-module scripts can call them
-window._fbAuth = auth;
-window._fbDb = db;
-window._fbProvider = provider;
-window._fbDoc = doc;
-window._fbGetDoc = getDoc;
-window._fbSetDoc = setDoc;
 window._fbSignIn = () => signInWithPopup(auth, provider);
 window._fbSignOut = () => signOut(auth);
 
-// Auth state listener
-onAuthStateChanged(auth, async (user) => {
-  if (user) {
-    window._fbUser = user;
-    document.getElementById('authOverlay').style.display = 'none';
-    document.getElementById('userInfo').innerHTML =
-      `<img src="${user.photoURL}" style="width:28px;height:28px;border-radius:50%;object-fit:cover"> `;
-    // Load data from Firestore
-    await window.loadFromFirestore();
-    window.renderAll();
-    window.fetchTC().catch(()=>{});
-    // Only ask for API key if it's not saved anywhere
-    const hasKey = window.S.apiKey || localStorage.getItem('mg_apikey');
-    if(!hasKey){
-      window.openM('mApiKey');
-    } else if(window.S.apiKey){
-      const el=document.getElementById('apiKeyInput');if(el)el.value=window.S.apiKey;
-    }
-  } else {
-    window._fbUser = null;
-    document.getElementById('authOverlay').style.display = 'flex';
-    document.getElementById('userInfo').innerHTML = '';
-  }
+// Save to Firestore — called from main script via window._fbSave
+window._fbSave = async (stateJson) => {
+  if (!window._fbUser) return;
+  try {
+    const ref = doc(db, 'users', window._fbUser.uid, 'data', 'state');
+    await setDoc(ref, { json: stateJson, updatedAt: Date.now() });
+  } catch(e) { console.error('Firestore save error:', e); }
+};
+
+// Load from Firestore — called from main script via window._fbLoad
+window._fbLoad = async () => {
+  if (!window._fbUser) return null;
+  try {
+    const ref = doc(db, 'users', window._fbUser.uid, 'data', 'state');
+    const snap = await getDoc(ref);
+    return snap.exists() ? snap.data().json : null;
+  } catch(e) { console.error('Firestore load error:', e); return null; }
+};
+
+onAuthStateChanged(auth, (user) => {
+  window._fbUser = user || null;
+  // Dispatch event so main script can react
+  window.dispatchEvent(new CustomEvent('fb-auth', { detail: { user } }));
 });
 </script>
 <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@300;400;500;600;700&display=swap" rel="stylesheet">
@@ -331,7 +322,7 @@ onAuthStateChanged(auth, async (user) => {
 <body>
 
 <!-- MODALS -->
-<div class="mo" id="mApiKey">
+<div class="momApiKey" id="None" onclick="overlayClose(event,'None')">
   <div class="modal"><div class="mh"></div>
     <div class="mt">🔑 API Key de Anthropic</div>
     <div class="ms">Para escanear recibos con IA. Conseguila en <a href="https://console.anthropic.com" target="_blank" class="link">console.anthropic.com</a>. Solo se guarda en tu dispositivo.</div>
@@ -343,16 +334,19 @@ onAuthStateChanged(auth, async (user) => {
   </div>
 </div>
 
-<div class="mo hid" id="mSalary">
+<div class="momSalary" id=" hid" onclick="overlayClose(event,' hid')">
   <div class="modal"><div class="mh"></div>
     <div class="mt">💼 Salario mensual</div>
     <div class="ms">Se usa para calcular tu disponible.</div>
     <div class="fld" style="margin-bottom:14px"><div class="fl cur-lbl">Monto (USD)</div><input type="number" class="fi" id="salaryInput" placeholder="6300"></div>
-    <button class="btn bp" onclick="saveSalary()" style="width:100%">Guardar</button>
+    <div style="display:flex;gap:8px">
+      <button class="btn bp" onclick="saveSalary()">Guardar</button>
+      <button class="btn bg" onclick="closeM('mSalary')">Cancelar</button>
+    </div>
   </div>
 </div>
 
-<div class="mo hid" id="mCatPick">
+<div class="momCatPick" id=" hid" onclick="overlayClose(event,' hid')">
   <div class="modal"><div class="mh"></div>
     <div class="mt">¿A qué categoría va?</div>
     <div class="ms" id="catPickDesc"></div>
@@ -361,7 +355,7 @@ onAuthStateChanged(auth, async (user) => {
   </div>
 </div>
 
-<div class="mo hid" id="mPayType">
+<div class="momPayType" id=" hid" onclick="overlayClose(event,' hid')">
   <div class="modal"><div class="mh"></div>
     <div class="mt">¿Cómo pagaste?</div>
     <div class="ms" id="ptDesc"></div>
@@ -383,11 +377,14 @@ onAuthStateChanged(auth, async (user) => {
         </select>
       </div>
     </div>
-    <button class="btn bp" onclick="confirmPay()" style="width:100%">Confirmar</button>
+    <div style="display:flex;gap:8px">
+      <button class="btn bp" onclick="confirmPay()" style="flex:1">Confirmar</button>
+      <button class="btn bg" onclick="closeM('mPayType')">Cancelar</button>
+    </div>
   </div>
 </div>
 
-<div class="mo hid" id="mNewCat">
+<div class="momNewCat" id=" hid" onclick="overlayClose(event,' hid')">
   <div class="modal"><div class="mh"></div>
     <div class="mt">Nueva categoría</div>
     <div class="fr" style="margin-bottom:8px">
@@ -409,7 +406,7 @@ onAuthStateChanged(auth, async (user) => {
   </div>
 </div>
 
-<div class="mo hid" id="mEditGasto">
+<div class="momEditGasto" id=" hid" onclick="overlayClose(event,' hid')">
   <div class="modal"><div class="mh"></div>
     <div class="mt">Editar gasto</div>
     <div class="fr" style="margin-bottom:8px">
@@ -455,7 +452,7 @@ onAuthStateChanged(auth, async (user) => {
   </div>
 </div>
 
-<div class="mo hid" id="mEditBudget">
+<div class="momEditBudget" id=" hid" onclick="overlayClose(event,' hid')">
   <div class="modal"><div class="mh"></div>
     <div class="mt" id="ebTitle">Editar presupuesto</div>
     <div class="fld" style="margin-bottom:14px"><div class="fl cur-lbl">Presupuesto mensual (USD)</div><input type="number" class="fi" id="ebInput" placeholder="0"></div>
@@ -466,7 +463,7 @@ onAuthStateChanged(auth, async (user) => {
   </div>
 </div>
 
-<div class="mo hid" id="mNewGoal">
+<div class="momNewGoal" id=" hid" onclick="overlayClose(event,' hid')">
   <div class="modal"><div class="mh"></div>
     <div class="mt" id="goalMT">Nuevo bolsillo de ahorro</div>
     <div class="fr" style="margin-bottom:8px">
@@ -497,7 +494,7 @@ onAuthStateChanged(auth, async (user) => {
   </div>
 </div>
 
-<div class="mo hid" id="mAddGoal">
+<div class="momAddGoal" id=" hid" onclick="overlayClose(event,' hid')">
   <div class="modal"><div class="mh"></div>
     <div class="mt" id="agTitle">Agregar ahorro</div>
     <div class="fld" style="margin-bottom:14px">
@@ -854,87 +851,80 @@ function updTCDisplay(){
 }
 
 // ============================================================
-// PERSIST
+// PERSIST — localStorage + Firebase cloud sync
 // ============================================================
-// ============================================================
-// PERSIST — Firebase Firestore
-// ============================================================
-async function saveToFirestore(){
-  if(!window._fbUser)return;
-  try{
-    const ref=window._fbDoc(window._fbDb,'users',window._fbUser.uid,'data','state');
-    await window._fbSetDoc(ref,{json:JSON.stringify(S),updatedAt:Date.now()});
-  }catch(e){console.error('Save error',e);}
-}
+let _saveTimer = null;
 
-async function loadFromFirestore(){
-  if(!window._fbUser)return;
-  try{
-    const ref=window._fbDoc(window._fbDb,'users',window._fbUser.uid,'data','state');
-    const snap=await window._fbGetDoc(ref);
-    if(snap.exists()){
-      const data=JSON.parse(snap.data().json);
-      Object.assign(S, data); // preserve reference, update contents
-    }
-  }catch(e){
-    console.error('Load error',e);
-  }
-  // Ensure all fields exist
-  if(!S.goals)S.goals=[];
-  if(!S.ingresos)S.ingresos=[];
-  if(!S.currency)S.currency='USD';
-  if(!S.salary)S.salary=6300;
-  if(!S.categories?.length)S.categories=JSON.parse(JSON.stringify(DEF.categories));
-  if(!S.gastos)S.gastos=[];
-  if(!S.apiKey)S.apiKey=localStorage.getItem('mg_apikey')||'';
-  if(S.apiKey)localStorage.setItem('mg_apikey',S.apiKey);
-  setToday();
-  popCats();
-  updCurUI();
-  updCurLabels();
-}
-
-// Expose to module script
-window.loadFromFirestore=loadFromFirestore;
-window.renderAll=()=>renderAll();
-window.fetchTC=fetchTC;
-window.S=S;
-window.openM=openM;
-
-// Debounced save — avoids hammering Firestore on rapid changes
-let _saveTimer=null;
-function save(){
-  // Always keep local copy too as fallback
-  localStorage.setItem('mg4',JSON.stringify(S));
+function save() {
+  localStorage.setItem('mg4', JSON.stringify(S));
   clearTimeout(_saveTimer);
-  _saveTimer=setTimeout(()=>saveToFirestore(),800);
+  _saveTimer = setTimeout(async () => {
+    if (window._fbSave) {
+      try { await window._fbSave(JSON.stringify(S)); }
+      catch(e) { console.error('Cloud save error:', e); }
+    }
+  }, 1200);
 }
 
-function load(){
-  const r=localStorage.getItem('mg4');
-  let data;
-  if(r){try{data=JSON.parse(r);}catch(e){data=JSON.parse(JSON.stringify(DEF));}}
-  else{data=JSON.parse(JSON.stringify(DEF));}
-  Object.assign(S, data);
-  if(!S.goals)S.goals=[];
-  if(!S.ingresos)S.ingresos=[];
-  if(!S.currency)S.currency='USD';
-  if(!S.salary)S.salary=6300;
-  if(!S.categories?.length)S.categories=JSON.parse(JSON.stringify(DEF.categories));
-  if(!S.gastos)S.gastos=[];
-  if(!S.apiKey)S.apiKey=localStorage.getItem('mg_apikey')||'';
+function ensureDefaults() {
+  if (!S.goals) S.goals = [];
+  if (!S.ingresos) S.ingresos = [];
+  if (!S.currency) S.currency = 'USD';
+  if (!S.salary) S.salary = 6300;
+  if (!S.categories || !S.categories.length) S.categories = JSON.parse(JSON.stringify(DEF.categories));
+  if (!S.gastos) S.gastos = [];
+  if (!S.apiKey) S.apiKey = localStorage.getItem('mg_apikey') || '';
+  if (S.apiKey) localStorage.setItem('mg_apikey', S.apiKey);
 }
 
 // ============================================================
-// INIT — Firebase handles auth, module script calls loadFromFirestore
+// INIT
 // ============================================================
-function init(){
-  // Show app shell immediately, auth overlay shown by Firebase module
+function init() {
+  // 1. Load from localStorage immediately so app is usable right away
+  const local = localStorage.getItem('mg4');
+  if (local) { try { Object.assign(S, JSON.parse(local)); } catch(e) {} }
+  ensureDefaults();
   setToday();
   popCats();
   updCurUI();
   updCurLabels();
-  // Data loads after auth in the module script's onAuthStateChanged
+  fetchTC().catch(() => {});
+  renderAll();
+
+  // 2. React to Firebase auth (fired by module script)
+  window.addEventListener('fb-auth', async (evt) => {
+    const user = evt.detail.user;
+    const overlay = document.getElementById('authOverlay');
+    const uInfo = document.getElementById('userInfo');
+    if (user) {
+      if (overlay) overlay.style.display = 'none';
+      if (uInfo) uInfo.innerHTML = `<img src="${user.photoURL}" style="width:28px;height:28px;border-radius:50%;object-fit:cover">`;
+      // Load from cloud, merge into S
+      if (window._fbLoad) {
+        try {
+          const json = await window._fbLoad();
+          if (json) {
+            const data = JSON.parse(json);
+            Object.assign(S, data);
+            ensureDefaults();
+            localStorage.setItem('mg4', json);
+          }
+        } catch(e) { console.error('Cloud load error:', e); }
+      }
+      popCats(); updCurUI(); updCurLabels(); renderAll();
+      // API key
+      if (!S.apiKey) {
+        openM('mApiKey');
+      } else {
+        const el = document.getElementById('apiKeyInput');
+        if (el) el.value = S.apiKey;
+      }
+    } else {
+      if (overlay) overlay.style.display = 'flex';
+      if (uInfo) uInfo.innerHTML = '';
+    }
+  });
 }
 
 function setToday(){
@@ -1971,6 +1961,7 @@ function rAnual(){
 
 function openM(id){document.getElementById(id).classList.remove('hid');}
 function closeM(id){document.getElementById(id).classList.add('hid');}
+function overlayClose(e,id){if(e.target===e.currentTarget)closeM(id);}
 
 const TABS=['resumen','gastos','escanear','ingresos','credito','ahorros','anual','presupuestos'];
 function tab(name){
