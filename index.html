@@ -294,9 +294,8 @@ onAuthStateChanged(auth, async (user) => {
   .mini-cur-btn.on{background:var(--white);color:var(--accent);box-shadow:0 1px 3px rgba(0,0,0,.1)}
   .mini-cur-btn.on-uyu{background:var(--white);color:var(--green)}
   .fl-row{display:flex;align-items:center;justify-content:space-between;gap:6px;margin-bottom:3px}
-
-  input[type="date"].fi{min-width:0;width:100%}
-  .bulk-item-fields .fi{font-size:11px;padding:5px 8px;min-width:0}
+  input[type="date"].fi{min-width:0;width:100%;font-size:13px}
+  .bulk-item-fields .fi{font-size:11px;padding:5px 8px;min-width:0;width:100%}
 
   /* AUTH OVERLAY */
   .auth-overlay{position:fixed;inset:0;background:var(--white);display:flex;flex-direction:column;align-items:center;justify-content:center;z-index:500;padding:32px}
@@ -307,6 +306,17 @@ onAuthStateChanged(auth, async (user) => {
   .google-btn:hover{border-color:#4285f4;box-shadow:0 4px 16px rgba(66,133,244,.2)}
   .google-btn svg{flex-shrink:0}
   .auth-note{font-size:11px;color:var(--text-muted);margin-top:20px;text-align:center;max-width:260px;line-height:1.5}
+
+  /* EMOJI PICKER */
+  .emoji-picker-wrap{position:relative}
+  .emoji-sel-display{background:var(--bg);border:1.5px solid var(--border);border-radius:var(--r);padding:10px 14px;font-size:22px;cursor:pointer;display:flex;align-items:center;gap:8px;transition:border-color .15s}
+  .emoji-sel-display:hover{border-color:var(--accent)}
+  .emoji-grid-wrap{background:var(--white);border:1.5px solid var(--border);border-radius:var(--r);padding:10px;margin-top:6px;box-shadow:var(--shm)}
+  .emoji-grid-wrap.hid{display:none}
+  .emoji-grid{display:grid;grid-template-columns:repeat(8,1fr);gap:4px;max-height:160px;overflow-y:auto}
+  .emoji-cell{font-size:22px;text-align:center;padding:4px;border-radius:6px;cursor:pointer;transition:background .1s}
+  .emoji-cell:hover{background:var(--accent-light)}
+  .emoji-cell.selected{background:var(--accent-light);outline:2px solid var(--accent)}
 
   /* FLOATING SCAN BUTTON */
   .fab{position:fixed;bottom:28px;right:20px;width:56px;height:56px;border-radius:50%;background:var(--accent);border:none;color:#fff;font-size:24px;cursor:pointer;box-shadow:0 4px 16px rgba(71,114,250,.4);display:flex;align-items:center;justify-content:center;z-index:40;transition:transform .15s,box-shadow .15s}
@@ -386,7 +396,11 @@ onAuthStateChanged(auth, async (user) => {
     </div>
     <div class="fld" style="margin-bottom:14px">
       <div class="fl">Emoji</div>
-      <input type="text" class="fi" id="ncEmoji" placeholder="💊" style="font-size:22px;text-align:center;letter-spacing:4px">
+      <div class="emoji-picker-wrap">
+        <div class="emoji-sel-display" id="ncEmojiDisplay" onclick="toggleEmojiPicker('nc')">📦 <span style="font-size:11px;color:var(--text-muted)">tocá para cambiar</span></div>
+        <div class="emoji-grid-wrap hid" id="ncEmojiGrid"></div>
+      </div>
+      <input type="hidden" id="ncEmoji" value="📦">
     </div>
     <div style="display:flex;gap:8px">
       <button class="btn bp" onclick="saveNewCat()">Agregar</button>
@@ -459,7 +473,11 @@ onAuthStateChanged(auth, async (user) => {
       <div class="fld"><div class="fl">Nombre</div><input type="text" class="fi" id="gName" placeholder="Vacaciones"></div>
       <div class="fld">
         <div class="fl">Emoji</div>
-        <input type="text" class="fi" id="gEmoji" placeholder="✈️" style="font-size:22px;text-align:center;letter-spacing:4px">
+        <div class="emoji-picker-wrap">
+          <div class="emoji-sel-display" id="gEmojiDisplay" onclick="toggleEmojiPicker('g')">🎯 <span style="font-size:11px;color:var(--text-muted)">tocá para cambiar</span></div>
+          <div class="emoji-grid-wrap hid" id="gEmojiGrid"></div>
+        </div>
+        <input type="hidden" id="gEmoji" value="🎯">
       </div>
     </div>
     <div class="fr" style="margin-bottom:14px">
@@ -856,13 +874,10 @@ async function loadFromFirestore(){
     const snap=await window._fbGetDoc(ref);
     if(snap.exists()){
       const data=JSON.parse(snap.data().json);
-      S=data;
-    } else {
-      S=JSON.parse(JSON.stringify(DEF));
+      Object.assign(S, data); // preserve reference, update contents
     }
   }catch(e){
     console.error('Load error',e);
-    S=JSON.parse(JSON.stringify(DEF));
   }
   // Ensure all fields exist
   if(!S.goals)S.goals=[];
@@ -871,9 +886,8 @@ async function loadFromFirestore(){
   if(!S.salary)S.salary=6300;
   if(!S.categories?.length)S.categories=JSON.parse(JSON.stringify(DEF.categories));
   if(!S.gastos)S.gastos=[];
-  // API key stays local too as backup
   if(!S.apiKey)S.apiKey=localStorage.getItem('mg_apikey')||'';
-  if(S.apiKey)localStorage.setItem('mg_apikey',S.apiKey); // keep in sync
+  if(S.apiKey)localStorage.setItem('mg_apikey',S.apiKey);
   setToday();
   popCats();
   updCurUI();
@@ -897,13 +911,11 @@ function save(){
 }
 
 function load(){
-  // Fallback for when Firebase hasn't loaded yet
   const r=localStorage.getItem('mg4');
-  if(r){
-    try{S=JSON.parse(r);}catch(e){S=JSON.parse(JSON.stringify(DEF));}
-  } else {
-    S=JSON.parse(JSON.stringify(DEF));
-  }
+  let data;
+  if(r){try{data=JSON.parse(r);}catch(e){data=JSON.parse(JSON.stringify(DEF));}}
+  else{data=JSON.parse(JSON.stringify(DEF));}
+  Object.assign(S, data);
   if(!S.goals)S.goals=[];
   if(!S.ingresos)S.ingresos=[];
   if(!S.currency)S.currency='USD';
@@ -1282,7 +1294,7 @@ function handleCatSelect(selId){
     window._catSelectId=selId;
     document.getElementById('ncName').value='';
     document.getElementById('ncBudget').value='0';
-    document.getElementById('ncEmoji').value='';
+    setEmojiDisplay('nc','📦');
     document.getElementById('mNewCat')._fromSelect=selId;
     openM('mNewCat');
     // Reset select to first option while modal is open
@@ -1373,22 +1385,23 @@ function saveSalary(){
 // ============================================================
 function openNewGoal(){
   eGoalIdx=null;
-  document.getElementById('goalMT').textContent='Nuevo objetivo';
-  ['gName','gEmoji','gTarget','gSaved'].forEach(id=>document.getElementById(id).value='');
+  document.getElementById('goalMT').textContent='Nuevo bolsillo de ahorro';
+  ['gName','gTarget','gSaved'].forEach(id=>document.getElementById(id).value='');
+  setEmojiDisplay('g','🎯');
   openM('mNewGoal');
 }
 function openEditGoal(i){
   eGoalIdx=i;const g=S.goals[i];
   document.getElementById('goalMT').textContent='Editar objetivo';
   document.getElementById('gName').value=g.name;
-  document.getElementById('gEmoji').value=g.emoji;
-  document.getElementById('gTarget').value=g.target;
-  document.getElementById('gSaved').value=g.saved;
+  setEmojiDisplay('g',g.emoji||'🎯');
+  document.getElementById('gTarget').value=g.target||'';
+  document.getElementById('gSaved').value=g.saved||'';
   openM('mNewGoal');
 }
 function saveGoal(){
   const name=document.getElementById('gName').value.trim();
-  const emoji=document.getElementById('gEmoji').value.trim()||'🎯';
+  const emoji=document.getElementById('gEmoji').value||'🎯';
   const target=toUSD(parseFloat(document.getElementById('gTarget').value)||0,txCur.gtarget);
   const saved=toUSD(parseFloat(document.getElementById('gSaved').value)||0,txCur.gsaved);
   if(!name){toast('Ingresá un nombre');return;}
@@ -1470,12 +1483,13 @@ function deleteFromEdit(){
 function saveNewCat(){
   const name=document.getElementById('ncName').value.trim();
   const budget=toUSD(parseFloat(document.getElementById('ncBudget').value)||0);
-  const emoji=document.getElementById('ncEmoji').value.trim()||'📦';
+  const emoji=document.getElementById('ncEmoji').value||'📦';
   if(!name){toast('Ingresá un nombre');return;}
   if(S.categories.find(c=>c.name.toLowerCase()===name.toLowerCase())){toast('Ya existe');return;}
   const pal=['#4772fa','#22c55e','#f97316','#ef4444','#a855f7','#ec4899','#06b6d4','#eab308'];
   S.categories.push({name,emoji,color:pal[S.categories.length%pal.length],budget});
-  ['ncName','ncBudget','ncEmoji'].forEach(id=>document.getElementById(id).value='');
+  ['ncName','ncBudget'].forEach(id=>document.getElementById(id).value='');
+  setEmojiDisplay('nc','📦');
   save();popCats();renderAll();
   const modal=document.getElementById('mNewCat');
   if(modal._bulkCallback&&window._bulkCatIdx!==undefined){
@@ -1510,8 +1524,50 @@ function saveApiKey(){
 }
 
 // ============================================================
-// SCAN MODE TOGGLE
+// EMOJI PICKER
 // ============================================================
+const EMOJIS = [
+  '🛒','🍽️','🚗','💊','🎬','👗','📦','✈️','🏠','💻','📱','🎮','🎵','📚','🏋️','🐶','🐱','🌿','☕','🍕',
+  '🍣','🥗','🍷','🍺','🎁','💄','👟','👔','🧴','🧹','⚡','🚌','🚕','⛽','✂️','🔧','🏥','💉','🧪','🎓',
+  '🏦','💰','💳','🎯','🏆','🌍','🏖️','⛷️','🎸','🎨','📷','🧘','🚴','🏊','⚽','🎾','🏀','🎰','🃏','🎲',
+  '🛁','🛋️','🏡','🌱','🔑','📋','🗓️','⏰','🔔','💡','🔌','🧺','🧻','🛍️','🎀','💝','🌸','🌻','🍀','🦋'
+];
+
+function buildEmojiGrid(gridId, hiddenId, displayId) {
+  const grid = document.getElementById(gridId);
+  if (!grid) return;
+  const current = document.getElementById(hiddenId)?.value || '';
+  grid.innerHTML = `<div class="emoji-grid">${EMOJIS.map(e =>
+    `<div class="emoji-cell${e===current?' selected':''}" onclick="pickEmoji('${e}','${hiddenId}','${displayId}','${gridId}')">${e}</div>`
+  ).join('')}</div>`;
+}
+
+function toggleEmojiPicker(prefix) {
+  const gridWrap = document.getElementById(prefix+'EmojiGrid');
+  const isHidden = gridWrap.classList.contains('hid');
+  // Close all pickers first
+  document.querySelectorAll('.emoji-grid-wrap').forEach(el => el.classList.add('hid'));
+  if (isHidden) {
+    buildEmojiGrid(prefix+'EmojiGrid', prefix+'Emoji', prefix+'EmojiDisplay');
+    gridWrap.classList.remove('hid');
+  }
+}
+
+function pickEmoji(emoji, hiddenId, displayId, gridId) {
+  document.getElementById(hiddenId).value = emoji;
+  const display = document.getElementById(displayId);
+  display.innerHTML = `${emoji} <span style="font-size:11px;color:var(--text-muted)">tocá para cambiar</span>`;
+  document.getElementById(gridId).classList.add('hid');
+}
+
+function setEmojiDisplay(prefix, emoji) {
+  const el = document.getElementById(prefix+'EmojiDisplay');
+  const hidden = document.getElementById(prefix+'Emoji');
+  if (el) el.innerHTML = `${emoji} <span style="font-size:11px;color:var(--text-muted)">tocá para cambiar</span>`;
+  if (hidden) hidden.value = emoji;
+}
+
+
 function setMode(mode){
   document.getElementById('modeRecibo-content').style.display=mode==='recibo'?'block':'none';
   document.getElementById('modeEstado-content').style.display=mode==='estado'?'block':'none';
@@ -1698,7 +1754,7 @@ function bulkCatChange(i,val){
     // Pre-fill and open new cat modal
     document.getElementById('ncName').value='';
     document.getElementById('ncBudget').value='0';
-    document.getElementById('ncEmoji').value='';
+    setEmojiDisplay('nc','📦');
     document.getElementById('mNewCat')._bulkCallback=true;
     openM('mNewCat');
   } else {
@@ -1863,21 +1919,32 @@ function rAnual(){
   const yl=document.getElementById('yearLbl');if(!yl)return;
   yl.textContent=CY_annual;
 
+  const now=new Date();
   let ySpent=0,yIncome=0;
   const rows=MOS.map((mName,m)=>{
     const gs=S.gastos.filter(g=>{const d=new Date(g.date+'T12:00:00');return d.getMonth()===m&&d.getFullYear()===CY_annual&&g.payType!=='credit';});
     const spent=gs.reduce((s,g)=>s+(+g.amount),0);
     const extraInc=S.ingresos.filter(i=>{const d=new Date(i.date+'T12:00:00');return d.getMonth()===m&&d.getFullYear()===CY_annual;}).reduce((s,i)=>s+(+i.amount),0);
-    const income=(+S.salary||0)+extraInc;
-    const bal=income-spent;
-    ySpent+=spent;yIncome+=income;
     const isCurrentM=m===CM&&CY_annual===CY;
     const hasTx=spent>0||extraInc>0;
+    // Only count salary for months that have data or are current/past in the current year
+    const isPastOrCurrent = CY_annual < now.getFullYear() || (CY_annual === now.getFullYear() && m <= now.getMonth());
+    const showSalary = hasTx || isPastOrCurrent;
+    const income=showSalary?(+S.salary||0)+extraInc:extraInc;
+    const bal=income-spent;
+    if(showSalary||hasTx){ySpent+=spent;yIncome+=income;}
+    const showRow=hasTx||isCurrentM||isPastOrCurrent;
+    if(!showRow) return `<div style="display:grid;grid-template-columns:80px 1fr 1fr 1fr;padding:9px 14px;border-bottom:1px solid var(--border);opacity:.35">
+      <div style="font-size:12px;color:var(--text-muted)">${mName.substring(0,3)}</div>
+      <div style="font-size:12px;color:var(--text-muted);text-align:right">—</div>
+      <div style="font-size:12px;color:var(--text-muted);text-align:right">—</div>
+      <div style="font-size:12px;color:var(--text-muted);text-align:right">—</div>
+    </div>`;
     return `<div style="display:grid;grid-template-columns:80px 1fr 1fr 1fr;padding:9px 14px;${isCurrentM?'background:var(--accent-light);':''}border-bottom:1px solid var(--border)">
       <div style="font-size:12px;font-weight:${isCurrentM?700:500};color:${isCurrentM?'var(--accent)':'var(--text)'}">${mName.substring(0,3)}</div>
-      <div style="font-size:12px;font-weight:600;color:${hasTx||income>0?'#15803d':'var(--text-muted)'};text-align:right">${hasTx||income>0?fmt(income):'—'}</div>
+      <div style="font-size:12px;font-weight:600;color:${showSalary?'#15803d':'var(--text-muted)'};text-align:right">${showSalary?fmt(income):'—'}</div>
       <div style="font-size:12px;font-weight:600;color:${spent>0?'#b91c1c':'var(--text-muted)'};text-align:right">${spent>0?fmt(spent):'—'}</div>
-      <div style="font-size:12px;font-weight:700;color:${hasTx||income>0?(bal>=0?'#15803d':'#b91c1c'):'var(--text-muted)'};text-align:right">${hasTx||income>0?(bal>=0?'+':'')+fmt(bal):'—'}</div>
+      <div style="font-size:12px;font-weight:700;color:${showSalary?(bal>=0?'#15803d':'#b91c1c'):'var(--text-muted)'};text-align:right">${showSalary?(bal>=0?'+':'')+fmt(bal):'—'}</div>
     </div>`;
   });
 
@@ -1890,7 +1957,6 @@ function rAnual(){
   document.getElementById('yNetLbl').textContent=yNet>=0?'ahorrado':'en rojo';
 
   // total credit pending
-  const now=new Date();
   const crGs=S.gastos.filter(g=>g.payType==='credit');
   const crPend=crGs.reduce((s,g)=>{
     const st=new Date(g.date+'T12:00:00');
