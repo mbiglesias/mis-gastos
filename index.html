@@ -49,8 +49,10 @@ onAuthStateChanged(auth, async (user) => {
     await window.loadFromFirestore();
     window.renderAll();
     window.fetchTC().catch(()=>{});
-    if(!window.S.apiKey&&!localStorage.getItem('mg_vis')){
-      localStorage.setItem('mg_vis','1');window.openM('mApiKey');
+    // Only ask for API key if it's not saved anywhere
+    const hasKey = window.S.apiKey || localStorage.getItem('mg_apikey');
+    if(!hasKey){
+      window.openM('mApiKey');
     } else if(window.S.apiKey){
       const el=document.getElementById('apiKeyInput');if(el)el.value=window.S.apiKey;
     }
@@ -869,8 +871,9 @@ async function loadFromFirestore(){
   if(!S.salary)S.salary=6300;
   if(!S.categories?.length)S.categories=JSON.parse(JSON.stringify(DEF.categories));
   if(!S.gastos)S.gastos=[];
-  // API key stays local
+  // API key stays local too as backup
   if(!S.apiKey)S.apiKey=localStorage.getItem('mg_apikey')||'';
+  if(S.apiKey)localStorage.setItem('mg_apikey',S.apiKey); // keep in sync
   setToday();
   popCats();
   updCurUI();
@@ -1501,8 +1504,9 @@ function saveApiKey(){
   const k=document.getElementById('apiKeyInput').value.trim();
   if(!k.startsWith('sk-ant')){toast('API key inválida');return;}
   S.apiKey=k;
-  localStorage.setItem('mg_apikey',k); // backup storage
-  save();closeM('mApiKey');toast('API key guardada ✓');
+  localStorage.setItem('mg_apikey',k);
+  save(); // saves to Firestore too
+  closeM('mApiKey');toast('API key guardada ✓');
 }
 
 // ============================================================
