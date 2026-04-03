@@ -322,7 +322,7 @@ onAuthStateChanged(auth, (user) => {
 <body>
 
 <!-- MODALS -->
-<div class="momApiKey" id="None" onclick="overlayClose(event,'None')">
+<div class="mo hid" id="mApiKey" onclick="overlayClose(event,'mApiKey')">
   <div class="modal"><div class="mh"></div>
     <div class="mt">🔑 API Key de Anthropic</div>
     <div class="ms">Para escanear recibos con IA. Conseguila en <a href="https://console.anthropic.com" target="_blank" class="link">console.anthropic.com</a>. Solo se guarda en tu dispositivo.</div>
@@ -334,7 +334,7 @@ onAuthStateChanged(auth, (user) => {
   </div>
 </div>
 
-<div class="momSalary" id=" hid" onclick="overlayClose(event,' hid')">
+<div class="mo hid" id="mSalary" onclick="overlayClose(event,'mSalary')">
   <div class="modal"><div class="mh"></div>
     <div class="mt">💼 Salario mensual</div>
     <div class="ms">Se usa para calcular tu disponible.</div>
@@ -346,7 +346,7 @@ onAuthStateChanged(auth, (user) => {
   </div>
 </div>
 
-<div class="momCatPick" id=" hid" onclick="overlayClose(event,' hid')">
+<div class="mo hid" id="mCatPick" onclick="overlayClose(event,'mCatPick')">
   <div class="modal"><div class="mh"></div>
     <div class="mt">¿A qué categoría va?</div>
     <div class="ms" id="catPickDesc"></div>
@@ -355,7 +355,7 @@ onAuthStateChanged(auth, (user) => {
   </div>
 </div>
 
-<div class="momPayType" id=" hid" onclick="overlayClose(event,' hid')">
+<div class="mo hid" id="mPayType" onclick="overlayClose(event,'mPayType')">
   <div class="modal"><div class="mh"></div>
     <div class="mt">¿Cómo pagaste?</div>
     <div class="ms" id="ptDesc"></div>
@@ -384,7 +384,7 @@ onAuthStateChanged(auth, (user) => {
   </div>
 </div>
 
-<div class="momNewCat" id=" hid" onclick="overlayClose(event,' hid')">
+<div class="mo hid" id="mNewCat" onclick="overlayClose(event,'mNewCat')">
   <div class="modal"><div class="mh"></div>
     <div class="mt">Nueva categoría</div>
     <div class="fr" style="margin-bottom:8px">
@@ -406,7 +406,7 @@ onAuthStateChanged(auth, (user) => {
   </div>
 </div>
 
-<div class="momEditGasto" id=" hid" onclick="overlayClose(event,' hid')">
+<div class="mo hid" id="mEditGasto" onclick="overlayClose(event,'mEditGasto')">
   <div class="modal"><div class="mh"></div>
     <div class="mt">Editar gasto</div>
     <div class="fr" style="margin-bottom:8px">
@@ -452,7 +452,7 @@ onAuthStateChanged(auth, (user) => {
   </div>
 </div>
 
-<div class="momEditBudget" id=" hid" onclick="overlayClose(event,' hid')">
+<div class="mo hid" id="mEditBudget" onclick="overlayClose(event,'mEditBudget')">
   <div class="modal"><div class="mh"></div>
     <div class="mt" id="ebTitle">Editar presupuesto</div>
     <div class="fld" style="margin-bottom:14px"><div class="fl cur-lbl">Presupuesto mensual (USD)</div><input type="number" class="fi" id="ebInput" placeholder="0"></div>
@@ -463,7 +463,7 @@ onAuthStateChanged(auth, (user) => {
   </div>
 </div>
 
-<div class="momNewGoal" id=" hid" onclick="overlayClose(event,' hid')">
+<div class="mo hid" id="mNewGoal" onclick="overlayClose(event,'mNewGoal')">
   <div class="modal"><div class="mh"></div>
     <div class="mt" id="goalMT">Nuevo bolsillo de ahorro</div>
     <div class="fr" style="margin-bottom:8px">
@@ -494,7 +494,7 @@ onAuthStateChanged(auth, (user) => {
   </div>
 </div>
 
-<div class="momAddGoal" id=" hid" onclick="overlayClose(event,' hid')">
+<div class="mo hid" id="mAddGoal" onclick="overlayClose(event,'mAddGoal')">
   <div class="modal"><div class="mh"></div>
     <div class="mt" id="agTitle">Agregar ahorro</div>
     <div class="fld" style="margin-bottom:14px">
@@ -906,9 +906,12 @@ function init() {
           const json = await window._fbLoad();
           if (json) {
             const data = JSON.parse(json);
-            Object.assign(S, data);
-            ensureDefaults();
-            localStorage.setItem('mg4', json);
+            // Only merge if cloud has actual data
+            if (data.gastos || data.categories || data.salary) {
+              Object.assign(S, data);
+              ensureDefaults();
+              localStorage.setItem('mg4', json);
+            }
           }
         } catch(e) { console.error('Cloud load error:', e); }
       }
@@ -1923,13 +1926,8 @@ function rAnual(){
     const income=showSalary?(+S.salary||0)+extraInc:extraInc;
     const bal=income-spent;
     if(showSalary||hasTx){ySpent+=spent;yIncome+=income;}
-    const showRow=hasTx||isCurrentM||isPastOrCurrent;
-    if(!showRow) return `<div style="display:grid;grid-template-columns:80px 1fr 1fr 1fr;padding:9px 14px;border-bottom:1px solid var(--border);opacity:.35">
-      <div style="font-size:12px;color:var(--text-muted)">${mName.substring(0,3)}</div>
-      <div style="font-size:12px;color:var(--text-muted);text-align:right">—</div>
-      <div style="font-size:12px;color:var(--text-muted);text-align:right">—</div>
-      <div style="font-size:12px;color:var(--text-muted);text-align:right">—</div>
-    </div>`;
+    // Only show months with data or current month; skip future and empty past months
+    if(!hasTx && !isCurrentM) return '';
     return `<div style="display:grid;grid-template-columns:80px 1fr 1fr 1fr;padding:9px 14px;${isCurrentM?'background:var(--accent-light);':''}border-bottom:1px solid var(--border)">
       <div style="font-size:12px;font-weight:${isCurrentM?700:500};color:${isCurrentM?'var(--accent)':'var(--text)'}">${mName.substring(0,3)}</div>
       <div style="font-size:12px;font-weight:600;color:${showSalary?'#15803d':'var(--text-muted)'};text-align:right">${showSalary?fmt(income):'—'}</div>
