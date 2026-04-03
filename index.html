@@ -219,6 +219,16 @@
   .et{font-size:14px;font-weight:700;color:var(--text-mid);margin-bottom:3px}
   .es{font-size:12px}
 
+  /* BULK REVIEW */
+  .bulk-item{background:var(--white);border-radius:var(--r);padding:10px 12px;margin-bottom:6px;box-shadow:var(--sh);position:relative}
+  .bulk-item.excluded{opacity:.4}
+  .bulk-item-top{display:flex;align-items:center;gap:10px;margin-bottom:6px}
+  .bulk-item-desc{flex:1;font-size:13px;font-weight:600;min-width:0;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+  .bulk-item-amt{font-size:14px;font-weight:700;color:var(--text);flex-shrink:0}
+  .bulk-item-fields{display:grid;grid-template-columns:1fr 1fr;gap:6px}
+  .bulk-exclude{position:absolute;top:8px;right:8px;background:var(--red-light);border:none;color:var(--red);width:22px;height:22px;border-radius:5px;cursor:pointer;font-size:12px;display:flex;align-items:center;justify-content:center}
+  .bulk-include{position:absolute;top:8px;right:8px;background:var(--green-light);border:none;color:var(--green);width:22px;height:22px;border-radius:5px;cursor:pointer;font-size:14px;display:flex;align-items:center;justify-content:center}
+
   /* MINI CUR TOGGLE */
   .mini-cur{display:inline-flex;background:var(--bg);border-radius:16px;padding:2px;gap:0;vertical-align:middle}
   .mini-cur-btn{padding:3px 9px;border-radius:12px;border:none;font-family:inherit;font-size:10px;font-weight:700;cursor:pointer;background:transparent;color:var(--text-muted);transition:all .15s}
@@ -417,55 +427,94 @@
 
   <!-- ESCANEAR -->
   <div id="t-escanear" style="display:none">
-    <div class="scan-area" id="scanArea"
-      onclick="document.getElementById('fi').click()"
-      ondragover="evDrag(event)" ondrop="evDrop(event)"
-      ondragleave="document.getElementById('scanArea').classList.remove('dov')">
-      <input type="file" id="fi" accept="image/*" onchange="handleFile(this.files[0])">
-      <div class="scan-emoji">📸</div>
-      <div class="scan-lbl">Fotografiá o subí un recibo / captura</div>
-      <div class="scan-sub">La IA extrae los datos automáticamente</div>
+
+    <!-- MODE TOGGLE -->
+    <div style="display:flex;gap:8px;margin-bottom:14px">
+      <button class="btn" id="modeRecibo" onclick="setMode('recibo')" style="flex:1;background:var(--accent);color:#fff;font-size:12px">📸 Un recibo</button>
+      <button class="btn bg" id="modeEstado" onclick="setMode('estado')" style="flex:1;font-size:12px">📄 Estado de cuenta</button>
     </div>
-    <div class="proc" id="proc"><div class="sp"></div><div class="pm" id="pm">Analizando...</div></div>
-    <div class="prev" id="prev">
-      <div class="prevh"><span style="font-size:15px">✨</span><div class="prevht">Revisá y confirmá</div></div>
-      <div class="prevb">
-        <div class="fr">
-          <div class="fld"><div class="fl">Descripción</div><input type="text" class="fi" id="pd" placeholder="¿Qué fue?"></div>
-          <div class="fld">
-            <div class="fl-row"><div class="fl">Monto</div><div class="mini-cur" id="cur-scan"><button class="mini-cur-btn on" onclick="selTxCur('scan','USD',this)">USD</button><button class="mini-cur-btn" onclick="selTxCur('scan','UYU',this)">UYU</button></div></div>
-            <input type="number" class="fi" id="pa" placeholder="0">
+
+    <!-- SINGLE RECEIPT MODE -->
+    <div id="modeRecibo-content">
+      <div class="scan-area" id="scanArea"
+        onclick="document.getElementById('fi').click()"
+        ondragover="evDrag(event)" ondrop="evDrop(event)"
+        ondragleave="document.getElementById('scanArea').classList.remove('dov')">
+        <input type="file" id="fi" accept="image/*" onchange="handleFile(this.files[0])">
+        <div class="scan-emoji">📸</div>
+        <div class="scan-lbl">Fotografiá o subí un recibo / captura</div>
+        <div class="scan-sub">La IA extrae los datos automáticamente</div>
+      </div>
+      <div class="proc" id="proc"><div class="sp"></div><div class="pm" id="pm">Analizando...</div></div>
+      <div class="prev" id="prev">
+        <div class="prevh"><span style="font-size:15px">✨</span><div class="prevht">Revisá y confirmá</div></div>
+        <div class="prevb">
+          <div class="fr">
+            <div class="fld"><div class="fl">Descripción</div><input type="text" class="fi" id="pd" placeholder="¿Qué fue?"></div>
+            <div class="fld">
+              <div class="fl-row"><div class="fl">Monto</div><div class="mini-cur" id="cur-scan"><button class="mini-cur-btn on" onclick="selTxCur('scan','USD',this)">USD</button><button class="mini-cur-btn" onclick="selTxCur('scan','UYU',this)">UYU</button></div></div>
+              <input type="number" class="fi" id="pa" placeholder="0">
+            </div>
           </div>
+          <div class="fr">
+            <div class="fld"><div class="fl">Categoría</div><select class="fi" id="pc"></select></div>
+            <div class="fld"><div class="fl">Fecha</div><input type="date" class="fi" id="pf"></div>
+          </div>
+          <div class="fr f1"><div class="fld"><div class="fl">Nota</div><input type="text" class="fi" id="pn" placeholder="Opcional..."></div></div>
         </div>
+        <div class="preva">
+          <button class="btn bp" onclick="goConfirm('scan')">Confirmar</button>
+          <button class="btn bg" onclick="cancelPrev()">Cancelar</button>
+        </div>
+      </div>
+      <div class="fc">
+        <div class="ft">Carga manual</div>
         <div class="fr">
-          <div class="fld"><div class="fl">Categoría</div><select class="fi" id="pc"></select></div>
-          <div class="fld"><div class="fl">Fecha</div><input type="date" class="fi" id="pf"></div>
-        </div>
-        <div class="fr f1"><div class="fld"><div class="fl">Nota</div><input type="text" class="fi" id="pn" placeholder="Opcional..."></div></div>
-      </div>
-      <div class="preva">
-        <button class="btn bp" onclick="goConfirm('scan')">Confirmar</button>
-        <button class="btn bg" onclick="cancelPrev()">Cancelar</button>
-      </div>
-    </div>
-    <div class="fc">
-      <div class="ft">Carga manual</div>
-      <div class="fr">
-        <div class="fld"><div class="fl">Descripción</div><input type="text" class="fi" id="md" placeholder="¿Qué fue?"></div>
-        <div class="fld">
+          <div class="fld"><div class="fl">Descripción</div><input type="text" class="fi" id="md" placeholder="¿Qué fue?"></div>
+          <div class="fld">
             <div class="fl-row"><div class="fl">Monto</div><div class="mini-cur" id="cur-manual"><button class="mini-cur-btn on" onclick="selTxCur('manual','USD',this)">USD</button><button class="mini-cur-btn" onclick="selTxCur('manual','UYU',this)">UYU</button></div></div>
             <input type="number" class="fi" id="ma" placeholder="0">
           </div>
+        </div>
+        <div class="fr">
+          <div class="fld"><div class="fl">Categoría</div><select class="fi" id="mc"></select></div>
+          <div class="fld"><div class="fl">Fecha</div><input type="date" class="fi" id="mf"></div>
+        </div>
+        <div class="fr f1" style="margin-bottom:10px">
+          <div class="fld"><div class="fl">Nota</div><input type="text" class="fi" id="mn" placeholder="Opcional..."></div>
+        </div>
+        <button class="btn bp" onclick="goConfirm('manual')" style="width:100%">Agregar gasto</button>
       </div>
-      <div class="fr">
-        <div class="fld"><div class="fl">Categoría</div><select class="fi" id="mc"></select></div>
-        <div class="fld"><div class="fl">Fecha</div><input type="date" class="fi" id="mf"></div>
-      </div>
-      <div class="fr f1" style="margin-bottom:10px">
-        <div class="fld"><div class="fl">Nota</div><input type="text" class="fi" id="mn" placeholder="Opcional..."></div>
-      </div>
-      <button class="btn bp" onclick="goConfirm('manual')" style="width:100%">Agregar gasto</button>
     </div>
+
+    <!-- ESTADO DE CUENTA MODE -->
+    <div id="modeEstado-content" style="display:none">
+      <div class="scan-area" id="estadoArea"
+        onclick="document.getElementById('fiEstado').click()"
+        ondragover="evDrag2(event)" ondrop="evDrop2(event)"
+        ondragleave="document.getElementById('estadoArea').classList.remove('dov')">
+        <input type="file" id="fiEstado" accept="image/*,application/pdf" onchange="handleEstado(this.files[0])">
+        <div class="scan-emoji">📄</div>
+        <div class="scan-lbl">Subí tu estado de cuenta</div>
+        <div class="scan-sub">Imagen o PDF — la IA identifica todas las transacciones</div>
+      </div>
+
+      <div class="proc" id="procEstado"><div class="sp"></div><div class="pm" id="pmEstado">Analizando estado de cuenta...</div></div>
+
+      <!-- BULK REVIEW -->
+      <div id="bulkReview" style="display:none">
+        <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:10px">
+          <div style="font-size:13px;font-weight:700" id="bulkTitle">Transacciones encontradas</div>
+          <div style="font-size:11px;color:var(--text-muted)" id="bulkCount"></div>
+        </div>
+        <div id="bulkList"></div>
+        <div style="display:flex;gap:8px;margin-top:12px">
+          <button class="btn bp" onclick="confirmBulk()" style="flex:1" id="bulkConfirmBtn">Agregar todas</button>
+          <button class="btn bg" onclick="cancelBulk()">Cancelar</button>
+        </div>
+      </div>
+    </div>
+
   </div>
 
   <!-- INGRESOS -->
@@ -625,7 +674,7 @@ function load(){
   if(!S.salary)S.salary=6300;
   if(!S.categories?.length)S.categories=JSON.parse(JSON.stringify(DEF.categories));
   if(!S.gastos)S.gastos=[];
-  if(!S.apiKey)S.apiKey='';
+  if(!S.apiKey)S.apiKey=localStorage.getItem('mg_apikey')||'';
 }
 
 // ============================================================
@@ -640,6 +689,7 @@ function init(){
   fetchTC().catch(()=>{}); // fire and forget, never blocks
   renderAll();
   if(!S.apiKey&&!localStorage.getItem('mg_vis')){localStorage.setItem('mg_vis','1');openM('mApiKey');}
+  else if(S.apiKey){document.getElementById('apiKeyInput').value=S.apiKey;}
 }
 
 function setToday(){
@@ -1113,12 +1163,200 @@ function delCat(i){if(!confirm(`¿Eliminar "${S.categories[i].name}"?`))return;S
 function saveApiKey(){
   const k=document.getElementById('apiKeyInput').value.trim();
   if(!k.startsWith('sk-ant')){toast('API key inválida');return;}
-  S.apiKey=k;save();closeM('mApiKey');toast('API key guardada ✓');
+  S.apiKey=k;
+  localStorage.setItem('mg_apikey',k); // backup storage
+  save();closeM('mApiKey');toast('API key guardada ✓');
 }
 
 // ============================================================
-// SCAN
+// SCAN MODE TOGGLE
 // ============================================================
+function setMode(mode){
+  document.getElementById('modeRecibo-content').style.display=mode==='recibo'?'block':'none';
+  document.getElementById('modeEstado-content').style.display=mode==='estado'?'block':'none';
+  document.getElementById('modeRecibo').className='btn'+(mode==='recibo'?' bp':' bg');
+  document.getElementById('modeEstado').className='btn'+(mode==='estado'?' bp':' bg');
+  if(mode==='recibo'){
+    document.getElementById('modeRecibo').style.cssText='flex:1;font-size:12px';
+    document.getElementById('modeEstado').style.cssText='flex:1;font-size:12px';
+  }
+}
+
+// ============================================================
+// ESTADO DE CUENTA
+// ============================================================
+let bulkTxs=[]; // pending bulk transactions
+
+function evDrag2(e){e.preventDefault();document.getElementById('estadoArea').classList.add('dov');}
+function evDrop2(e){
+  e.preventDefault();document.getElementById('estadoArea').classList.remove('dov');
+  const f=e.dataTransfer.files[0];
+  if(f)handleEstado(f);
+}
+
+async function handleEstado(file){
+  if(!file)return;
+  if(!S.apiKey){toast('Configurá tu API key primero');openM('mApiKey');return;}
+  document.getElementById('fiEstado').value='';
+  document.getElementById('bulkReview').style.display='none';
+
+  const proc=document.getElementById('procEstado');
+  proc.classList.add('sh');
+  document.getElementById('pmEstado').textContent='Analizando estado de cuenta...';
+
+  let base64, mediaType;
+  // Handle PDF or image
+  if(file.type==='application/pdf'){
+    base64=await toB64(file);
+    mediaType='application/pdf';
+  } else {
+    base64=await toB64(file);
+    mediaType=file.type||'image/jpeg';
+  }
+
+  const catList=S.categories.map(c=>c.name).join(', ');
+  const today=new Date().toISOString().split('T')[0];
+
+  try{
+    const contentBlock = mediaType==='application/pdf'
+      ? {type:'document',source:{type:'base64',media_type:'application/pdf',data:base64}}
+      : {type:'image',source:{type:'base64',media_type:mediaType,data:base64}};
+
+    const res=await fetch('https://api.anthropic.com/v1/messages',{
+      method:'POST',
+      headers:{'Content-Type':'application/json','x-api-key':S.apiKey,'anthropic-version':'2023-06-01','anthropic-dangerous-direct-browser-access':'true'},
+      body:JSON.stringify({
+        model:'claude-sonnet-4-20250514',
+        max_tokens:4000,
+        messages:[{role:'user',content:[
+          contentBlock,
+          {type:'text',text:`Este es un estado de cuenta bancario o de tarjeta. Extraé TODAS las transacciones de débito/gasto (no incluyas pagos de tarjeta, transferencias entrantes ni acreditaciones de sueldo).
+
+Devolvé SOLO un JSON array, sin texto extra ni backticks:
+[
+  {
+    "desc": "descripción del comercio o gasto",
+    "amount": número positivo (monto del gasto),
+    "date": "YYYY-MM-DD" (si no hay año usá ${today.substring(0,4)}),
+    "category": una de: ${catList} — o null si no podés determinarlo,
+    "currency": "UYU" o "USD" según la moneda del gasto,
+    "note": "detalle breve o null"
+  }
+]
+
+Si no encontrás transacciones devolvé [].`}
+        ]}]
+      })
+    });
+
+    const data=await res.json();
+    proc.classList.remove('sh');
+
+    if(data.error){toast('Error API: '+(data.error.message||''));return;}
+
+    let parsed;
+    try{
+      const text=(data.content[0]?.text||'[]').replace(/```json|```/g,'').trim();
+      parsed=JSON.parse(text);
+      if(!Array.isArray(parsed))parsed=[];
+    }catch{toast('No pude leer el estado. Probá con una imagen más clara.');return;}
+
+    if(!parsed.length){toast('No encontré transacciones en este documento.');return;}
+
+    // Assign default category if null
+    parsed=parsed.map((tx,i)=>({
+      ...tx,
+      _id:'bulk_'+i+'_'+Date.now(),
+      _excluded:false,
+      category:tx.category&&S.categories.find(c=>c.name===tx.category)?tx.category:S.categories[S.categories.length-1]?.name||'Otros',
+      currency:tx.currency||'UYU',
+    }));
+
+    bulkTxs=parsed;
+    renderBulk();
+
+  }catch(err){
+    document.getElementById('procEstado').classList.remove('sh');
+    toast('Error de conexión');
+    console.error(err);
+  }
+}
+
+function renderBulk(){
+  const container=document.getElementById('bulkReview');
+  const list=document.getElementById('bulkList');
+  const active=bulkTxs.filter(t=>!t._excluded);
+  document.getElementById('bulkTitle').textContent=`${bulkTxs.length} transacciones encontradas`;
+  document.getElementById('bulkCount').textContent=`${active.length} seleccionadas`;
+  document.getElementById('bulkConfirmBtn').textContent=`Agregar ${active.length} gastos`;
+
+  const catOpts=S.categories.map(c=>`<option value="${c.name}">${c.emoji} ${c.name}</option>`).join('');
+
+  list.innerHTML=bulkTxs.map((tx,i)=>`
+    <div class="bulk-item${tx._excluded?' excluded':''}" id="bulk-item-${i}">
+      <div class="bulk-item-top">
+        <div class="bulk-item-desc">${tx.desc||'Sin descripción'}</div>
+        <div class="bulk-item-amt">${tx.currency==='USD'?'USD ':'$U '}${(+tx.amount||0).toLocaleString('es-UY',{minimumFractionDigits:0,maximumFractionDigits:0})}</div>
+      </div>
+      <div class="bulk-item-fields">
+        <div class="fld">
+          <div class="fl">Categoría</div>
+          <select class="fi" style="font-size:11px;padding:5px 8px" onchange="bulkTxs[${i}].category=this.value">
+            ${S.categories.map(c=>`<option value="${c.name}"${c.name===tx.category?' selected':''}>${c.emoji} ${c.name}</option>`).join('')}
+          </select>
+        </div>
+        <div class="fld">
+          <div class="fl">Fecha</div>
+          <input type="date" class="fi" style="font-size:11px;padding:5px 8px" value="${tx.date||''}" onchange="bulkTxs[${i}].date=this.value">
+        </div>
+      </div>
+      ${tx._excluded
+        ?`<button class="bulk-include" onclick="toggleBulk(${i})">↩</button>`
+        :`<button class="bulk-exclude" onclick="toggleBulk(${i})">✕</button>`
+      }
+    </div>
+  `).join('');
+
+  container.style.display='block';
+  container.scrollIntoView({behavior:'smooth',block:'start'});
+}
+
+function toggleBulk(i){
+  bulkTxs[i]._excluded=!bulkTxs[i]._excluded;
+  renderBulk();
+}
+
+function confirmBulk(){
+  const active=bulkTxs.filter(t=>!t._excluded);
+  if(!active.length){toast('No hay transacciones seleccionadas');return;}
+
+  active.forEach(tx=>{
+    const amtUSD=toUSD(tx.amount,tx.currency);
+    S.gastos.push({
+      id:Date.now()+Math.random().toString(36).substr(2,5),
+      desc:tx.desc||'Sin descripción',
+      amount:amtUSD,
+      category:tx.category||'Otros',
+      date:tx.date||new Date().toISOString().split('T')[0],
+      note:tx.note||'',
+      payType:'debit',
+      installments:1,
+    });
+  });
+
+  save();renderAll();
+  toast(`✓ ${active.length} gastos agregados`);
+  cancelBulk();
+  tab('gastos');
+}
+
+function cancelBulk(){
+  bulkTxs=[];
+  document.getElementById('bulkReview').style.display='none';
+  document.getElementById('fiEstado').value='';
+}
+
+
 function evDrag(e){e.preventDefault();document.getElementById('scanArea').classList.add('dov');}
 function evDrop(e){
   e.preventDefault();document.getElementById('scanArea').classList.remove('dov');
@@ -1138,7 +1376,7 @@ async function scanReceipt(file){
   try{
     const res=await fetch('https://api.anthropic.com/v1/messages',{
       method:'POST',
-      headers:{'Content-Type':'application/json','x-api-key':S.apiKey,'anthropic-version':'2023-06-01'},
+      headers:{'Content-Type':'application/json','x-api-key':S.apiKey,'anthropic-version':'2023-06-01','anthropic-dangerous-direct-browser-access':'true'},
       body:JSON.stringify({
         model:'claude-sonnet-4-20250514',max_tokens:400,
         messages:[{role:'user',content:[
