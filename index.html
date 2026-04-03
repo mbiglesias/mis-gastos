@@ -236,6 +236,13 @@
   .mini-cur-btn.on-uyu{background:var(--white);color:var(--green)}
   .fl-row{display:flex;align-items:center;justify-content:space-between;gap:6px;margin-bottom:3px}
 
+  .sc[onclick]:hover{filter:brightness(0.96);transform:scale(0.99)}
+  .sc[onclick]{transition:all .15s}
+  .pw[onclick]:hover{filter:brightness(0.98)}
+  .pw[onclick]{transition:filter .15s}
+  .cbox[onclick]:hover{filter:brightness(0.97)}
+  .cbox[onclick]{transition:filter .15s}
+
   @media(min-width:481px){body{border-left:1px solid var(--border);border-right:1px solid var(--border)}}
 </style>
 </head>
@@ -372,15 +379,15 @@
 
 <div class="mo hid" id="mNewGoal">
   <div class="modal"><div class="mh"></div>
-    <div class="mt" id="goalMT">Nuevo objetivo</div>
+    <div class="mt" id="goalMT">Nuevo bolsillo de ahorro</div>
     <div class="fr" style="margin-bottom:8px">
       <div class="fld"><div class="fl">Nombre</div><input type="text" class="fi" id="gName" placeholder="Vacaciones"></div>
       <div class="fld"><div class="fl">Emoji</div><input type="text" class="fi" id="gEmoji" placeholder="✈️" maxlength="2"></div>
     </div>
     <div class="fr" style="margin-bottom:14px">
       <div class="fld">
-        <div class="fl-row"><div class="fl">Meta</div><div class="mini-cur" id="cur-gtarget"><button class="mini-cur-btn on" onclick="selTxCur('gtarget','USD',this)">USD</button><button class="mini-cur-btn" onclick="selTxCur('gtarget','UYU',this)">UYU</button></div></div>
-        <input type="number" class="fi" id="gTarget" placeholder="2000">
+        <div class="fl-row"><div class="fl">Meta (opcional)</div><div class="mini-cur" id="cur-gtarget"><button class="mini-cur-btn on" onclick="selTxCur('gtarget','USD',this)">USD</button><button class="mini-cur-btn" onclick="selTxCur('gtarget','UYU',this)">UYU</button></div></div>
+        <input type="number" class="fi" id="gTarget" placeholder="Sin meta">
       </div>
       <div class="fld">
         <div class="fl-row"><div class="fl">Ya ahorrado</div><div class="mini-cur" id="cur-gsaved"><button class="mini-cur-btn on" onclick="selTxCur('gsaved','USD',this)">USD</button><button class="mini-cur-btn" onclick="selTxCur('gsaved','UYU',this)">UYU</button></div></div>
@@ -443,20 +450,60 @@
       <button class="marr" onclick="chM(1)">›</button>
     </div>
     <div class="sg">
-      <div class="sc ab"><div class="sl li">Gastado</div><div class="sv li" id="sumSpent">$0</div><div class="ss li" id="sumCount">0 gastos</div></div>
-      <div class="sc gb" style="cursor:pointer" onclick="tab('ingresos')"><div class="sl li" id="sumSalaryLbl">Ingreso mensual</div><div class="sv li" id="sumSalary">$0</div><div class="ss li">tocá para ver detalle</div></div>
-      <div class="sc"><div class="sl">Presupuesto</div><div class="sv" id="sumBudget">$0</div><div class="ss">total asignado</div></div>
-      <div class="sc"><div class="sl">Disponible</div><div class="sv" id="sumLeft">$0</div><div class="ss" id="sumLeftLbl">del salario</div></div>
+      <div class="sc ab" style="cursor:pointer" onclick="tab('gastos')">
+        <div class="sl li">Gastado</div>
+        <div class="sv li" id="sumSpent">$0</div>
+        <div class="ss li" id="sumCount">0 gastos →</div>
+      </div>
+      <div class="sc gb" style="cursor:pointer" onclick="tab('ingresos')">
+        <div class="sl li" id="sumSalaryLbl">Ingreso mensual</div>
+        <div class="sv li" id="sumSalary">$0</div>
+        <div class="ss li">ver detalle →</div>
+      </div>
+      <div class="sc" style="cursor:pointer" onclick="tab('presupuestos')">
+        <div class="sl">Presupuesto</div>
+        <div class="sv" id="sumBudget">$0</div>
+        <div class="ss">configurar →</div>
+      </div>
+      <div class="sc" style="cursor:pointer" onclick="tab('ahorros')">
+        <div class="sl">Disponible</div>
+        <div class="sv" id="sumLeft">$0</div>
+        <div class="ss" id="sumLeftLbl">ver ahorros →</div>
+      </div>
     </div>
-    <div class="cbox" id="creditBox" style="display:none">
+    <div class="cbox" id="creditBox" style="display:none;cursor:pointer" onclick="tab('credito')">
       <div class="cbox-icon">🟣</div>
       <div class="cbox-body"><div class="cbox-title">Cuotas este mes</div><div class="cbox-sub" id="cboxSub"></div></div>
-      <div class="cbox-amt" id="cboxAmt">$0</div>
+      <div style="display:flex;align-items:center;gap:6px">
+        <div class="cbox-amt" id="cboxAmt">$0</div>
+        <div style="color:var(--purple);font-size:16px">›</div>
+      </div>
     </div>
-    <div class="pw">
-      <div class="ph"><div class="pt">Por categoría</div><div class="pp" id="progPct">0%</div></div>
+    <div class="pw" style="cursor:pointer" onclick="tab('gastos')">
+      <div class="ph">
+        <div class="pt">Por categoría</div>
+        <div style="display:flex;align-items:center;gap:6px">
+          <div class="pp" id="progPct">0%</div>
+          <div style="color:var(--text-muted);font-size:13px">›</div>
+        </div>
+      </div>
       <div class="pbb"><div class="pbf" id="progFill" style="width:0%"></div></div>
       <div class="crs" id="catRows"></div>
+    </div>
+    <!-- Quick links row -->
+    <div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:8px;margin-top:10px">
+      <div style="background:var(--white);border-radius:var(--R);padding:12px;text-align:center;box-shadow:var(--sh);cursor:pointer" onclick="tab('escanear')">
+        <div style="font-size:22px;margin-bottom:4px">📸</div>
+        <div style="font-size:11px;font-weight:600;color:var(--text-mid)">Escanear</div>
+      </div>
+      <div style="background:var(--white);border-radius:var(--R);padding:12px;text-align:center;box-shadow:var(--sh);cursor:pointer" onclick="tab('credito')">
+        <div style="font-size:22px;margin-bottom:4px">🟣</div>
+        <div style="font-size:11px;font-weight:600;color:var(--text-mid)">Crédito</div>
+      </div>
+      <div style="background:var(--white);border-radius:var(--R);padding:12px;text-align:center;box-shadow:var(--sh);cursor:pointer" onclick="tab('anual')">
+        <div style="font-size:22px;margin-bottom:4px">📊</div>
+        <div style="font-size:11px;font-weight:600;color:var(--text-mid)">Anual</div>
+      </div>
     </div>
   </div>
 
@@ -515,18 +562,18 @@
       </div>
       <div class="fc">
         <div class="ft">Carga manual</div>
-        <div class="fr">
+        <div class="fr f1" style="margin-bottom:8px">
           <div class="fld"><div class="fl">Descripción</div><input type="text" class="fi" id="md" placeholder="¿Qué fue?"></div>
+        </div>
+        <div class="fr" style="margin-bottom:8px">
           <div class="fld">
             <div class="fl-row"><div class="fl">Monto</div><div class="mini-cur" id="cur-manual"><button class="mini-cur-btn on" onclick="selTxCur('manual','USD',this)">USD</button><button class="mini-cur-btn" onclick="selTxCur('manual','UYU',this)">UYU</button></div></div>
             <input type="number" class="fi" id="ma" placeholder="0">
           </div>
-        </div>
-        <div class="fr">
-          <div class="fld"><div class="fl">Categoría</div><select class="fi" id="mc"></select></div>
           <div class="fld"><div class="fl">Fecha</div><input type="date" class="fi" id="mf"></div>
         </div>
-        <div class="fr f1" style="margin-bottom:10px">
+        <div class="fr" style="margin-bottom:8px">
+          <div class="fld"><div class="fl">Categoría</div><select class="fi" id="mc"></select></div>
           <div class="fld"><div class="fl">Nota</div><input type="text" class="fi" id="mn" placeholder="Opcional..."></div>
         </div>
         <button class="btn bp" onclick="goConfirm('manual')" style="width:100%">Agregar gasto</button>
@@ -578,15 +625,17 @@
     <!-- extra income this month -->
     <div class="fc">
       <div class="ft">Ingresos extra este mes</div>
-      <div class="fr">
+      <div class="fr f1" style="margin-bottom:8px">
         <div class="fld"><div class="fl">Descripción</div><input type="text" class="fi" id="id" placeholder="Freelance, bono..."></div>
-        <div class="fld">
-            <div class="fl-row"><div class="fl">Monto</div><div class="mini-cur" id="cur-ingreso"><button class="mini-cur-btn on" onclick="selTxCur('ingreso','USD',this)">USD</button><button class="mini-cur-btn" onclick="selTxCur('ingreso','UYU',this)">UYU</button></div></div>
-            <input type="number" class="fi" id="ia" placeholder="0">
-          </div>
       </div>
-      <div class="fr" style="margin-bottom:10px">
+      <div class="fr" style="margin-bottom:8px">
+        <div class="fld">
+          <div class="fl-row"><div class="fl">Monto</div><div class="mini-cur" id="cur-ingreso"><button class="mini-cur-btn on" onclick="selTxCur('ingreso','USD',this)">USD</button><button class="mini-cur-btn" onclick="selTxCur('ingreso','UYU',this)">UYU</button></div></div>
+          <input type="number" class="fi" id="ia" placeholder="0">
+        </div>
         <div class="fld"><div class="fl">Fecha</div><input type="date" class="fi" id="if"></div>
+      </div>
+      <div class="fr f1" style="margin-bottom:10px">
         <div class="fld"><div class="fl">Nota</div><input type="text" class="fi" id="in2" placeholder="Opcional..."></div>
       </div>
       <button class="btn bgn" onclick="addIngreso()" style="width:100%">+ Agregar ingreso</button>
@@ -636,7 +685,7 @@
       <div class="shsub" id="savSub">en tus objetivos</div>
     </div>
     <div id="goalList"></div>
-    <button class="btn bgn" onclick="openNewGoal()" style="width:100%;margin-top:4px">+ Nuevo objetivo</button>
+    <button class="btn bgn" onclick="openNewGoal()" style="width:100%;margin-top:4px">+ Nuevo bolsillo de ahorro</button>
   </div>
 
   <!-- PRESUPUESTOS -->
@@ -925,12 +974,12 @@ function rSummary(){
   const left=totalIncome-spent-totalSaved-creditThisMonth;
 
   document.getElementById('sumSpent').textContent=fmt(spent);
-  document.getElementById('sumCount').textContent=`${S.gastos.filter(g=>{const d=new Date(g.date+'T12:00:00');return d.getMonth()===CM&&d.getFullYear()===CY;}).length} gasto${gs.length!==1?'s':''}`;
+  document.getElementById('sumCount').textContent=`${S.gastos.filter(g=>{const d=new Date(g.date+'T12:00:00');return d.getMonth()===CM&&d.getFullYear()===CY;}).length} gasto${gs.length!==1?'s':''} →`;
   document.getElementById('sumSalary').textContent=fmt(totalIncome);
   document.getElementById('sumSalaryLbl').textContent=extraInc>0?'salario + extras':'ingreso mensual';
   document.getElementById('sumBudget').textContent=fmt(budTot);
   document.getElementById('sumLeft').textContent=fmt(Math.abs(left));
-  const leftLbl=left<0?'en exceso':(totalSaved>0||creditThisMonth>0?'descontando compromisos':'disponible');
+  const leftLbl=left<0?'en exceso →':(totalSaved>0||creditThisMonth>0?'descontando compromisos →':'disponible →');
   document.getElementById('sumLeftLbl').textContent=leftLbl;
   document.getElementById('sumLeft').className='sv '+(left<0?'rd':'gn');
   document.getElementById('salDisp').textContent=fmt(S.salary);
@@ -1009,7 +1058,14 @@ function rCredit(){
     const pct=(paid/inst)*100;
     const end=new Date(s);end.setMonth(end.getMonth()+inst-1);
     return `<div class="cri">
-      <div class="crit"><div class="crid">${g.desc}</div><div class="cria">${fmt(g.amount)}</div></div>
+      <div class="crit">
+        <div class="crid">${g.desc}</div>
+        <div style="display:flex;align-items:center;gap:8px">
+          <div class="cria">${fmt(g.amount)}</div>
+          <button class="bab" style="width:24px;height:24px;font-size:11px" onclick="openEditGasto('${g.id}')">✏️</button>
+          <button class="bab dng" style="width:24px;height:24px;font-size:11px" onclick="delG('${g.id}')">✕</button>
+        </div>
+      </div>
       <div class="crim">
         <span>${fmt(cuota)}/mes</span><span>·</span>
         <span>${paid}/${inst} cuotas</span><span>·</span>
@@ -1029,14 +1085,20 @@ function rSavings(){
   document.getElementById('savTot').textContent=fmt(tot);
   document.getElementById('savSub').textContent=`en ${S.goals.length} objetivo${S.goals.length!==1?'s':''}`;
   const con=document.getElementById('goalList');
-  if(!S.goals.length){con.innerHTML=`<div class="empty"><div class="ee">🎯</div><div class="et">Sin objetivos todavía</div><div class="es">Creá tu primer objetivo de ahorro</div></div>`;return;}
+  if(!S.goals.length){con.innerHTML=`<div class="empty"><div class="ee">🎯</div><div class="et">Sin ahorros todavía</div><div class="es">Creá tu primer objetivo o bolsillo de ahorro</div></div>`;return;}
   con.innerHTML=S.goals.map((g,i)=>{
-    const pct=g.target>0?Math.min((g.saved/g.target)*100,100):0;
-    const done=g.saved>=g.target&&g.target>0;
+    const hasTarget=g.target>0;
+    const pct=hasTarget?Math.min((g.saved/g.target)*100,100):0;
+    const done=hasTarget&&g.saved>=g.target;
     return `<div class="goal-card">
-      <div class="gh"><div class="ge">${g.emoji}</div><div class="gn">${g.name}</div><div class="gp">${done?'✅':Math.round(pct)+'%'}</div></div>
-      <div class="gbb"><div class="gbf" style="width:${pct}%"></div></div>
-      <div class="gam"><span class="gas">${fmt(g.saved)}</span><span>de ${fmt(g.target)}</span></div>
+      <div class="gh"><div class="ge">${g.emoji}</div><div class="gn">${g.name}</div>
+        <div class="gp">${done?'✅':hasTarget?Math.round(pct)+'%':''}</div>
+      </div>
+      ${hasTarget?`<div class="gbb"><div class="gbf" style="width:${pct}%"></div></div>`:''}
+      <div class="gam">
+        <span class="gas">${fmt(g.saved)}</span>
+        <span>${hasTarget?'de '+fmt(g.target):'sin meta'}</span>
+      </div>
       <div class="gacts">
         <button class="gab gab-a" onclick="openAddGoal(${i})">+ Agregar</button>
         <button class="gab gab-e" onclick="openEditGoal(${i})">Editar</button>
@@ -1637,11 +1699,11 @@ function rAnual(){
     ySpent+=spent;yIncome+=income;
     const isCurrentM=m===CM&&CY_annual===CY;
     const hasTx=spent>0||extraInc>0;
-    return `<div style="display:grid;grid-template-columns:80px 1fr 1fr 1fr;padding:9px 14px;${isCurrentM?'background:var(--accent-light);':''}${hasTx?'':'opacity:.45;'}border-bottom:1px solid var(--border)">
+    return `<div style="display:grid;grid-template-columns:80px 1fr 1fr 1fr;padding:9px 14px;${isCurrentM?'background:var(--accent-light);':''}border-bottom:1px solid var(--border)">
       <div style="font-size:12px;font-weight:${isCurrentM?700:500};color:${isCurrentM?'var(--accent)':'var(--text)'}">${mName.substring(0,3)}</div>
-      <div style="font-size:12px;font-weight:600;color:var(--green);text-align:right">${hasTx||income>0?fmt(income):'—'}</div>
-      <div style="font-size:12px;font-weight:600;color:var(--red);text-align:right">${spent>0?fmt(spent):'—'}</div>
-      <div style="font-size:12px;font-weight:700;color:${bal>=0?'var(--green)':'var(--red)'};text-align:right">${hasTx||income>0?(bal>=0?'+':'')+fmt(bal):'—'}</div>
+      <div style="font-size:12px;font-weight:600;color:${hasTx||income>0?'#15803d':'var(--text-muted)'};text-align:right">${hasTx||income>0?fmt(income):'—'}</div>
+      <div style="font-size:12px;font-weight:600;color:${spent>0?'#b91c1c':'var(--text-muted)'};text-align:right">${spent>0?fmt(spent):'—'}</div>
+      <div style="font-size:12px;font-weight:700;color:${hasTx||income>0?(bal>=0?'#15803d':'#b91c1c'):'var(--text-muted)'};text-align:right">${hasTx||income>0?(bal>=0?'+':'')+fmt(bal):'—'}</div>
     </div>`;
   });
 
