@@ -784,42 +784,6 @@ function rTxList(){
   });
   h+='</div>';con.innerHTML=h;
 }
-  const budTot=S.categories.reduce((s,c)=>s+(+c.budget||0),0);
-  const sal=+S.salary||0;
-  // Extra income this month
-  const extraInc=S.ingresos.filter(i=>{const d=new Date(i.date+'T12:00:00');return d.getMonth()===CM&&d.getFullYear()===CY;}).reduce((s,i)=>s+(+i.amount),0);
-  const totalIncome=sal+extraInc;
-  // Total saved across all goals (already allocated money)
-  const totalSaved=S.goals.reduce((s,g)=>s+(+g.saved||0),0);
-  const left=totalIncome-spent-totalSaved;
-
-  document.getElementById('sumSpent').textContent=fmt(spent);
-  document.getElementById('sumCount').textContent=`${gs.length} gasto${gs.length!==1?'s':''}`;
-  document.getElementById('sumSalary').textContent=fmt(totalIncome);
-  document.getElementById('sumSalaryLbl').textContent=extraInc>0?'salario + extras':'ingreso mensual';
-  document.getElementById('sumBudget').textContent=fmt(budTot);
-  document.getElementById('sumLeft').textContent=fmt(Math.abs(left));
-  document.getElementById('sumLeftLbl').textContent=left<0?'en exceso':(totalSaved>0?'descontando ahorros':'disponible');
-  document.getElementById('sumLeft').className='sv '+(left<0?'rd':'gn');
-  document.getElementById('salDisp').textContent=fmt(S.salary);
-
-  const cdue=crDue(CM,CY);
-  const cbox=document.getElementById('creditBox');
-  if(cdue.length>0){
-    const cs=cdue.reduce((s,g)=>s+(+g.amount/(+g.installments||1)),0);
-    cbox.style.display='flex';
-    document.getElementById('cboxAmt').textContent=fmt(cs);
-    document.getElementById('cboxSub').textContent=`${cdue.length} cuota${cdue.length!==1?'s':''} pendiente${cdue.length!==1?'s':''}`;
-  } else {
-    cbox.style.display='none';
-  }
-
-  const pct=budTot>0?Math.min((spent/budTot)*100,100):0;
-  document.getElementById('progPct').textContent=Math.round(pct)+'%';
-  const f=document.getElementById('progFill');
-  f.style.width=pct+'%';
-  f.className='pbf'+(pct>90?' ov':pct>70?' wa':'');
-}
 
 
 function crDue(m,y){
@@ -908,6 +872,7 @@ function rCatRows(){
 }
 
 
+function rCredit(){
   const now=new Date();
   const crGs=S.gastos.filter(g=>g.payType==='credit');
   const active=crGs.filter(g=>{
