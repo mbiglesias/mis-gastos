@@ -7,7 +7,7 @@
 <!-- Firebase SDKs -->
 <script type="module">
 import { initializeApp } from 'https://www.gstatic.com/firebasejs/10.12.0/firebase-app.js';
-import { getAuth, GoogleAuthProvider, signInWithPopup, signOut, onAuthStateChanged }
+import { getAuth, GoogleAuthProvider, signInWithRedirect, signInWithPopup, getRedirectResult, signOut, onAuthStateChanged }
   from 'https://www.gstatic.com/firebasejs/10.12.0/firebase-auth.js';
 import { getFirestore, doc, getDoc, setDoc }
   from 'https://www.gstatic.com/firebasejs/10.12.0/firebase-firestore.js';
@@ -26,31 +26,42 @@ const auth = getAuth(app);
 const db = getFirestore(app);
 const provider = new GoogleAuthProvider();
 
-window._fbSignIn = () => signInWithPopup(auth, provider);
+// Mobile uses redirect (avoids popup CORS issues), desktop tries popup first
+const isMobile = /iPhone|iPad|Android/i.test(navigator.userAgent);
+window._fbSignIn = async () => {
+  if (isMobile) {
+    await signInWithRedirect(auth, provider);
+  } else {
+    try { await signInWithPopup(auth, provider); }
+    catch(e) { await signInWithRedirect(auth, provider); }
+  }
+};
 window._fbSignOut = () => signOut(auth);
 
-// Save to Firestore — called from main script via window._fbSave
 window._fbSave = async (stateJson) => {
   if (!window._fbUser) return;
   try {
     const ref = doc(db, 'users', window._fbUser.uid, 'data', 'state');
     await setDoc(ref, { json: stateJson, updatedAt: Date.now() });
+    console.log('Saved to Firestore OK');
   } catch(e) { console.error('Firestore save error:', e); }
 };
 
-// Load from Firestore — called from main script via window._fbLoad
 window._fbLoad = async () => {
   if (!window._fbUser) return null;
   try {
     const ref = doc(db, 'users', window._fbUser.uid, 'data', 'state');
     const snap = await getDoc(ref);
+    console.log('Firestore load:', snap.exists() ? 'found data' : 'no data');
     return snap.exists() ? snap.data().json : null;
   } catch(e) { console.error('Firestore load error:', e); return null; }
 };
 
+// Handle redirect result (fires after mobile redirect login)
+getRedirectResult(auth).catch(e => console.error('Redirect result error:', e));
+
 onAuthStateChanged(auth, (user) => {
   window._fbUser = user || null;
-  // Dispatch event so main script can react
   window.dispatchEvent(new CustomEvent('fb-auth', { detail: { user } }));
 });
 </script>
