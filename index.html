@@ -4,6 +4,63 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0">
 <title>Mis Gastos</title>
+<!-- Firebase SDKs -->
+<script type="module">
+// ===== FIREBASE CONFIG =====
+import { initializeApp } from 'https://www.gstatic.com/firebasejs/10.12.0/firebase-app.js';
+import { getAuth, GoogleAuthProvider, signInWithPopup, signOut, onAuthStateChanged }
+  from 'https://www.gstatic.com/firebasejs/10.12.0/firebase-auth.js';
+import { getFirestore, doc, getDoc, setDoc }
+  from 'https://www.gstatic.com/firebasejs/10.12.0/firebase-firestore.js';
+
+const firebaseConfig = {
+  apiKey: "AIzaSyCPbuVFlXFau8yOmGjDWK_KkpDk-kgKZNw",
+  authDomain: "mis-gastos-46e07.firebaseapp.com",
+  databaseURL: "https://mis-gastos-46e07-default-rtdb.firebaseio.com",
+  projectId: "mis-gastos-46e07",
+  storageBucket: "mis-gastos-46e07.firebasestorage.app",
+  messagingSenderId: "1017573151990",
+  appId: "1:1017573151990:web:059759492b120ca60c08d7"
+};
+
+const app = initializeApp(firebaseConfig);
+const auth = getAuth(app);
+const db = getFirestore(app);
+const provider = new GoogleAuthProvider();
+
+// Expose to global scope so non-module scripts can call them
+window._fbAuth = auth;
+window._fbDb = db;
+window._fbProvider = provider;
+window._fbDoc = doc;
+window._fbGetDoc = getDoc;
+window._fbSetDoc = setDoc;
+window._fbSignIn = () => signInWithPopup(auth, provider);
+window._fbSignOut = () => signOut(auth);
+
+// Auth state listener
+onAuthStateChanged(auth, async (user) => {
+  if (user) {
+    window._fbUser = user;
+    document.getElementById('authOverlay').style.display = 'none';
+    document.getElementById('userInfo').innerHTML =
+      `<img src="${user.photoURL}" style="width:28px;height:28px;border-radius:50%;object-fit:cover"> `;
+    // Load data from Firestore
+    await window.loadFromFirestore();
+    window.renderAll();
+    window.fetchTC().catch(()=>{});
+    if(!window.S.apiKey&&!localStorage.getItem('mg_vis')){
+      localStorage.setItem('mg_vis','1');window.openM('mApiKey');
+    } else if(window.S.apiKey){
+      const el=document.getElementById('apiKeyInput');if(el)el.value=window.S.apiKey;
+    }
+  } else {
+    window._fbUser = null;
+    document.getElementById('authOverlay').style.display = 'flex';
+    document.getElementById('userInfo').innerHTML = '';
+  }
+});
+</script>
 <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@300;400;500;600;700&display=swap" rel="stylesheet">
 <style>
   :root {
@@ -236,6 +293,19 @@
   .mini-cur-btn.on-uyu{background:var(--white);color:var(--green)}
   .fl-row{display:flex;align-items:center;justify-content:space-between;gap:6px;margin-bottom:3px}
 
+  input[type="date"].fi{min-width:0;width:100%}
+  .bulk-item-fields .fi{font-size:11px;padding:5px 8px;min-width:0}
+
+  /* AUTH OVERLAY */
+  .auth-overlay{position:fixed;inset:0;background:var(--white);display:flex;flex-direction:column;align-items:center;justify-content:center;z-index:500;padding:32px}
+  .auth-logo{font-size:52px;margin-bottom:12px}
+  .auth-title{font-size:26px;font-weight:700;letter-spacing:-.5px;margin-bottom:8px}
+  .auth-sub{font-size:14px;color:var(--text-muted);text-align:center;margin-bottom:36px;line-height:1.6;max-width:280px}
+  .google-btn{display:flex;align-items:center;gap:12px;background:#fff;border:1.5px solid var(--border);border-radius:12px;padding:13px 20px;font-family:inherit;font-size:14px;font-weight:600;cursor:pointer;box-shadow:var(--shadow-md);transition:all .15s;width:100%;max-width:280px;justify-content:center}
+  .google-btn:hover{border-color:#4285f4;box-shadow:0 4px 16px rgba(66,133,244,.2)}
+  .google-btn svg{flex-shrink:0}
+  .auth-note{font-size:11px;color:var(--text-muted);margin-top:20px;text-align:center;max-width:260px;line-height:1.5}
+
   /* FLOATING SCAN BUTTON */
   .fab{position:fixed;bottom:28px;right:20px;width:56px;height:56px;border-radius:50%;background:var(--accent);border:none;color:#fff;font-size:24px;cursor:pointer;box-shadow:0 4px 16px rgba(71,114,250,.4);display:flex;align-items:center;justify-content:center;z-index:40;transition:transform .15s,box-shadow .15s}
   .fab:hover{transform:scale(1.08);box-shadow:0 6px 20px rgba(71,114,250,.5)}
@@ -312,7 +382,10 @@
       <div class="fld"><div class="fl">Nombre</div><input type="text" class="fi" id="ncName" placeholder="Farmacia"></div>
       <div class="fld"><div class="fl cur-lbl">Presupuesto (USD)</div><input type="number" class="fi" id="ncBudget" placeholder="0"></div>
     </div>
-    <div class="fld" style="margin-bottom:14px"><div class="fl">Emoji</div><input type="text" class="fi" id="ncEmoji" placeholder="💊" maxlength="2"></div>
+    <div class="fld" style="margin-bottom:14px">
+      <div class="fl">Emoji</div>
+      <input type="text" class="fi" id="ncEmoji" placeholder="💊" style="font-size:22px;text-align:center;letter-spacing:4px">
+    </div>
     <div style="display:flex;gap:8px">
       <button class="btn bp" onclick="saveNewCat()">Agregar</button>
       <button class="btn bg" onclick="closeM('mNewCat')">Cancelar</button>
@@ -382,7 +455,10 @@
     <div class="mt" id="goalMT">Nuevo bolsillo de ahorro</div>
     <div class="fr" style="margin-bottom:8px">
       <div class="fld"><div class="fl">Nombre</div><input type="text" class="fi" id="gName" placeholder="Vacaciones"></div>
-      <div class="fld"><div class="fl">Emoji</div><input type="text" class="fi" id="gEmoji" placeholder="✈️" maxlength="2"></div>
+      <div class="fld">
+        <div class="fl">Emoji</div>
+        <input type="text" class="fi" id="gEmoji" placeholder="✈️" style="font-size:22px;text-align:center;letter-spacing:4px">
+      </div>
     </div>
     <div class="fr" style="margin-bottom:14px">
       <div class="fld">
@@ -415,6 +491,18 @@
   </div>
 </div>
 
+<!-- AUTH OVERLAY -->
+<div class="auth-overlay" id="authOverlay">
+  <div class="auth-logo">💰</div>
+  <div class="auth-title">Mis Gastos</div>
+  <div class="auth-sub">Tus finanzas sincronizadas en todos tus dispositivos</div>
+  <button class="google-btn" onclick="window._fbSignIn()">
+    <svg width="18" height="18" viewBox="0 0 18 18"><path fill="#4285F4" d="M17.64 9.2c0-.637-.057-1.251-.164-1.84H9v3.481h4.844c-.209 1.125-.843 2.078-1.796 2.717v2.258h2.908c1.702-1.567 2.684-3.874 2.684-6.615z"/><path fill="#34A853" d="M9 18c2.43 0 4.467-.806 5.956-2.18l-2.908-2.259c-.806.54-1.837.86-3.048.86-2.344 0-4.328-1.584-5.036-3.711H.957v2.332A8.997 8.997 0 0 0 9 18z"/><path fill="#FBBC05" d="M3.964 10.71A5.41 5.41 0 0 1 3.682 9c0-.593.102-1.17.282-1.71V4.958H.957A8.996 8.996 0 0 0 0 9c0 1.452.348 2.827.957 4.042l3.007-2.332z"/><path fill="#EA4335" d="M9 3.58c1.321 0 2.508.454 3.44 1.345l2.582-2.58C13.463.891 11.426 0 9 0A8.997 8.997 0 0 0 .957 4.958L3.964 6.29C4.672 4.163 6.656 3.58 9 3.58z"/></svg>
+    Continuar con Google
+  </button>
+  <div class="auth-note">Tus datos se guardan en la nube y solo vos podés acceder a ellos.</div>
+</div>
+
 <!-- APP -->
 <div class="hdr">
   <div class="hdr-top">
@@ -424,7 +512,9 @@
         <button class="cur-btn on" id="btnUSD" onclick="setCur('USD')">USD</button>
         <button class="cur-btn" id="btnUYU" onclick="setCur('UYU')">UYU</button>
       </div>
-      <button class="icon-btn" onclick="openM('mApiKey')">🔑</button>
+      <span id="userInfo" style="display:flex;align-items:center"></span>
+      <button class="icon-btn" onclick="openM('mApiKey')" title="API Key">🔑</button>
+      <button class="icon-btn" onclick="window._fbSignOut()" title="Cerrar sesión" style="font-size:13px">↩</button>
     </div>
   </div>
   <div style="font-size:10px;color:var(--text-muted);text-align:right;padding:0 16px 8px;margin-top:-6px" class="tc-display">cargando TC...</div>
@@ -746,13 +836,71 @@ function updTCDisplay(){
 // ============================================================
 // PERSIST
 // ============================================================
-function save(){localStorage.setItem('mg4',JSON.stringify(S));}
+// ============================================================
+// PERSIST — Firebase Firestore
+// ============================================================
+async function saveToFirestore(){
+  if(!window._fbUser)return;
+  try{
+    const ref=window._fbDoc(window._fbDb,'users',window._fbUser.uid,'data','state');
+    await window._fbSetDoc(ref,{json:JSON.stringify(S),updatedAt:Date.now()});
+  }catch(e){console.error('Save error',e);}
+}
+
+async function loadFromFirestore(){
+  if(!window._fbUser)return;
+  try{
+    const ref=window._fbDoc(window._fbDb,'users',window._fbUser.uid,'data','state');
+    const snap=await window._fbGetDoc(ref);
+    if(snap.exists()){
+      const data=JSON.parse(snap.data().json);
+      S=data;
+    } else {
+      S=JSON.parse(JSON.stringify(DEF));
+    }
+  }catch(e){
+    console.error('Load error',e);
+    S=JSON.parse(JSON.stringify(DEF));
+  }
+  // Ensure all fields exist
+  if(!S.goals)S.goals=[];
+  if(!S.ingresos)S.ingresos=[];
+  if(!S.currency)S.currency='USD';
+  if(!S.salary)S.salary=6300;
+  if(!S.categories?.length)S.categories=JSON.parse(JSON.stringify(DEF.categories));
+  if(!S.gastos)S.gastos=[];
+  // API key stays local
+  if(!S.apiKey)S.apiKey=localStorage.getItem('mg_apikey')||'';
+  setToday();
+  popCats();
+  updCurUI();
+  updCurLabels();
+}
+
+// Expose to module script
+window.loadFromFirestore=loadFromFirestore;
+window.renderAll=()=>renderAll();
+window.fetchTC=fetchTC;
+window.S=S;
+window.openM=openM;
+
+// Debounced save — avoids hammering Firestore on rapid changes
+let _saveTimer=null;
+function save(){
+  // Always keep local copy too as fallback
+  localStorage.setItem('mg4',JSON.stringify(S));
+  clearTimeout(_saveTimer);
+  _saveTimer=setTimeout(()=>saveToFirestore(),800);
+}
+
 function load(){
+  // Fallback for when Firebase hasn't loaded yet
   const r=localStorage.getItem('mg4');
-  const old=localStorage.getItem('mg3');
-  if(r){S=JSON.parse(r);}
-  else if(old){const o=JSON.parse(old);S={...JSON.parse(JSON.stringify(DEF)),...o,goals:[]};}
-  else{S=JSON.parse(JSON.stringify(DEF));}
+  if(r){
+    try{S=JSON.parse(r);}catch(e){S=JSON.parse(JSON.stringify(DEF));}
+  } else {
+    S=JSON.parse(JSON.stringify(DEF));
+  }
   if(!S.goals)S.goals=[];
   if(!S.ingresos)S.ingresos=[];
   if(!S.currency)S.currency='USD';
@@ -763,18 +911,15 @@ function load(){
 }
 
 // ============================================================
-// INIT
+// INIT — Firebase handles auth, module script calls loadFromFirestore
 // ============================================================
 function init(){
-  load();
+  // Show app shell immediately, auth overlay shown by Firebase module
   setToday();
   popCats();
   updCurUI();
   updCurLabels();
-  fetchTC().catch(()=>{}); // fire and forget, never blocks
-  renderAll();
-  if(!S.apiKey&&!localStorage.getItem('mg_vis')){localStorage.setItem('mg_vis','1');openM('mApiKey');}
-  else if(S.apiKey){document.getElementById('apiKeyInput').value=S.apiKey;}
+  // Data loads after auth in the module script's onAuthStateChanged
 }
 
 function setToday(){
@@ -1424,14 +1569,20 @@ async function handleEstado(file){
           contentBlock,
           {type:'text',text:`Este es un estado de cuenta bancario o de tarjeta. Extraé TODAS las transacciones de débito/gasto (no incluyas pagos de tarjeta, transferencias entrantes ni acreditaciones de sueldo).
 
-Para las fechas: buscá la fecha de cada transacción en el documento. El año del estado suele aparecer en el encabezado. Si ves fechas como "03/04" o "3 abr" interpretá el año del contexto del documento.
+Hoy es ${today} (${new Date().toLocaleDateString('es-UY',{weekday:'long',day:'numeric',month:'long',year:'numeric'})}).
+Para las fechas: buscá la fecha de cada transacción en el documento.
+- Si ves "hoy" → ${today}
+- Si ves "ayer" → ${new Date(Date.now()-86400000).toISOString().split('T')[0]}
+- Si ves un día de la semana como "lunes", "martes", etc., calculá la fecha real más reciente de ese día relativa a hoy.
+- Si ves fechas como "03/04" o "3 abr" sin año, usá el año del contexto del documento o ${today.substring(0,4)}.
+- No inventes fechas — si genuinamente no hay fecha, usá ${today}.
 
 Devolvé SOLO un JSON array, sin texto extra ni backticks:
 [
   {
     "desc": "descripción del comercio o gasto",
     "amount": número positivo (monto del gasto),
-    "date": "YYYY-MM-DD" — fecha real de la transacción, no pongas null,
+    "date": "YYYY-MM-DD",
     "category": una de: ${catList} — o null si no podés determinarlo,
     "currency": "UYU" o "USD" según la moneda del gasto,
     "note": "detalle breve o null"
@@ -1464,6 +1615,8 @@ Si no encontrás transacciones devolvé [].`}
       _excluded:false,
       category:tx.category&&S.categories.find(c=>c.name===tx.category)?tx.category:S.categories[S.categories.length-1]?.name||'Otros',
       currency:tx.currency||'UYU',
+      payType:'debit',
+      installments:1,
     }));
 
     bulkTxs=parsed;
@@ -1511,9 +1664,18 @@ function renderBulk(){
           <input type="date" class="fi" style="font-size:11px;padding:5px 8px" value="${tx.date||''}" onchange="bulkTxs[${i}].date=this.value">
         </div>
       </div>
-      <div style="display:flex;gap:6px;margin-top:6px;align-items:center">
-        <div class="fl" style="margin:0">Moneda:</div>
-        <div class="mini-cur">
+      <div style="display:flex;gap:8px;margin-top:6px;align-items:center;flex-wrap:wrap">
+        <div style="display:flex;gap:4px">
+          <button class="mini-cur-btn${tx.payType!=='credit'?' on':''}" style="border-radius:6px;padding:3px 8px" onclick="bulkTxs[${i}].payType='debit';bulkTxs[${i}].installments=1;this.className='mini-cur-btn on';this.nextElementSibling.className='mini-cur-btn';document.getElementById('bulk-inst-${i}').style.display='none'">💳 Débito</button>
+          <button class="mini-cur-btn${tx.payType==='credit'?' on':''}" style="border-radius:6px;padding:3px 8px" onclick="bulkTxs[${i}].payType='credit';this.className='mini-cur-btn on';this.previousElementSibling.className='mini-cur-btn';document.getElementById('bulk-inst-${i}').style.display='flex'">🟣 Crédito</button>
+        </div>
+        <div id="bulk-inst-${i}" style="display:${tx.payType==='credit'?'flex':'none'};align-items:center;gap:4px">
+          <span style="font-size:10px;color:var(--text-muted);font-weight:700">CUOTAS</span>
+          <select class="fi" style="font-size:11px;padding:3px 6px;width:auto" onchange="bulkTxs[${i}].installments=parseInt(this.value)">
+            ${[1,2,3,6,9,12,18,24].map(n=>`<option value="${n}"${tx.installments===n?' selected':''}>${n}</option>`).join('')}
+          </select>
+        </div>
+        <div class="mini-cur" style="margin-left:auto">
           <button class="mini-cur-btn${tx.currency==='USD'?' on':''}" onclick="bulkSetCur(${i},'USD',this)">USD</button>
           <button class="mini-cur-btn${tx.currency==='UYU'?' on-uyu':''}" onclick="bulkSetCur(${i},'UYU',this)">UYU</button>
         </div>
@@ -1566,8 +1728,8 @@ function confirmBulk(){
       category:tx.category||'Otros',
       date:tx.date||new Date().toISOString().split('T')[0],
       note:tx.note||'',
-      payType:'debit',
-      installments:1,
+      payType:tx.payType||'debit',
+      installments:tx.payType==='credit'?(+tx.installments||1):1,
     });
   });
 
