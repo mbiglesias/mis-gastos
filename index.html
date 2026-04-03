@@ -236,12 +236,12 @@
   .mini-cur-btn.on-uyu{background:var(--white);color:var(--green)}
   .fl-row{display:flex;align-items:center;justify-content:space-between;gap:6px;margin-bottom:3px}
 
-  .sc[onclick]:hover{filter:brightness(0.96);transform:scale(0.99)}
-  .sc[onclick]{transition:all .15s}
-  .pw[onclick]:hover{filter:brightness(0.98)}
-  .pw[onclick]{transition:filter .15s}
-  .cbox[onclick]:hover{filter:brightness(0.97)}
-  .cbox[onclick]{transition:filter .15s}
+  /* FLOATING SCAN BUTTON */
+  .fab{position:fixed;bottom:28px;right:20px;width:56px;height:56px;border-radius:50%;background:var(--accent);border:none;color:#fff;font-size:24px;cursor:pointer;box-shadow:0 4px 16px rgba(71,114,250,.4);display:flex;align-items:center;justify-content:center;z-index:40;transition:transform .15s,box-shadow .15s}
+  .fab:hover{transform:scale(1.08);box-shadow:0 6px 20px rgba(71,114,250,.5)}
+  .fab:active{transform:scale(0.95)}
+  .sc[onclick]{cursor:pointer;transition:opacity .15s}.sc[onclick]:active{opacity:.8}
+  .pw[onclick]{cursor:pointer}.cbox[onclick]{cursor:pointer}
 
   @media(min-width:481px){body{border-left:1px solid var(--border);border-right:1px solid var(--border)}}
 </style>
@@ -331,7 +331,7 @@
       </div>
     </div>
     <div class="fr" style="margin-bottom:8px">
-      <div class="fld"><div class="fl">Categoría</div><select class="fi" id="egCat"></select></div>
+      <div class="fld"><div class="fl">Categoría</div><select class="fi" id="egCat" onchange="handleCatSelect('egCat')"></select></div>
       <div class="fld"><div class="fl">Fecha</div><input type="date" class="fi" id="egDate"></div>
     </div>
     <div class="fr" style="margin-bottom:8px">
@@ -366,7 +366,7 @@
   </div>
 </div>
 
-
+<div class="mo hid" id="mEditBudget">
   <div class="modal"><div class="mh"></div>
     <div class="mt" id="ebTitle">Editar presupuesto</div>
     <div class="fld" style="margin-bottom:14px"><div class="fl cur-lbl">Presupuesto mensual (USD)</div><input type="number" class="fi" id="ebInput" placeholder="0"></div>
@@ -465,10 +465,10 @@
         <div class="sv" id="sumBudget">$0</div>
         <div class="ss">configurar →</div>
       </div>
-      <div class="sc" style="cursor:pointer" onclick="tab('ahorros')">
+      <div class="sc">
         <div class="sl">Disponible</div>
         <div class="sv" id="sumLeft">$0</div>
-        <div class="ss" id="sumLeftLbl">ver ahorros →</div>
+        <div class="ss" id="sumLeftLbl">del salario</div>
       </div>
     </div>
     <div class="cbox" id="creditBox" style="display:none;cursor:pointer" onclick="tab('credito')">
@@ -489,21 +489,6 @@
       </div>
       <div class="pbb"><div class="pbf" id="progFill" style="width:0%"></div></div>
       <div class="crs" id="catRows"></div>
-    </div>
-    <!-- Quick links row -->
-    <div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:8px;margin-top:10px">
-      <div style="background:var(--white);border-radius:var(--R);padding:12px;text-align:center;box-shadow:var(--sh);cursor:pointer" onclick="tab('escanear')">
-        <div style="font-size:22px;margin-bottom:4px">📸</div>
-        <div style="font-size:11px;font-weight:600;color:var(--text-mid)">Escanear</div>
-      </div>
-      <div style="background:var(--white);border-radius:var(--R);padding:12px;text-align:center;box-shadow:var(--sh);cursor:pointer" onclick="tab('credito')">
-        <div style="font-size:22px;margin-bottom:4px">🟣</div>
-        <div style="font-size:11px;font-weight:600;color:var(--text-mid)">Crédito</div>
-      </div>
-      <div style="background:var(--white);border-radius:var(--R);padding:12px;text-align:center;box-shadow:var(--sh);cursor:pointer" onclick="tab('anual')">
-        <div style="font-size:22px;margin-bottom:4px">📊</div>
-        <div style="font-size:11px;font-weight:600;color:var(--text-mid)">Anual</div>
-      </div>
     </div>
   </div>
 
@@ -542,18 +527,20 @@
       <div class="prev" id="prev">
         <div class="prevh"><span style="font-size:15px">✨</span><div class="prevht">Revisá y confirmá</div></div>
         <div class="prevb">
-          <div class="fr">
+          <div class="fr f1" style="margin-bottom:0">
             <div class="fld"><div class="fl">Descripción</div><input type="text" class="fi" id="pd" placeholder="¿Qué fue?"></div>
+          </div>
+          <div class="fr">
             <div class="fld">
               <div class="fl-row"><div class="fl">Monto</div><div class="mini-cur" id="cur-scan"><button class="mini-cur-btn on" onclick="selTxCur('scan','USD',this)">USD</button><button class="mini-cur-btn" onclick="selTxCur('scan','UYU',this)">UYU</button></div></div>
               <input type="number" class="fi" id="pa" placeholder="0">
             </div>
-          </div>
-          <div class="fr">
-            <div class="fld"><div class="fl">Categoría</div><select class="fi" id="pc"></select></div>
             <div class="fld"><div class="fl">Fecha</div><input type="date" class="fi" id="pf"></div>
           </div>
-          <div class="fr f1"><div class="fld"><div class="fl">Nota</div><input type="text" class="fi" id="pn" placeholder="Opcional..."></div></div>
+          <div class="fr">
+            <div class="fld"><div class="fl">Categoría</div><select class="fi" id="pc" onchange="handleCatSelect('pc')"></select></div>
+            <div class="fld"><div class="fl">Nota</div><input type="text" class="fi" id="pn" placeholder="Opcional..."></div>
+          </div>
         </div>
         <div class="preva">
           <button class="btn bp" onclick="goConfirm('scan')">Confirmar</button>
@@ -573,7 +560,7 @@
           <div class="fld"><div class="fl">Fecha</div><input type="date" class="fi" id="mf"></div>
         </div>
         <div class="fr" style="margin-bottom:8px">
-          <div class="fld"><div class="fl">Categoría</div><select class="fi" id="mc"></select></div>
+          <div class="fld"><div class="fl">Categoría</div><select class="fi" id="mc" onchange="handleCatSelect('mc')"></select></div>
           <div class="fld"><div class="fl">Nota</div><input type="text" class="fi" id="mn" placeholder="Opcional..."></div>
         </div>
         <button class="btn bp" onclick="goConfirm('manual')" style="width:100%">Agregar gasto</button>
@@ -700,6 +687,9 @@
 
 </div>
 <div class="toast" id="toast"></div>
+
+<!-- FLOATING SCAN BUTTON -->
+<button class="fab" onclick="tab('escanear')" title="Escanear recibo">📸</button>
 
 <script>
 // ============================================================
@@ -979,7 +969,7 @@ function rSummary(){
   document.getElementById('sumSalaryLbl').textContent=extraInc>0?'salario + extras':'ingreso mensual';
   document.getElementById('sumBudget').textContent=fmt(budTot);
   document.getElementById('sumLeft').textContent=fmt(Math.abs(left));
-  const leftLbl=left<0?'en exceso →':(totalSaved>0||creditThisMonth>0?'descontando compromisos →':'disponible →');
+  const leftLbl=left<0?'en exceso':(totalSaved>0||creditThisMonth>0?'descontando compromisos':'disponible');
   document.getElementById('sumLeftLbl').textContent=leftLbl;
   document.getElementById('sumLeft').className='sv '+(left<0?'rd':'gn');
   document.getElementById('salDisp').textContent=fmt(S.salary);
@@ -1133,8 +1123,23 @@ function rBudget(){
 }
 
 function popCats(){
-  const o=S.categories.map(c=>`<option value="${c.name}">${c.emoji} ${c.name}</option>`).join('');
+  const o=S.categories.map(c=>`<option value="${c.name}">${c.emoji} ${c.name}</option>`).join('')
+    +'<option value="__newcat__">+ Nueva categoría...</option>';
   ['pc','mc','egCat'].forEach(id=>{const e=document.getElementById(id);if(e)e.innerHTML=o;});
+}
+
+function handleCatSelect(selId){
+  const sel=document.getElementById(selId);
+  if(sel&&sel.value==='__newcat__'){
+    window._catSelectId=selId;
+    document.getElementById('ncName').value='';
+    document.getElementById('ncBudget').value='0';
+    document.getElementById('ncEmoji').value='';
+    document.getElementById('mNewCat')._fromSelect=selId;
+    openM('mNewCat');
+    // Reset select to first option while modal is open
+    sel.value=S.categories[0]?.name||'';
+  }
 }
 
 // Per-transaction currency state
@@ -1324,14 +1329,17 @@ function saveNewCat(){
   S.categories.push({name,emoji,color:pal[S.categories.length%pal.length],budget});
   ['ncName','ncBudget','ncEmoji'].forEach(id=>document.getElementById(id).value='');
   save();popCats();renderAll();
-  // If called from bulk review, assign category to that item
   const modal=document.getElementById('mNewCat');
   if(modal._bulkCallback&&window._bulkCatIdx!==undefined){
     bulkTxs[window._bulkCatIdx].category=name;
-    modal._bulkCallback=false;
-    window._bulkCatIdx=undefined;
+    modal._bulkCallback=false;window._bulkCatIdx=undefined;
+    closeM('mNewCat');renderBulk();
+  } else if(modal._fromSelect){
+    // Set newly created category in the originating select
+    const sel=document.getElementById(modal._fromSelect);
+    if(sel){popCats();sel.value=name;}
+    modal._fromSelect=null;
     closeM('mNewCat');
-    renderBulk();
   } else {
     closeM('mNewCat');
   }
