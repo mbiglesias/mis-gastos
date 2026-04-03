@@ -220,14 +220,14 @@
   .es{font-size:12px}
 
   /* BULK REVIEW */
-  .bulk-item{background:var(--white);border-radius:var(--r);padding:10px 12px;margin-bottom:6px;box-shadow:var(--sh);position:relative}
+  .bulk-item{background:var(--white);border-radius:var(--r);padding:10px 12px;margin-bottom:6px;box-shadow:var(--sh)}
   .bulk-item.excluded{opacity:.4}
-  .bulk-item-top{display:flex;align-items:center;gap:10px;margin-bottom:6px}
+  .bulk-item-top{display:flex;align-items:center;gap:8px;margin-bottom:6px}
   .bulk-item-desc{flex:1;font-size:13px;font-weight:600;min-width:0;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
-  .bulk-item-amt{font-size:14px;font-weight:700;color:var(--text);flex-shrink:0}
+  .bulk-item-amt{font-size:13px;font-weight:700;color:var(--text);flex-shrink:0;white-space:nowrap}
   .bulk-item-fields{display:grid;grid-template-columns:1fr 1fr;gap:6px}
-  .bulk-exclude{position:absolute;top:8px;right:8px;background:var(--red-light);border:none;color:var(--red);width:22px;height:22px;border-radius:5px;cursor:pointer;font-size:12px;display:flex;align-items:center;justify-content:center}
-  .bulk-include{position:absolute;top:8px;right:8px;background:var(--green-light);border:none;color:var(--green);width:22px;height:22px;border-radius:5px;cursor:pointer;font-size:14px;display:flex;align-items:center;justify-content:center}
+  .bulk-exclude{background:var(--red-light);border:none;color:var(--red);width:24px;height:24px;border-radius:5px;cursor:pointer;font-size:12px;display:flex;align-items:center;justify-content:center;flex-shrink:0}
+  .bulk-include{background:var(--green-light);border:none;color:var(--green);width:24px;height:24px;border-radius:5px;cursor:pointer;font-size:14px;display:flex;align-items:center;justify-content:center;flex-shrink:0}
 
   /* MINI CUR TOGGLE */
   .mini-cur{display:inline-flex;background:var(--bg);border-radius:16px;padding:2px;gap:0;vertical-align:middle}
@@ -313,7 +313,53 @@
   </div>
 </div>
 
-<div class="mo hid" id="mEditBudget">
+<div class="mo hid" id="mEditGasto">
+  <div class="modal"><div class="mh"></div>
+    <div class="mt">Editar gasto</div>
+    <div class="fr" style="margin-bottom:8px">
+      <div class="fld"><div class="fl">Descripción</div><input type="text" class="fi" id="egDesc" placeholder="¿Qué fue?"></div>
+      <div class="fld">
+        <div class="fl-row"><div class="fl">Monto</div><div class="mini-cur" id="cur-edit"><button class="mini-cur-btn on" onclick="selTxCur('edit','USD',this)">USD</button><button class="mini-cur-btn" onclick="selTxCur('edit','UYU',this)">UYU</button></div></div>
+        <input type="number" class="fi" id="egAmt" placeholder="0">
+      </div>
+    </div>
+    <div class="fr" style="margin-bottom:8px">
+      <div class="fld"><div class="fl">Categoría</div><select class="fi" id="egCat"></select></div>
+      <div class="fld"><div class="fl">Fecha</div><input type="date" class="fi" id="egDate"></div>
+    </div>
+    <div class="fr" style="margin-bottom:8px">
+      <div class="fld"><div class="fl">Tipo de pago</div>
+        <select class="fi" id="egPayType" onchange="toggleEgInstall()">
+          <option value="debit">💳 Débito</option>
+          <option value="credit">🟣 Crédito</option>
+        </select>
+      </div>
+      <div class="fld" id="egInstallField">
+        <div class="fl">Cuotas</div>
+        <select class="fi" id="egInstall">
+          <option value="1">1 cuota</option>
+          <option value="2">2 cuotas</option>
+          <option value="3">3 cuotas</option>
+          <option value="6">6 cuotas</option>
+          <option value="9">9 cuotas</option>
+          <option value="12">12 cuotas</option>
+          <option value="18">18 cuotas</option>
+          <option value="24">24 cuotas</option>
+        </select>
+      </div>
+    </div>
+    <div class="fr f1" style="margin-bottom:14px">
+      <div class="fld"><div class="fl">Nota</div><input type="text" class="fi" id="egNote" placeholder="Opcional..."></div>
+    </div>
+    <div style="display:flex;gap:8px">
+      <button class="btn bp" onclick="saveEditGasto()">Guardar</button>
+      <button class="btn bg" onclick="closeM('mEditGasto')">Cancelar</button>
+      <button class="btn" style="background:var(--red-light);color:var(--red)" onclick="deleteFromEdit()">Eliminar</button>
+    </div>
+  </div>
+</div>
+
+
   <div class="modal"><div class="mh"></div>
     <div class="mt" id="ebTitle">Editar presupuesto</div>
     <div class="fld" style="margin-bottom:14px"><div class="fl cur-lbl">Presupuesto mensual (USD)</div><input type="number" class="fi" id="ebInput" placeholder="0"></div>
@@ -816,7 +862,12 @@ function rTxList(){
         :(isCr&&inst>1?`<div style="font-size:10px;color:var(--purple)">${fmt(cuota)}/mes</div>`:'');
 
       // Only show delete on original purchase entry, not on virtual installment rows
-      const del=!isInst?`<button class="txdel" onclick="delG('${g.id}')">✕</button>`:'';
+      const del=!isInst
+        ?`<div style="display:flex;flex-direction:column;gap:3px;align-items:flex-end">
+            <button class="txdel" style="position:static;opacity:1;width:auto;padding:2px 6px;font-size:9px;border-radius:4px;background:var(--accent-light);color:var(--accent)" onclick="openEditGasto('${g.id}')">editar</button>
+            <button class="txdel" style="position:static;opacity:1;width:auto;padding:2px 6px;font-size:9px;border-radius:4px" onclick="delG('${g.id}')">eliminar</button>
+          </div>`
+        :'';
 
       h+=`<div class="txi"${isInst?' style="border-left:3px solid var(--purple)"':''}>
         <div class="txico" style="background:${col}22">${em}</div>
@@ -1021,11 +1072,11 @@ function rBudget(){
 
 function popCats(){
   const o=S.categories.map(c=>`<option value="${c.name}">${c.emoji} ${c.name}</option>`).join('');
-  ['pc','mc'].forEach(id=>{const e=document.getElementById(id);if(e)e.innerHTML=o;});
+  ['pc','mc','egCat'].forEach(id=>{const e=document.getElementById(id);if(e)e.innerHTML=o;});
 }
 
 // Per-transaction currency state
-const txCur={scan:'USD',manual:'USD',ingreso:'USD',gtarget:'USD',gsaved:'USD',addgoal:'USD'};
+const txCur={scan:'USD',manual:'USD',ingreso:'USD',gtarget:'USD',gsaved:'USD',addgoal:'USD',edit:'USD'};
 function selTxCur(key,cur,btn){
   txCur[key]=cur;
   const container=btn.closest('.mini-cur');
@@ -1140,8 +1191,67 @@ function confirmAddGoal(){
 function delGoal(i){if(!confirm(`¿Eliminar "${S.goals[i].name}"?`))return;S.goals.splice(i,1);save();rSavings();toast('Objetivo eliminado');}
 
 // ============================================================
-// CATEGORIES
+// EDIT GASTO
 // ============================================================
+let editingGastoId=null;
+
+function openEditGasto(id){
+  const g=S.gastos.find(x=>x.id===id);
+  if(!g)return;
+  editingGastoId=id;
+  document.getElementById('egDesc').value=g.desc||'';
+  // Show in display currency
+  document.getElementById('egAmt').value=(+g.amount||0).toFixed(2);
+  // Set currency toggle to USD (amounts stored in USD)
+  txCur.edit='USD';
+  document.getElementById('cur-edit').querySelectorAll('.mini-cur-btn').forEach(b=>{
+    b.className='mini-cur-btn'+(b.textContent==='USD'?' on':'');
+  });
+  document.getElementById('egDate').value=g.date||'';
+  document.getElementById('egNote').value=g.note||'';
+  document.getElementById('egPayType').value=g.payType||'debit';
+  document.getElementById('egInstall').value=g.installments||1;
+  toggleEgInstall();
+  popCats();
+  const catSel=document.getElementById('egCat');
+  if(g.category){const o=[...catSel.options].find(o=>o.value===g.category);if(o)catSel.value=g.category;}
+  openM('mEditGasto');
+}
+
+function toggleEgInstall(){
+  const isCr=document.getElementById('egPayType').value==='credit';
+  document.getElementById('egInstallField').style.opacity=isCr?'1':'0.3';
+  document.getElementById('egInstall').disabled=!isCr;
+}
+
+function saveEditGasto(){
+  const g=S.gastos.find(x=>x.id===editingGastoId);
+  if(!g)return;
+  const desc=document.getElementById('egDesc').value.trim();
+  const amt=parseFloat(document.getElementById('egAmt').value);
+  const cat=document.getElementById('egCat').value;
+  const date=document.getElementById('egDate').value;
+  const note=document.getElementById('egNote').value.trim();
+  const payType=document.getElementById('egPayType').value;
+  const inst=parseInt(document.getElementById('egInstall').value)||1;
+  if(!desc||isNaN(amt)||!date){toast('Completá descripción, monto y fecha');return;}
+  g.desc=desc;
+  g.amount=toUSD(amt,txCur.edit);
+  g.category=cat;
+  g.date=date;
+  g.note=note;
+  g.payType=payType;
+  g.installments=payType==='credit'?inst:1;
+  save();renderAll();closeM('mEditGasto');toast('Gasto actualizado');
+}
+
+function deleteFromEdit(){
+  if(!confirm('¿Eliminar este gasto?'))return;
+  S.gastos=S.gastos.filter(g=>g.id!==editingGastoId);
+  save();renderAll();closeM('mEditGasto');toast('Gasto eliminado');
+}
+
+
 function saveNewCat(){
   const name=document.getElementById('ncName').value.trim();
   const budget=toUSD(parseFloat(document.getElementById('ncBudget').value)||0);
@@ -1151,7 +1261,19 @@ function saveNewCat(){
   const pal=['#4772fa','#22c55e','#f97316','#ef4444','#a855f7','#ec4899','#06b6d4','#eab308'];
   S.categories.push({name,emoji,color:pal[S.categories.length%pal.length],budget});
   ['ncName','ncBudget','ncEmoji'].forEach(id=>document.getElementById(id).value='');
-  save();popCats();renderAll();closeM('mNewCat');toast(`"${name}" agregada`);
+  save();popCats();renderAll();
+  // If called from bulk review, assign category to that item
+  const modal=document.getElementById('mNewCat');
+  if(modal._bulkCallback&&window._bulkCatIdx!==undefined){
+    bulkTxs[window._bulkCatIdx].category=name;
+    modal._bulkCallback=false;
+    window._bulkCatIdx=undefined;
+    closeM('mNewCat');
+    renderBulk();
+  } else {
+    closeM('mNewCat');
+  }
+  toast(`"${name}" agregada`);
 }
 function openEB(i){eCatIdx=i;document.getElementById('ebTitle').textContent=`Presupuesto — ${S.categories[i].name}`;document.getElementById('ebInput').value=S.categories[i].budget||0;openM('mEditBudget');}
 function saveEditBudget(){const v=parseFloat(document.getElementById('ebInput').value)||0;S.categories[eCatIdx].budget=toUSD(v);save();renderAll();closeM('mEditBudget');toast('Presupuesto actualizado');}
@@ -1232,12 +1354,14 @@ async function handleEstado(file){
           contentBlock,
           {type:'text',text:`Este es un estado de cuenta bancario o de tarjeta. Extraé TODAS las transacciones de débito/gasto (no incluyas pagos de tarjeta, transferencias entrantes ni acreditaciones de sueldo).
 
+Para las fechas: buscá la fecha de cada transacción en el documento. El año del estado suele aparecer en el encabezado. Si ves fechas como "03/04" o "3 abr" interpretá el año del contexto del documento.
+
 Devolvé SOLO un JSON array, sin texto extra ni backticks:
 [
   {
     "desc": "descripción del comercio o gasto",
     "amount": número positivo (monto del gasto),
-    "date": "YYYY-MM-DD" (si no hay año usá ${today.substring(0,4)}),
+    "date": "YYYY-MM-DD" — fecha real de la transacción, no pongas null,
     "category": una de: ${catList} — o null si no podés determinarlo,
     "currency": "UYU" o "USD" según la moneda del gasto,
     "note": "detalle breve o null"
@@ -1290,19 +1414,26 @@ function renderBulk(){
   document.getElementById('bulkCount').textContent=`${active.length} seleccionadas`;
   document.getElementById('bulkConfirmBtn').textContent=`Agregar ${active.length} gastos`;
 
-  const catOpts=S.categories.map(c=>`<option value="${c.name}">${c.emoji} ${c.name}</option>`).join('');
+  const catOpts=S.categories.map(c=>`<option value="${c.name}"${''} >${c.emoji} ${c.name}</option>`).join('')
+    +'<option value="__new__">+ Nueva categoría...</option>';
 
-  list.innerHTML=bulkTxs.map((tx,i)=>`
-    <div class="bulk-item${tx._excluded?' excluded':''}" id="bulk-item-${i}">
+  list.innerHTML=bulkTxs.map((tx,i)=>{
+    const excBtn=tx._excluded
+      ?`<button class="bulk-include" onclick="toggleBulk(${i})">↩</button>`
+      :`<button class="bulk-exclude" onclick="toggleBulk(${i})">✕</button>`;
+    const amtDisp=(+tx.amount||0).toLocaleString('es-UY',{minimumFractionDigits:0,maximumFractionDigits:2});
+    return `<div class="bulk-item${tx._excluded?' excluded':''}" id="bulk-item-${i}">
       <div class="bulk-item-top">
         <div class="bulk-item-desc">${tx.desc||'Sin descripción'}</div>
-        <div class="bulk-item-amt">${tx.currency==='USD'?'USD ':'$U '}${(+tx.amount||0).toLocaleString('es-UY',{minimumFractionDigits:0,maximumFractionDigits:0})}</div>
+        <div class="bulk-item-amt">${tx.currency==='USD'?'USD':'$U'} ${amtDisp}</div>
+        ${excBtn}
       </div>
       <div class="bulk-item-fields">
         <div class="fld">
           <div class="fl">Categoría</div>
-          <select class="fi" style="font-size:11px;padding:5px 8px" onchange="bulkTxs[${i}].category=this.value">
+          <select class="fi" style="font-size:11px;padding:5px 8px" onchange="bulkCatChange(${i},this.value)">
             ${S.categories.map(c=>`<option value="${c.name}"${c.name===tx.category?' selected':''}>${c.emoji} ${c.name}</option>`).join('')}
+            <option value="__new__">+ Nueva categoría...</option>
           </select>
         </div>
         <div class="fld">
@@ -1310,15 +1441,41 @@ function renderBulk(){
           <input type="date" class="fi" style="font-size:11px;padding:5px 8px" value="${tx.date||''}" onchange="bulkTxs[${i}].date=this.value">
         </div>
       </div>
-      ${tx._excluded
-        ?`<button class="bulk-include" onclick="toggleBulk(${i})">↩</button>`
-        :`<button class="bulk-exclude" onclick="toggleBulk(${i})">✕</button>`
-      }
-    </div>
-  `).join('');
+      <div style="display:flex;gap:6px;margin-top:6px;align-items:center">
+        <div class="fl" style="margin:0">Moneda:</div>
+        <div class="mini-cur">
+          <button class="mini-cur-btn${tx.currency==='USD'?' on':''}" onclick="bulkSetCur(${i},'USD',this)">USD</button>
+          <button class="mini-cur-btn${tx.currency==='UYU'?' on-uyu':''}" onclick="bulkSetCur(${i},'UYU',this)">UYU</button>
+        </div>
+      </div>
+    </div>`;
+  }).join('');
 
   container.style.display='block';
   container.scrollIntoView({behavior:'smooth',block:'start'});
+}
+
+function bulkCatChange(i,val){
+  if(val==='__new__'){
+    // Store which bulk item we're adding a category for
+    window._bulkCatIdx=i;
+    // Pre-fill and open new cat modal
+    document.getElementById('ncName').value='';
+    document.getElementById('ncBudget').value='0';
+    document.getElementById('ncEmoji').value='';
+    document.getElementById('mNewCat')._bulkCallback=true;
+    openM('mNewCat');
+  } else {
+    bulkTxs[i].category=val;
+  }
+}
+
+function bulkSetCur(i,cur,btn){
+  bulkTxs[i].currency=cur;
+  const mc=btn.closest('.mini-cur');
+  mc.querySelectorAll('.mini-cur-btn').forEach(b=>{
+    b.className='mini-cur-btn'+(b.textContent===cur?(cur==='UYU'?' on-uyu':' on'):'');
+  });
 }
 
 function toggleBulk(i){
