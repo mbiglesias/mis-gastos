@@ -1188,7 +1188,7 @@ function rSummary(){
   const totalSaved=S.goals.reduce((s,g)=>s+(+g.saved||0),0);
   // Also deduct credit installments due this month
   const creditThisMonth=crDue(CM,CY).reduce((s,g)=>s+(+g.amount/(+g.installments||1)),0);
-  const left=totalIncome-spent-totalSaved-creditThisMonth;
+  const left=totalIncome-spent-creditThisMonth;
 
   document.getElementById('sumSpent').textContent=fmt(spent);
   document.getElementById('sumCount').textContent=`${S.gastos.filter(g=>{const d=new Date(g.date+'T12:00:00');return d.getMonth()===CM&&d.getFullYear()===CY;}).length} gasto${gs.length!==1?'s':''} →`;
@@ -1196,7 +1196,7 @@ function rSummary(){
   document.getElementById('sumSalaryLbl').textContent=extraInc>0?'salario + extras':'ingreso mensual';
   document.getElementById('sumBudget').textContent=fmt(budTot);
   document.getElementById('sumLeft').textContent=fmt(Math.abs(left));
-  const leftLbl=left<0?'en exceso ⚠️':(totalSaved>0||creditThisMonth>0?'descontando compromisos':'libre este mes');
+  const leftLbl=left<0?'en exceso ⚠️':(creditThisMonth>0?'descontando cuotas':'libre este mes');
   document.getElementById('sumLeftLbl').textContent=leftLbl;
   document.getElementById('sumLeft').className='sv '+(left<0?'rd':'gn');
   document.getElementById('salDisp').textContent=fmt(S.salary);
