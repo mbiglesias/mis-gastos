@@ -210,13 +210,14 @@ onAuthStateChanged(auth, (user) => {
   /* FORM */
   .fc{background:var(--white);border-radius:var(--RL);padding:14px;box-shadow:var(--sh);margin-bottom:14px}
   .ft{font-size:11px;font-weight:700;margin-bottom:12px;color:var(--text-muted);text-transform:uppercase;letter-spacing:.5px}
-  .fr{display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-bottom:8px}
+  .fr{display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-bottom:8px;overflow:hidden}
   .fr.f1{grid-template-columns:1fr;margin-bottom:8px}
-  .fld{display:flex;flex-direction:column;gap:3px}
+  .fld{display:flex;flex-direction:column;gap:3px;min-width:0;overflow:hidden}
   .fl{font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:.5px;color:var(--text-muted)}
-  .fi{background:var(--bg);border:1.5px solid var(--border);border-radius:var(--r);padding:8px 10px;font-family:inherit;font-size:13px;color:var(--text);width:100%;transition:border-color .15s}
+  .fi{background:var(--bg);border:1.5px solid var(--border);border-radius:var(--r);padding:8px 10px;font-family:inherit;font-size:13px;color:var(--text);width:100%;transition:border-color .15s;min-width:0;box-sizing:border-box}
   .fi:focus{outline:none;border-color:var(--accent);background:var(--white)}
   select.fi{appearance:none}
+  input[type="date"].fi{font-size:13px}
 
   /* BTN */
   .btn{padding:10px 16px;border-radius:var(--r);font-family:inherit;font-size:13px;font-weight:700;cursor:pointer;border:none;transition:all .15s}
@@ -1188,7 +1189,7 @@ function rSummary(){
   const totalSaved=S.goals.reduce((s,g)=>s+(+g.saved||0),0);
   // Also deduct credit installments due this month
   const creditThisMonth=crDue(CM,CY).reduce((s,g)=>s+(+g.amount/(+g.installments||1)),0);
-  const left=totalIncome-spent-creditThisMonth;
+  const left=totalIncome-spent-totalSaved-creditThisMonth;
 
   document.getElementById('sumSpent').textContent=fmt(spent);
   document.getElementById('sumCount').textContent=`${S.gastos.filter(g=>{const d=new Date(g.date+'T12:00:00');return d.getMonth()===CM&&d.getFullYear()===CY;}).length} gasto${gs.length!==1?'s':''} →`;
@@ -1196,7 +1197,7 @@ function rSummary(){
   document.getElementById('sumSalaryLbl').textContent=extraInc>0?'salario + extras':'ingreso mensual';
   document.getElementById('sumBudget').textContent=fmt(budTot);
   document.getElementById('sumLeft').textContent=fmt(Math.abs(left));
-  const leftLbl=left<0?'en exceso ⚠️':(creditThisMonth>0?'descontando cuotas':'libre este mes');
+  const leftLbl=left<0?'en exceso ⚠️':(totalSaved>0||creditThisMonth>0?'descontando compromisos':'libre este mes');
   document.getElementById('sumLeftLbl').textContent=leftLbl;
   document.getElementById('sumLeft').className='sv '+(left<0?'rd':'gn');
   document.getElementById('salDisp').textContent=fmt(S.salary);
