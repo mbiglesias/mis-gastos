@@ -631,20 +631,20 @@ onAuthStateChanged(auth, (user) => {
         <div class="sv li" id="sumSpent">$0</div>
         <div class="ss li" id="sumCount">ver gastos ›</div>
       </div>
-      <div class="sc gb tap-card" onclick="tab('ingresos')">
-        <div class="sl li" id="sumSalaryLbl">Ingreso mensual</div>
-        <div class="sv li" id="sumSalary">$0</div>
-        <div class="ss li">ver detalle ›</div>
+      <div class="sc gb tap-card" onclick="tab('ahorros')">
+        <div class="sl li">Disponible</div>
+        <div class="sv li" id="sumLeft">$0</div>
+        <div class="ss li" id="sumLeftLbl">libre este mes ›</div>
       </div>
       <div class="sc tap-card" onclick="tab('presupuestos')">
         <div class="sl">Presupuesto</div>
         <div class="sv" id="sumBudget">$0</div>
         <div class="ss">configurar ›</div>
       </div>
-      <div class="sc tap-card" onclick="tab('ahorros')">
-        <div class="sl">Disponible</div>
-        <div class="sv" id="sumLeft">$0</div>
-        <div class="ss" id="sumLeftLbl">del ingreso ›</div>
+      <div class="sc tap-card" onclick="tab('ingresos')">
+        <div class="sl" id="sumSalaryLbl">Ingreso mensual</div>
+        <div class="sv" id="sumSalary">$0</div>
+        <div class="ss">ver detalle ›</div>
       </div>
     </div>
     <div class="cbox" id="creditBox" style="display:none;cursor:pointer" onclick="tab('credito')">
@@ -1198,13 +1198,13 @@ function rSummary(){
 
   document.getElementById('sumSpent').textContent=fmt(spent);
   document.getElementById('sumCount').textContent=`${S.gastos.filter(g=>{const d=new Date(g.date+'T12:00:00');return d.getMonth()===CM&&d.getFullYear()===CY;}).length} gasto${gs.length!==1?'s':''} →`;
-  document.getElementById('sumSalary').textContent=fmt(totalIncome);
-  document.getElementById('sumSalaryLbl').textContent=extraInc>0?'salario + extras':'ingreso mensual';
   document.getElementById('sumBudget').textContent=fmt(budTot);
   document.getElementById('sumLeft').textContent=fmt(Math.abs(left));
   const leftLbl=left<0?'en exceso ⚠️':(savedThisMonth>0||creditThisMonth>0?'descontando compromisos':'libre este mes');
   document.getElementById('sumLeftLbl').textContent=leftLbl;
-  document.getElementById('sumLeft').className='sv '+(left<0?'rd':'gn');
+  document.getElementById('sumLeft').className='sv li';
+  document.getElementById('sumSalary').textContent=fmt(totalIncome);
+  document.getElementById('sumSalaryLbl').textContent=extraInc>0?'salario + extras':'ingreso mensual';
   document.getElementById('salDisp').textContent=fmt(S.salary);
 
   const cdue=crDue(CM,CY);
