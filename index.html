@@ -675,6 +675,9 @@ onAuthStateChanged(auth, (user) => {
       <div class="mlbl" id="mlbl2"></div>
       <button class="marr" onclick="chM(1)">›</button>
     </div>
+    <div style="padding:0 16px 8px">
+      <input type="text" class="fi" id="txSearch" placeholder="🔍  Buscar gastos..." oninput="rTxList()" style="background:var(--white)">
+    </div>
     <div class="chips" id="chips"></div>
     <div id="txList"></div>
   </div>
@@ -739,6 +742,10 @@ onAuthStateChanged(auth, (user) => {
           <div class="fld"><div class="fl">Categoría</div><select class="fi" id="mc" onchange="handleCatSelect('mc')"></select></div>
           <div class="fld"><div class="fl">Nota</div><input type="text" class="fi" id="mn" placeholder="Opcional..."></div>
         </div>
+        <label style="display:flex;align-items:center;gap:8px;padding:10px 0;cursor:pointer;font-size:13px;color:var(--text-mid)">
+          <input type="checkbox" id="mRecurring" style="width:16px;height:16px;accent-color:var(--accent)">
+          🔁 Pago recurrente (se repite cada mes)
+        </label>
         <button class="btn bp" onclick="goConfirm('manual')" style="width:100%">Agregar gasto</button>
       </div>
     </div>
@@ -1040,8 +1047,19 @@ function chM(d){
 function mGastos(){
   const debits=S.gastos.filter(g=>{
     const d=new Date(g.date+'T12:00:00');
-    return d.getMonth()===CM&&d.getFullYear()===CY&&g.payType!=='credit';
+    return d.getMonth()===CM&&d.getFullYear()===CY&&g.payType!=='credit'&&!g.recurring;
   });
+  // Recurring payments: show in every month after their start date
+  const recurringDue=S.gastos.filter(g=>g.recurring&&g.payType!=='credit').map(g=>{
+    const start=new Date(g.date+'T12:00:00');
+    const startM=start.getMonth(),startY=start.getFullYear();
+    if(CY>startY||(CY===startY&&CM>=startM)){
+      // Check not already manually added this month
+      const virtDate=`${CY}-${String(CM+1).padStart(2,'0')}-${String(start.getDate()).padStart(2,'0')}`;
+      return {...g,date:virtDate,_isRecurring:true,id:g.id+'_rec_'+CY+'_'+CM};
+    }
+    return null;
+  }).filter(Boolean);
   // For credit: create a virtual entry for the installment due this month
   const creditDue=[];
   S.gastos.filter(g=>g.payType==='credit').forEach(g=>{
@@ -1049,11 +1067,10 @@ function mGastos(){
     const inst=+g.installments||1;
     const diff=(CY-start.getFullYear())*12+(CM-start.getMonth());
     if(diff>=0&&diff<inst){
-      // This gasto has an installment due this month
       creditDue.push({...g,_isInstallment:true,_instNum:diff+1,_instTotal:inst,_cuota:g.amount/inst});
     }
   });
-  return [...debits,...creditDue];
+  return [...debits,...recurringDue,...creditDue];
 }
 
 // ============================================================
@@ -1067,8 +1084,10 @@ function rTxList(){
   const cats=['Todos',...S.categories.map(c=>c.name),'Crédito'];
   if(chEl)chEl.innerHTML=cats.map(c=>`<button class="chip${filt===c?' on':''}" onclick="setF('${c}')">${c}</button>`).join('');
 
+  const q=(document.getElementById('txSearch')?.value||'').toLowerCase().trim();
   if(filt==='Crédito')gs=gs.filter(g=>g.payType==='credit');
   else if(filt!=='Todos')gs=gs.filter(g=>g.category===filt);
+  if(q)gs=gs.filter(g=>g.desc.toLowerCase().includes(q)||g.category.toLowerCase().includes(q)||(g.note||'').toLowerCase().includes(q));
   gs=[...gs].sort((a,b)=>new Date(b.date)-new Date(a.date));
 
   if(!gs.length){
@@ -1114,7 +1133,9 @@ function rTxList(){
         ? isInst
           ? `<span class="bdg bdg-cr">🟣 Cuota ${instNum}/${inst}</span>`
           : `<span class="bdg bdg-cr">🟣 Crédito — ${inst} cuota${inst>1?'s':''}</span>`
-        : `<span class="bdg bdg-db">💳 Débito</span>`;
+        : g._isRecurring
+          ? `<span class="bdg" style="background:#fef3c7;color:#d97706">🔁 Recurrente</span>`
+          : `<span class="bdg bdg-db">💳 Débito</span>`;
 
       // Amount to show: for installments, show the cuota amount; for original purchase entry, show total
       const displayAmt=isInst?fmt(cuota):fmt(g.amount);
@@ -1131,7 +1152,7 @@ function rTxList(){
           </div>`
         :'';
 
-      const tapAttr=!isInst?`onclick="this.classList.toggle('expanded')"`:''
+      const tapAttr=!isInst?`onclick="txToggle(event,this)"`:''
 
       h+=`<div class="txi"${isInst?' style="border-left:3px solid var(--purple)"':''} ${tapAttr}>
         <div style="display:flex;align-items:center;gap:10px;width:100%">
@@ -1187,20 +1208,20 @@ function rSummary(){
   const extraInc=S.ingresos.filter(i=>{const d=new Date(i.date+'T12:00:00');return d.getMonth()===CM&&d.getFullYear()===CY;}).reduce((s,i)=>s+(+i.amount),0);
   const totalIncome=sal+extraInc;
   const totalSaved=S.goals.reduce((s,g)=>s+(+g.saved||0),0);
-  // Also deduct credit installments due this month
+  // Credit does NOT reduce disponible (paid later) — shown separately
   const creditThisMonth=crDue(CM,CY).reduce((s,g)=>s+(+g.amount/(+g.installments||1)),0);
   // Only savings added THIS month reduce disponible
   const savedThisMonth=S.goals.reduce((s,g)=>{
     const entries=g.entries||[];
     return s+entries.filter(e=>{const d=new Date(e.date+'T12:00:00');return d.getMonth()===CM&&d.getFullYear()===CY;}).reduce((a,e)=>a+(+e.amount),0);
   },0);
-  const left=totalIncome-spent-savedThisMonth-creditThisMonth;
+  const left=totalIncome-spent-savedThisMonth;
 
   document.getElementById('sumSpent').textContent=fmt(spent);
   document.getElementById('sumCount').textContent=`${S.gastos.filter(g=>{const d=new Date(g.date+'T12:00:00');return d.getMonth()===CM&&d.getFullYear()===CY;}).length} gasto${gs.length!==1?'s':''} →`;
   document.getElementById('sumBudget').textContent=fmt(budTot);
   document.getElementById('sumLeft').textContent=fmt(Math.abs(left));
-  const leftLbl=left<0?'en exceso ⚠️':(savedThisMonth>0||creditThisMonth>0?'descontando compromisos':'libre este mes');
+  const leftLbl=left<0?'en exceso ⚠️':(savedThisMonth>0?'descontando ahorros':'libre este mes');
   document.getElementById('sumLeftLbl').textContent=leftLbl;
   document.getElementById('sumLeft').className='sv li';
   document.getElementById('sumSalary').textContent=fmt(totalIncome);
@@ -1229,17 +1250,21 @@ function rSummary(){
 // CAT ROWS
 // ============================================================
 function rCatRows(){
-  const gs=mGastos().filter(g=>g.payType!=='credit');
+  const debitGs=mGastos().filter(g=>g.payType!=='credit');
+  const creditInstGs=crDue(CM,CY);
   document.getElementById('catRows').innerHTML=S.categories.map(cat=>{
-    const sp=gs.filter(g=>g.category===cat.name).reduce((s,g)=>s+(+g.amount),0);
+    const debitSp=debitGs.filter(g=>g.category===cat.name).reduce((s,g)=>s+(+g.amount),0);
+    const creditSp=creditInstGs.filter(g=>g.category===cat.name).reduce((s,g)=>s+(g._cuota||g.amount/(+g.installments||1)),0);
+    const sp=debitSp+creditSp;
     const bu=+cat.budget||0;
     const pct=bu>0?Math.min((sp/bu)*100,100):0;
     const ov=sp>bu&&bu>0;
     const col=ov?'#ef4444':cat.color;
-    return `<div class="cr">
+    return `<div class="cr" style="cursor:pointer" onclick="setF('${cat.name}');tab('gastos')">
       <div class="ci" style="background:${cat.color}22">${cat.emoji}</div>
-      <div><div class="cn">${cat.name}</div><div class="cbw"><div class="cbf" style="width:${pct}%;background:${col}"></div></div></div>
+      <div style="flex:1"><div class="cn">${cat.name}</div><div class="cbw"><div class="cbf" style="width:${pct}%;background:${col}"></div></div></div>
       <div><div class="ca">${fmt(sp)}</div><div class="cbl">${bu>0?'de '+fmt(bu):'sin límite'}</div></div>
+      <div style="color:var(--text-muted);font-size:13px">›</div>
     </div>`;
   }).join('');
 }
@@ -1362,10 +1387,15 @@ function delGoalEntry(goalIdx,entryIdx){
 // BUDGET TAB
 // ============================================================
 function rBudget(){
-  const gs=mGastos().filter(g=>g.payType!=='credit');
+  // Include debit gastos + credit installments due this month
+  const debitGs=mGastos().filter(g=>g.payType!=='credit');
+  const creditInstGs=crDue(CM,CY); // virtual installment rows for this month
+  const allGs=[...debitGs,...creditInstGs];
   const con=document.getElementById('budList');if(!con)return;
   con.innerHTML=S.categories.map((cat,i)=>{
-    const sp=gs.filter(g=>g.category===cat.name).reduce((s,g)=>s+(+g.amount),0);
+    const debitSp=debitGs.filter(g=>g.category===cat.name).reduce((s,g)=>s+(+g.amount),0);
+    const creditSp=creditInstGs.filter(g=>g.category===cat.name).reduce((s,g)=>s+(g._cuota||g.amount/(+g.installments||1)),0);
+    const sp=debitSp+creditSp;
     const bu=+cat.budget||0;
     const pct=bu>0?Math.min((sp/bu)*100,100):0;
     const ov=sp>bu&&bu>0;
@@ -1415,6 +1445,15 @@ function selTxCur(key,cur,btn){
 // ============================================================
 // GASTO FLOW
 // ============================================================
+function txToggle(e,el){
+  // Close all others first
+  document.querySelectorAll('.txi.expanded').forEach(x=>{if(x!==el)x.classList.remove('expanded');});
+  el.classList.toggle('expanded');
+  if(el.classList.contains('expanded')){
+    setTimeout(()=>el.scrollIntoView({behavior:'smooth',block:'nearest'}),50);
+  }
+}
+
 function setF(c){filt=c;rTxList();}
 function delG(id){
   const g=S.gastos.find(x=>x.id===id);
@@ -1442,7 +1481,8 @@ function goConfirm(src){
   }
   if(!desc||isNaN(amt)||!date){toast('Completá descripción, monto y fecha');return;}
   const cur=src==='scan'?txCur.scan:txCur.manual;
-  pendC={desc,amount:toUSD(amt,cur),category:cat,date,note,origAmount:amt,origCur:cur};pendSrc=src;
+  const recurring=src==='manual'&&document.getElementById('mRecurring')?.checked;
+  pendC={desc,amount:toUSD(amt,cur),category:cat,date,note,origAmount:amt,origCur:cur,recurring};pendSrc=src;
   // reset pay type UI — default to debit
   selPay('debit');
   document.getElementById('instRow').classList.remove('sh');
@@ -1463,11 +1503,11 @@ function confirmPay(){
   const payType=isCr?'credit':'debit';
   const inst=isCr?parseInt(document.getElementById('instSel').value):1;
   const g=pendC;
-  S.gastos.push({id:Date.now()+Math.random().toString(36).substr(2,5),desc:g.desc,amount:+g.amount,category:g.category,date:g.date,note:g.note||'',payType,installments:inst});
+  S.gastos.push({id:Date.now()+Math.random().toString(36).substr(2,5),desc:g.desc,amount:+g.amount,category:g.category,date:g.date,note:g.note||'',payType,installments:inst,recurring:g.recurring||false});
   save();renderAll();closeM('mPayType');
   toast(payType==='credit'&&inst>1?`Crédito en ${inst} cuotas registrado ✓`:'Gasto agregado ✓');
   if(pendSrc==='scan')cancelPrev();
-  else['md','ma','mn'].forEach(id=>document.getElementById(id).value='');
+  else{['md','ma','mn'].forEach(id=>document.getElementById(id).value='');const rc=document.getElementById('mRecurring');if(rc)rc.checked=false;}
   pendC=null;tab('gastos');
 }
 
