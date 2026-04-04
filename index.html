@@ -7,7 +7,7 @@
 <!-- Firebase SDKs -->
 <script type="module">
 import { initializeApp } from 'https://www.gstatic.com/firebasejs/10.12.0/firebase-app.js';
-import { getAuth, GoogleAuthProvider, signInWithRedirect, signInWithPopup, getRedirectResult, signOut, onAuthStateChanged }
+import { getAuth, GoogleAuthProvider, signInWithRedirect, signInWithPopup, getRedirectResult, signOut, onAuthStateChanged, browserLocalPersistence, setPersistence }
   from 'https://www.gstatic.com/firebasejs/10.12.0/firebase-auth.js';
 import { getFirestore, doc, getDoc, setDoc }
   from 'https://www.gstatic.com/firebasejs/10.12.0/firebase-firestore.js';
@@ -26,16 +26,29 @@ const auth = getAuth(app);
 const db = getFirestore(app);
 const provider = new GoogleAuthProvider();
 
-// Mobile uses redirect (avoids popup CORS issues), desktop tries popup first
-const isMobile = /iPhone|iPad|Android/i.test(navigator.userAgent);
+// Set persistent local storage so session survives Safari redirects
+setPersistence(auth, browserLocalPersistence).catch(e => console.error('Persistence error:', e));
+
 window._fbSignIn = async () => {
-  if (isMobile) {
-    await signInWithRedirect(auth, provider);
-  } else {
-    try { await signInWithPopup(auth, provider); }
-    catch(e) { await signInWithRedirect(auth, provider); }
+  // Safari (all modes) and Chrome on iOS block popups — use redirect
+  const needsRedirect = /iPhone|iPad/i.test(navigator.userAgent) || 
+    (navigator.userAgent.includes('Safari') && !navigator.userAgent.includes('Chrome')) ||
+    window.navigator.standalone === true; // PWA mode
+  try {
+    if (needsRedirect) {
+      await signInWithRedirect(auth, provider);
+    } else {
+      await signInWithPopup(auth, provider);
+    }
+  } catch(e) {
+    console.error('Login error:', e.code, e.message);
   }
 };
+
+// Check redirect result on every page load — essential for Safari/PWA
+getRedirectResult(auth)
+  .then(result => { if(result?.user) console.log('Redirect login OK:', result.user.email); })
+  .catch(e => { if(e.code !== 'auth/null-user') console.error('Redirect result:', e.code); });
 window._fbSignOut = () => signOut(auth);
 
 window._fbSave = async (stateJson) => {
@@ -57,8 +70,7 @@ window._fbLoad = async () => {
   } catch(e) { console.error('Firestore load error:', e); return null; }
 };
 
-// Handle redirect result (fires after mobile redirect login)
-getRedirectResult(auth).catch(e => console.error('Redirect result error:', e));
+
 
 onAuthStateChanged(auth, (user) => {
   window._fbUser = user || null;
@@ -320,6 +332,21 @@ onAuthStateChanged(auth, (user) => {
   .emoji-cell:hover{background:var(--accent-light)}
   .emoji-cell.selected{background:var(--accent-light);outline:2px solid var(--accent)}
 
+  /* TAP CARDS */
+  .tap-card{cursor:pointer;transition:transform .12s,filter .12s}
+  .tap-card:active{transform:scale(.97);filter:brightness(.93)}
+
+  /* MÁS ITEMS */
+  .mas-item{display:flex;align-items:center;gap:12px;padding:14px 16px;background:var(--bg);border:none;border-radius:var(--r);font-family:inherit;font-size:15px;font-weight:600;cursor:pointer;text-align:left;width:100%;transition:background .15s;color:var(--text)}
+  .mas-item:hover{background:var(--accent-light)}
+  .mas-item span{flex:1}
+
+  /* TX TOUCH — tap to reveal actions */
+  .txi{transition:background .15s}
+  .tx-actions{display:none;gap:6px;margin-top:8px;padding-top:8px;border-top:1px solid var(--border)}
+  .txi.expanded .tx-actions{display:flex}
+  .txi.expanded{background:var(--bg)}
+
   /* FLOATING SCAN BUTTON */
   .fab{position:fixed;bottom:28px;right:20px;width:56px;height:56px;border-radius:50%;background:var(--accent);border:none;color:#fff;font-size:24px;cursor:pointer;box-shadow:0 4px 16px rgba(71,114,250,.4);display:flex;align-items:center;justify-content:center;z-index:40;transition:transform .15s,box-shadow .15s}
   .fab:hover{transform:scale(1.08);box-shadow:0 6px 20px rgba(71,114,250,.5)}
@@ -465,8 +492,19 @@ onAuthStateChanged(auth, (user) => {
 
 <div class="mo hid" id="mEditBudget" onclick="overlayClose(event,'mEditBudget')">
   <div class="modal"><div class="mh"></div>
-    <div class="mt" id="ebTitle">Editar presupuesto</div>
-    <div class="fld" style="margin-bottom:14px"><div class="fl cur-lbl">Presupuesto mensual (USD)</div><input type="number" class="fi" id="ebInput" placeholder="0"></div>
+    <div class="mt" id="ebTitle">Editar categoría</div>
+    <div class="fr" style="margin-bottom:8px">
+      <div class="fld"><div class="fl">Nombre</div><input type="text" class="fi" id="ebName" placeholder="Nombre"></div>
+      <div class="fld"><div class="fl cur-lbl">Presupuesto (USD)</div><input type="number" class="fi" id="ebInput" placeholder="0"></div>
+    </div>
+    <div class="fld" style="margin-bottom:14px">
+      <div class="fl">Emoji</div>
+      <div class="emoji-picker-wrap">
+        <div class="emoji-sel-display" id="ebEmojiDisplay" onclick="toggleEmojiPicker('eb')">📦 <span style="font-size:11px;color:var(--text-muted)">tocá para cambiar</span></div>
+        <div class="emoji-grid-wrap hid" id="ebEmojiGrid"></div>
+      </div>
+      <input type="hidden" id="ebEmoji" value="📦">
+    </div>
     <div style="display:flex;gap:8px">
       <button class="btn bp" onclick="saveEditBudget()">Guardar</button>
       <button class="btn bg" onclick="closeM('mEditBudget')">Cancelar</button>
@@ -508,13 +546,37 @@ onAuthStateChanged(auth, (user) => {
 <div class="mo hid" id="mAddGoal" onclick="overlayClose(event,'mAddGoal')">
   <div class="modal"><div class="mh"></div>
     <div class="mt" id="agTitle">Agregar ahorro</div>
+    <div class="fr" style="margin-bottom:8px">
+      <div class="fld">
+        <div class="fl-row"><div class="fl">Monto</div><div class="mini-cur" id="cur-addgoal"><button class="mini-cur-btn on" onclick="selTxCur('addgoal','USD',this)">USD</button><button class="mini-cur-btn" onclick="selTxCur('addgoal','UYU',this)">UYU</button></div></div>
+        <input type="number" class="fi" id="agAmt" placeholder="0">
+      </div>
+      <div class="fld"><div class="fl">Fecha</div><input type="date" class="fi" id="agDate"></div>
+    </div>
     <div class="fld" style="margin-bottom:14px">
-      <div class="fl-row"><div class="fl">Monto a agregar</div><div class="mini-cur" id="cur-addgoal"><button class="mini-cur-btn on" onclick="selTxCur('addgoal','USD',this)">USD</button><button class="mini-cur-btn" onclick="selTxCur('addgoal','UYU',this)">UYU</button></div></div>
-      <input type="number" class="fi" id="agAmt" placeholder="0">
+      <div class="fl">Nota (opcional)</div>
+      <input type="text" class="fi" id="agNote" placeholder="Ej: Transferencia de sueldo">
     </div>
     <div style="display:flex;gap:8px">
       <button class="btn bgn" onclick="confirmAddGoal()">Agregar</button>
       <button class="btn bg" onclick="closeM('mAddGoal')">Cancelar</button>
+    </div>
+  </div>
+</div>
+
+<!-- MÁS MODAL -->
+<div class="mo hid" id="mMas" onclick="overlayClose(event,'mMas')">
+  <div class="modal"><div class="mh"></div>
+    <div class="mt" style="margin-bottom:16px">Más secciones</div>
+    <div style="display:flex;flex-direction:column;gap:8px">
+      <button class="mas-item" onclick="closeMas();tab('escanear')">📸 <span>Escanear recibo</span></button>
+      <button class="mas-item" onclick="closeMas();tab('ahorros')">🎯 <span>Ahorros</span></button>
+      <button class="mas-item" onclick="closeMas();tab('anual')">📊 <span>Vista anual</span></button>
+      <button class="mas-item" onclick="closeMas();tab('presupuestos')">⚙️ <span>Presupuestos y categorías</span></button>
+    </div>
+    <div style="margin-top:16px;padding-top:14px;border-top:1px solid var(--border);display:flex;justify-content:space-between;align-items:center">
+      <button class="btn bg" style="font-size:12px" onclick="openM('mApiKey');closeMas()">🔑 API Key</button>
+      <button class="btn bg" style="font-size:12px;color:var(--red)" onclick="window._fbSignOut();closeMas()">↩ Cerrar sesión</button>
     </div>
   </div>
 </div>
@@ -540,21 +602,16 @@ onAuthStateChanged(auth, (user) => {
         <button class="cur-btn on" id="btnUSD" onclick="setCur('USD')">USD</button>
         <button class="cur-btn" id="btnUYU" onclick="setCur('UYU')">UYU</button>
       </div>
-      <span id="userInfo" style="display:flex;align-items:center"></span>
-      <button class="icon-btn" onclick="openM('mApiKey')" title="API Key">🔑</button>
-      <button class="icon-btn" onclick="window._fbSignOut()" title="Cerrar sesión" style="font-size:13px">↩</button>
+      <span id="userInfo" style="display:flex;align-items:center;cursor:pointer" onclick="openMas()"></span>
     </div>
   </div>
   <div style="font-size:10px;color:var(--text-muted);text-align:right;padding:0 16px 8px;margin-top:-6px" class="tc-display">cargando TC...</div>
   <div class="nav-tabs">
-    <button class="nav-tab on" onclick="tab('resumen')">Resumen</button>
-    <button class="nav-tab" onclick="tab('gastos')">Gastos</button>
-    <button class="nav-tab" onclick="tab('escanear')">Escanear</button>
-    <button class="nav-tab" onclick="tab('ingresos')">Ingresos</button>
-    <button class="nav-tab" onclick="tab('credito')">Crédito</button>
-    <button class="nav-tab" onclick="tab('ahorros')">Ahorros</button>
-    <button class="nav-tab" onclick="tab('anual')">Anual</button>
-    <button class="nav-tab" onclick="tab('presupuestos')">Presupuestos</button>
+    <button class="nav-tab on" id="nt-resumen" onclick="tab('resumen')">Resumen</button>
+    <button class="nav-tab" id="nt-gastos" onclick="tab('gastos')">Gastos</button>
+    <button class="nav-tab" id="nt-ingresos" onclick="tab('ingresos')">Ingresos</button>
+    <button class="nav-tab" id="nt-credito" onclick="tab('credito')">Crédito</button>
+    <button class="nav-tab" id="nt-mas" onclick="openMas()">Más ›</button>
   </div>
 </div>
 
@@ -568,25 +625,25 @@ onAuthStateChanged(auth, (user) => {
       <button class="marr" onclick="chM(1)">›</button>
     </div>
     <div class="sg">
-      <div class="sc ab" style="cursor:pointer" onclick="tab('gastos')">
-        <div class="sl li">Gastado</div>
+      <div class="sc ab tap-card" onclick="tab('gastos')">
+        <div class="sl li">Gastado este mes</div>
         <div class="sv li" id="sumSpent">$0</div>
-        <div class="ss li" id="sumCount">0 gastos →</div>
+        <div class="ss li" id="sumCount">ver gastos ›</div>
       </div>
-      <div class="sc gb" style="cursor:pointer" onclick="tab('ingresos')">
+      <div class="sc gb tap-card" onclick="tab('ingresos')">
         <div class="sl li" id="sumSalaryLbl">Ingreso mensual</div>
         <div class="sv li" id="sumSalary">$0</div>
-        <div class="ss li">ver detalle →</div>
+        <div class="ss li">ver detalle ›</div>
       </div>
-      <div class="sc" style="cursor:pointer" onclick="tab('presupuestos')">
+      <div class="sc tap-card" onclick="tab('presupuestos')">
         <div class="sl">Presupuesto</div>
         <div class="sv" id="sumBudget">$0</div>
-        <div class="ss">configurar →</div>
+        <div class="ss">configurar ›</div>
       </div>
-      <div class="sc">
+      <div class="sc tap-card" onclick="tab('ahorros')">
         <div class="sl">Disponible</div>
         <div class="sv" id="sumLeft">$0</div>
-        <div class="ss" id="sumLeftLbl">del salario</div>
+        <div class="ss" id="sumLeftLbl">del ingreso ›</div>
       </div>
     </div>
     <div class="cbox" id="creditBox" style="display:none;cursor:pointer" onclick="tab('credito')">
@@ -626,8 +683,8 @@ onAuthStateChanged(auth, (user) => {
 
     <!-- MODE TOGGLE -->
     <div style="display:flex;gap:8px;margin-bottom:14px">
-      <button class="btn" id="modeRecibo" onclick="setMode('recibo')" style="flex:1;background:var(--accent);color:#fff;font-size:12px">📸 Un recibo</button>
-      <button class="btn bg" id="modeEstado" onclick="setMode('estado')" style="flex:1;font-size:12px">📄 Estado de cuenta</button>
+      <button class="btn" id="modeRecibo" onclick="setMode('recibo')" style="flex:1;background:var(--accent);color:#fff;font-size:12px">📸 Foto de ticket</button>
+      <button class="btn bg" id="modeEstado" onclick="setMode('estado')" style="flex:1;font-size:12px">🏦 Estado bancario</button>
     </div>
 
     <!-- SINGLE RECEIPT MODE -->
@@ -943,7 +1000,7 @@ function init() {
 
 function setToday(){
   const t=new Date().toISOString().split('T')[0];
-  ['pf','mf','if'].forEach(id=>{const e=document.getElementById(id);if(e)e.value=t;});
+  ['pf','mf','if','agDate'].forEach(id=>{const e=document.getElementById(id);if(e)e.value=t;});
 }
 
 // ============================================================
@@ -1064,25 +1121,31 @@ function rTxList(){
         ?`<div style="font-size:10px;color:var(--text-muted)">Total: ${fmt(g.amount)}</div>`
         :(isCr&&inst>1?`<div style="font-size:10px;color:var(--purple)">${fmt(cuota)}/mes</div>`:'');
 
-      // Only show delete on original purchase entry, not on virtual installment rows
-      const del=!isInst
-        ?`<div style="display:flex;flex-direction:column;gap:3px;align-items:flex-end">
-            <button class="txdel" style="position:static;opacity:1;width:auto;padding:2px 6px;font-size:9px;border-radius:4px;background:var(--accent-light);color:var(--accent)" onclick="openEditGasto('${g.id}')">editar</button>
-            <button class="txdel" style="position:static;opacity:1;width:auto;padding:2px 6px;font-size:9px;border-radius:4px" onclick="delG('${g.id}')">eliminar</button>
+      // Only show original credit purchase in the month it was made, not as duplicate alongside cuota
+      // For installment rows: show cuota info cleanly
+      const actions=!isInst
+        ?`<div class="tx-actions">
+            <button style="flex:1;padding:10px;font-size:13px;font-weight:600;border-radius:var(--r);border:none;background:var(--accent-light);color:var(--accent);cursor:pointer" onclick="event.stopPropagation();openEditGasto('${g.id}')">✏️ Editar</button>
+            <button style="flex:1;padding:10px;font-size:13px;font-weight:600;border-radius:var(--r);border:none;background:var(--red-light);color:var(--red);cursor:pointer" onclick="event.stopPropagation();delG('${g.id}')">🗑 Eliminar</button>
           </div>`
         :'';
 
-      h+=`<div class="txi"${isInst?' style="border-left:3px solid var(--purple)"':''}>
-        <div class="txico" style="background:${col}22">${em}</div>
-        <div class="txb">
-          <div class="txd">${g.desc}</div>
-          <div class="txm">${badge}<span>${g.category}</span>${g.note?`<span>· ${g.note}</span>`:''}</div>
+      const tapAttr=!isInst?`onclick="this.classList.toggle('expanded')"`:''
+
+      h+=`<div class="txi"${isInst?' style="border-left:3px solid var(--purple)"':''} ${tapAttr}>
+        <div style="display:flex;align-items:center;gap:10px;width:100%">
+          <div class="txico" style="background:${col}22;flex-shrink:0">${em}</div>
+          <div class="txb">
+            <div class="txd">${g.desc}</div>
+            <div class="txm">${badge}<span>${g.category}</span>${g.note?`<span>· ${g.note}</span>`:''}</div>
+          </div>
+          <div class="txr" style="flex-shrink:0">
+            <div class="txa" style="${isInst?'color:var(--purple)':''}">${displayAmt}</div>
+            ${subAmt}
+          </div>
+          ${!isInst?`<div style="color:var(--text-muted);font-size:18px;flex-shrink:0">›</div>`:''}
         </div>
-        <div class="txr">
-          <div class="txa" style="${isInst?'color:var(--purple)':''}">${displayAmt}</div>
-          ${subAmt}
-        </div>
-        ${del}
+        ${actions}
       </div>`;
     });
   });
@@ -1133,7 +1196,7 @@ function rSummary(){
   document.getElementById('sumSalaryLbl').textContent=extraInc>0?'salario + extras':'ingreso mensual';
   document.getElementById('sumBudget').textContent=fmt(budTot);
   document.getElementById('sumLeft').textContent=fmt(Math.abs(left));
-  const leftLbl=left<0?'en exceso':(totalSaved>0||creditThisMonth>0?'descontando compromisos':'disponible');
+  const leftLbl=left<0?'en exceso ⚠️':(totalSaved>0||creditThisMonth>0?'descontando compromisos':'libre este mes');
   document.getElementById('sumLeftLbl').textContent=leftLbl;
   document.getElementById('sumLeft').className='sv '+(left<0?'rd':'gn');
   document.getElementById('salDisp').textContent=fmt(S.salary);
@@ -1237,13 +1300,29 @@ function rCredit(){
 function rSavings(){
   const tot=S.goals.reduce((s,g)=>s+(+g.saved||0),0);
   document.getElementById('savTot').textContent=fmt(tot);
-  document.getElementById('savSub').textContent=`en ${S.goals.length} objetivo${S.goals.length!==1?'s':''}`;
+  document.getElementById('savSub').textContent=`en ${S.goals.length} bolsillo${S.goals.length!==1?'s':''}`;
   const con=document.getElementById('goalList');
   if(!S.goals.length){con.innerHTML=`<div class="empty"><div class="ee">🎯</div><div class="et">Sin ahorros todavía</div><div class="es">Creá tu primer objetivo o bolsillo de ahorro</div></div>`;return;}
   con.innerHTML=S.goals.map((g,i)=>{
     const hasTarget=g.target>0;
     const pct=hasTarget?Math.min((g.saved/g.target)*100,100):0;
     const done=hasTarget&&g.saved>=g.target;
+    // Entries history
+    const entries=(g.entries||[]).slice().sort((a,b)=>new Date(b.date)-new Date(a.date));
+    const entriesHTML=entries.length?`
+      <div style="margin-top:10px;border-top:1px solid var(--border);padding-top:8px">
+        <div style="font-size:10px;font-weight:700;color:var(--text-muted);text-transform:uppercase;letter-spacing:.5px;margin-bottom:6px">Historial</div>
+        ${entries.map((e,ei)=>`
+          <div style="display:flex;align-items:center;gap:8px;padding:6px 0;border-bottom:1px solid var(--border-light)">
+            <div style="flex:1">
+              <div style="font-size:12px;font-weight:600;color:var(--green)">${fmt(e.amount)}</div>
+              <div style="font-size:10px;color:var(--text-muted)">${new Date(e.date+'T12:00:00').toLocaleDateString('es-UY',{day:'numeric',month:'short',year:'numeric'})}${e.note?` · ${e.note}`:''}</div>
+            </div>
+            <button onclick="delGoalEntry(${i},${ei})" style="background:var(--red-light);border:none;color:var(--red);width:24px;height:24px;border-radius:6px;cursor:pointer;font-size:12px;display:flex;align-items:center;justify-content:center;flex-shrink:0">✕</button>
+          </div>`).join('')}
+      </div>`:
+      `<div style="font-size:11px;color:var(--text-muted);margin-top:8px;text-align:center">Sin entradas todavía</div>`;
+
     return `<div class="goal-card">
       <div class="gh"><div class="ge">${g.emoji}</div><div class="gn">${g.name}</div>
         <div class="gp">${done?'✅':hasTarget?Math.round(pct)+'%':''}</div>
@@ -1258,8 +1337,19 @@ function rSavings(){
         <button class="gab gab-e" onclick="openEditGoal(${i})">Editar</button>
         <button class="gab gab-d" onclick="delGoal(${i})">Eliminar</button>
       </div>
+      ${entriesHTML}
     </div>`;
   }).join('');
+}
+
+function delGoalEntry(goalIdx,entryIdx){
+  const goal=S.goals[goalIdx];
+  if(!goal.entries)return;
+  const entry=goal.entries[entryIdx];
+  if(!confirm(`¿Eliminar este ahorro de ${fmt(entry.amount)}?`))return;
+  goal.entries.splice(entryIdx,1);
+  goal.saved=goal.entries.reduce((s,e)=>s+(+e.amount),0);
+  save();rSavings();toast('Entrada eliminada');
 }
 
 // ============================================================
@@ -1320,7 +1410,13 @@ function selTxCur(key,cur,btn){
 // GASTO FLOW
 // ============================================================
 function setF(c){filt=c;rTxList();}
-function delG(id){S.gastos=S.gastos.filter(g=>g.id!==id);save();renderAll();toast('Gasto eliminado');}
+function delG(id){
+  const g=S.gastos.find(x=>x.id===id);
+  const label=g?`"${g.desc}"`:'este gasto';
+  if(!confirm(`¿Eliminar ${label}?`))return;
+  S.gastos=S.gastos.filter(g=>g.id!==id);
+  save();renderAll();toast('Gasto eliminado');
+}
 
 // Step 1: collect form data, show pay type modal
 function goConfirm(src){
@@ -1341,9 +1437,8 @@ function goConfirm(src){
   if(!desc||isNaN(amt)||!date){toast('Completá descripción, monto y fecha');return;}
   const cur=src==='scan'?txCur.scan:txCur.manual;
   pendC={desc,amount:toUSD(amt,cur),category:cat,date,note,origAmount:amt,origCur:cur};pendSrc=src;
-  // reset pay type UI
-  document.getElementById('btnDb').className='pt-btn';
-  document.getElementById('btnCr').className='pt-btn';
+  // reset pay type UI — default to debit
+  selPay('debit');
   document.getElementById('instRow').classList.remove('sh');
   document.getElementById('ptDesc').textContent=`"${desc}" — ${cur==='UYU'?'$U ':' USD '}${amt}`;
   openM('mPayType');
@@ -1413,11 +1508,26 @@ function saveGoal(){
   else S.goals.push({id:Date.now().toString(),name,emoji,target,saved});
   save();rSavings();closeM('mNewGoal');toast('Objetivo guardado');
 }
-function openAddGoal(i){addGoalIdx=i;document.getElementById('agTitle').textContent=`Agregar a "${S.goals[i].name}"`;document.getElementById('agAmt').value='';openM('mAddGoal');}
+function openAddGoal(i){
+  addGoalIdx=i;
+  document.getElementById('agTitle').textContent=`Agregar a "${S.goals[i].name}"`;
+  document.getElementById('agAmt').value='';
+  document.getElementById('agDate').value=new Date().toISOString().split('T')[0];
+  document.getElementById('agNote').value='';
+  openM('mAddGoal');
+}
 function confirmAddGoal(){
   const v=parseFloat(document.getElementById('agAmt').value);
+  const date=document.getElementById('agDate').value;
+  const note=document.getElementById('agNote').value.trim();
   if(isNaN(v)||v<=0){toast('Ingresá un monto');return;}
-  S.goals[addGoalIdx].saved=(+S.goals[addGoalIdx].saved||0)+toUSD(v,txCur.addgoal);
+  if(!date){toast('Ingresá una fecha');return;}
+  const goal=S.goals[addGoalIdx];
+  // Initialize entries array if not exists (migration from old format)
+  if(!goal.entries)goal.entries=[];
+  const amtUSD=toUSD(v,txCur.addgoal);
+  goal.entries.push({id:Date.now().toString(),amount:amtUSD,date,note,currency:txCur.addgoal,origAmount:v});
+  goal.saved=(goal.entries.reduce((s,e)=>s+(+e.amount),0));
   save();rSavings();closeM('mAddGoal');toast('Ahorro registrado ✓');
 }
 function delGoal(i){if(!confirm(`¿Eliminar "${S.goals[i].name}"?`))return;S.goals.splice(i,1);save();rSavings();toast('Objetivo eliminado');}
@@ -1511,8 +1621,30 @@ function saveNewCat(){
   }
   toast(`"${name}" agregada`);
 }
-function openEB(i){eCatIdx=i;document.getElementById('ebTitle').textContent=`Presupuesto — ${S.categories[i].name}`;document.getElementById('ebInput').value=S.categories[i].budget||0;openM('mEditBudget');}
-function saveEditBudget(){const v=parseFloat(document.getElementById('ebInput').value)||0;S.categories[eCatIdx].budget=toUSD(v);save();renderAll();closeM('mEditBudget');toast('Presupuesto actualizado');}
+function openEB(i){
+  eCatIdx=i;
+  const cat=S.categories[i];
+  document.getElementById('ebTitle').textContent=`Editar — ${cat.name}`;
+  document.getElementById('ebName').value=cat.name;
+  document.getElementById('ebInput').value=toUSD(cat.budget||0)===cat.budget?cat.budget||0:cat.budget||0;
+  setEmojiDisplay('eb',cat.emoji||'📦');
+  openM('mEditBudget');
+}
+function saveEditBudget(){
+  const name=document.getElementById('ebName').value.trim();
+  if(!name){toast('Ingresá un nombre');return;}
+  const v=parseFloat(document.getElementById('ebInput').value)||0;
+  const emoji=document.getElementById('ebEmoji').value||'📦';
+  const oldName=S.categories[eCatIdx].name;
+  S.categories[eCatIdx].name=name;
+  S.categories[eCatIdx].budget=toUSD(v);
+  S.categories[eCatIdx].emoji=emoji;
+  // Update all gastos that used the old category name
+  if(oldName!==name){
+    S.gastos.forEach(g=>{if(g.category===oldName)g.category=name;});
+  }
+  save();popCats();renderAll();closeM('mEditBudget');toast('Categoría actualizada');
+}
 function delCat(i){if(!confirm(`¿Eliminar "${S.categories[i].name}"?`))return;S.categories.splice(i,1);save();popCats();renderAll();toast('Categoría eliminada');}
 
 // ============================================================
@@ -1971,11 +2103,19 @@ function rAnual(){
 function openM(id){document.getElementById(id).classList.remove('hid');}
 function closeM(id){document.getElementById(id).classList.add('hid');}
 function overlayClose(e,id){if(e.target===e.currentTarget)closeM(id);}
+function openMas(){openM('mMas');}
+function closeMas(){closeM('mMas');}
 
 const TABS=['resumen','gastos','escanear','ingresos','credito','ahorros','anual','presupuestos'];
+const NAV_TABS_DIRECT=['resumen','gastos','ingresos','credito'];
+
 function tab(name){
-  TABS.forEach(t=>document.getElementById('t-'+t).style.display=t===name?'block':'none');
-  document.querySelectorAll('.nav-tab').forEach(b=>b.classList.toggle('on',b.getAttribute('onclick').includes(name)));
+  TABS.forEach(t=>{const el=document.getElementById('t-'+t);if(el)el.style.display=t===name?'block':'none';});
+  // Update direct nav tabs
+  NAV_TABS_DIRECT.forEach(t=>{const btn=document.getElementById('nt-'+t);if(btn)btn.classList.toggle('on',t===name);});
+  // "Más" button active when in secondary sections
+  const masBtn=document.getElementById('nt-mas');
+  if(masBtn)masBtn.classList.toggle('on',['escanear','ahorros','anual','presupuestos'].includes(name));
   if(name==='anual')rAnual();
 }
 
