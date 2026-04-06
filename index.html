@@ -7,7 +7,7 @@
 <!-- Firebase SDKs -->
 <script type="module">
 import { initializeApp } from 'https://www.gstatic.com/firebasejs/10.12.0/firebase-app.js';
-import { getAuth, GoogleAuthProvider, signInWithRedirect, signInWithPopup, getRedirectResult, signOut, onAuthStateChanged, browserLocalPersistence, setPersistence }
+import { getAuth, GoogleAuthProvider, signInWithRedirect, signInWithPopup, getRedirectResult, signOut, onAuthStateChanged, browserLocalPersistence, initializeAuth, indexedDBLocalPersistence }
   from 'https://www.gstatic.com/firebasejs/10.12.0/firebase-auth.js';
 import { getFirestore, doc, getDoc, setDoc }
   from 'https://www.gstatic.com/firebasejs/10.12.0/firebase-firestore.js';
@@ -22,12 +22,12 @@ const firebaseConfig = {
 };
 
 const app = initializeApp(firebaseConfig);
-const auth = getAuth(app);
+// Initialize auth with persistence — indexedDB first (more reliable), fallback to localStorage
+const auth = initializeAuth(app, {
+  persistence: [indexedDBLocalPersistence, browserLocalPersistence]
+});
 const db = getFirestore(app);
 const provider = new GoogleAuthProvider();
-
-// Set persistent local storage so session survives Safari redirects
-setPersistence(auth, browserLocalPersistence).catch(e => console.error('Persistence error:', e));
 
 window._fbSignIn = async () => {
   // Safari (all modes) and Chrome on iOS block popups — use redirect
@@ -1295,7 +1295,8 @@ function rCatRows(){
     const bu=+cat.budget||0;
     const pct=bu>0?Math.min((sp/bu)*100,100):0;
     const ov=sp>bu&&bu>0;
-    const col=ov?'#ef4444':cat.color;
+    const atMax=bu>0&&sp>=bu&&!ov;
+    const col=ov?'var(--red)':(pct>=100?'var(--accent)':cat.color);
     return `<div class="cr" style="cursor:pointer" onclick="setF('${cat.name}');tab('gastos')">
       <div class="ci" style="background:${cat.color}22">${cat.emoji}</div>
       <div style="flex:1"><div class="cn">${cat.name}</div><div class="cbw"><div class="cbf" style="width:${pct}%;background:${col}"></div></div></div>
@@ -1437,7 +1438,7 @@ function rBudget(){
     const bu=+cat.budget||0;
     const pct=bu>0?Math.min((sp/bu)*100,100):0;
     const ov=sp>bu&&bu>0;
-    const col=ov?'#ef4444':cat.color;
+    const col=ov?'var(--red)':(pct>=100?'var(--accent)':cat.color);
     return `<div class="bi">
       <div class="biico" style="background:${cat.color}22">${cat.emoji}</div>
       <div class="bib"><div class="bin">${cat.name}</div><div class="bibar"><div class="bibf" style="width:${pct}%;background:${col}"></div></div></div>
@@ -1960,8 +1961,8 @@ function renderBulk(){
     const amtDisp=(+tx.amount||0).toLocaleString('es-UY',{minimumFractionDigits:0,maximumFractionDigits:2});
     return `<div class="bulk-item${tx._excluded?' excluded':''}" id="bulk-item-${i}">
       <div class="bulk-item-top">
-        <div class="bulk-item-desc">${tx.desc||'Sin descripción'}</div>
-        <div class="bulk-item-amt">${tx.currency==='USD'?'USD':'$U'} ${amtDisp}</div>
+        <input class="fi bulk-item-desc" value="${(tx.desc||'Sin descripción').replace(/"/g,'&quot;')}" style="font-size:13px;font-weight:600;padding:5px 8px;flex:1;min-width:0" oninput="bulkTxs[${i}].desc=this.value" placeholder="Descripción">
+        <div class="bulk-item-amt" style="flex-shrink:0;padding-left:6px">${tx.currency==='USD'?'USD':'$U'} ${amtDisp}</div>
         ${excBtn}
       </div>
       <div class="bulk-item-fields">
@@ -2084,7 +2085,7 @@ async function scanReceipt(file){
         messages:[{role:'user',content:[
           {type:'image',source:{type:'base64',media_type:file.type||'image/jpeg',data:b64}},
           {type:'text',text:`Analizá este recibo/ticket/captura y devolvé SOLO un JSON:
-{"desc":"nombre del comercio o descripción breve","amount":número total sin símbolo,"date":"YYYY-MM-DD o null","category":"una de: ${catList} — o null si no podés determinarlo con confianza","note":"detalle breve o null"}
+{"desc":"nombre del comercio o descripción breve","amount":número total sin símbolo,"currency":"UYU" o "USD" según la moneda del recibo,"date":"YYYY-MM-DD o null","category":"una de: ${catList} — o null si no podés determinarlo con confianza","note":"detalle breve o null"}
 Solo JSON, sin texto extra ni backticks.`}
         ]}]
       })
@@ -2114,6 +2115,18 @@ function showPreview(data){
   if(data.date)document.getElementById('pf').value=data.date;
   const sel=document.getElementById('pc');
   if(data.category){const o=[...sel.options].find(o=>o.value===data.category);if(o)sel.value=data.category;}
+  // Apply currency detected by AI
+  if(data.currency==='UYU'||data.currency==='USD'){
+    const cur=data.currency;
+    const curScan=document.getElementById('cur-scan');
+    if(curScan){
+      curScan.querySelectorAll('.mini-cur-btn').forEach(b=>{
+        const isTarget=b.textContent.trim()===cur;
+        b.className='mini-cur-btn'+(isTarget?(cur==='UYU'?' on-uyu':' on'):'');
+      });
+      txCur.scan=cur;
+    }
+  }
   document.getElementById('prev').classList.add('sh');
   document.getElementById('prev').scrollIntoView({behavior:'smooth',block:'start'});
 }
