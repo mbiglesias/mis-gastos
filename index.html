@@ -636,10 +636,10 @@ onAuthStateChanged(auth, (user) => {
         <div class="sv li" id="sumLeft">$0</div>
         <div class="ss li" id="sumLeftLbl">libre este mes ›</div>
       </div>
-      <div class="sc tap-card" onclick="tab('presupuestos')">
+      <div class="sc tap-card" id="budgetCard" onclick="tab('presupuestos')">
         <div class="sl">Presupuesto</div>
         <div class="sv" id="sumBudget">$0</div>
-        <div class="ss">configurar ›</div>
+        <div class="ss" id="sumBudgetLbl">configurar ›</div>
       </div>
       <div class="sc tap-card" onclick="tab('ingresos')">
         <div class="sl" id="sumSalaryLbl">Ingreso mensual</div>
@@ -679,6 +679,7 @@ onAuthStateChanged(auth, (user) => {
       <input type="text" class="fi" id="txSearch" placeholder="🔍  Buscar gastos..." oninput="rTxList()" style="background:var(--white)">
     </div>
     <div class="chips" id="chips"></div>
+    <div id="filtTotal" style="display:none;padding:8px 16px;background:var(--accent-light);border-radius:var(--r);margin:0 0 8px;font-size:13px;font-weight:600;color:var(--accent)"></div>
     <div id="txList"></div>
   </div>
 
@@ -828,7 +829,7 @@ onAuthStateChanged(auth, (user) => {
       <div class="sc pb"><div class="sl li">Crédito pendiente</div><div class="sv li" id="yCredit">$0</div></div>
     </div>
     <!-- month by month table -->
-    <div style="background:var(--white);border-radius:var(--R);overflow:hidden;box-shadow:var(--sh)">
+    <div style="background:var(--white);border-radius:var(--R);overflow:hidden;box-shadow:var(--sh);margin-bottom:14px">
       <div style="display:grid;grid-template-columns:80px 1fr 1fr 1fr;padding:10px 14px;border-bottom:1px solid var(--border)">
         <div style="font-size:10px;font-weight:700;color:var(--text-muted);text-transform:uppercase">Mes</div>
         <div style="font-size:10px;font-weight:700;color:var(--text-muted);text-transform:uppercase;text-align:right">Ingresos</div>
@@ -837,11 +838,16 @@ onAuthStateChanged(auth, (user) => {
       </div>
       <div id="annualRows"></div>
     </div>
+    <!-- category comparison by month -->
+    <div style="background:var(--white);border-radius:var(--R);overflow:hidden;box-shadow:var(--sh)">
+      <div style="padding:12px 14px;border-bottom:1px solid var(--border);font-size:13px;font-weight:700">Por categoría</div>
+      <div id="catComparison"></div>
+    </div>
   </div>
   <div id="t-credito" style="display:none">
     <div class="sg" style="margin-bottom:10px">
       <div class="sc pb"><div class="sl li">Total pendiente</div><div class="sv li" id="crTot">$0</div><div class="ss li" id="crTotSub"></div></div>
-      <div class="sc"><div class="sl">Este mes</div><div class="sv pu" id="crMon">$0</div><div class="ss" id="crMonSub"></div></div>
+      <div class="sc tap-card" onclick="filterCreditMonth()" style="cursor:pointer"><div class="sl">Este mes</div><div class="sv pu" id="crMon">$0</div><div class="ss" id="crMonSub">ver cuotas ›</div></div>
     </div>
     <div class="ft" style="margin-bottom:8px">Cuotas activas</div>
     <div id="crList"></div>
@@ -1087,10 +1093,24 @@ function rTxList(){
   if(chEl)chEl.innerHTML=cats.map(c=>`<button class="chip${filt===c?' on':''}" onclick="setF('${c}')">${c}</button>`).join('');
 
   const q=(document.getElementById('txSearch')?.value||'').toLowerCase().trim();
-  if(filt==='Crédito')gs=gs.filter(g=>g.payType==='credit');
+  if(filt==='Crédito')gs=gs.filter(g=>g.payType==='credit'||g._isInstallment);
   else if(filt!=='Todos')gs=gs.filter(g=>g.category===filt);
   if(q)gs=gs.filter(g=>g.desc.toLowerCase().includes(q)||g.category.toLowerCase().includes(q)||(g.note||'').toLowerCase().includes(q));
   gs=[...gs].sort((a,b)=>new Date(b.date)-new Date(a.date));
+
+  // Show filtered total when not showing all
+  const filtTotalEl=document.getElementById('filtTotal');
+  const isFiltered=filt!=='Todos'||q;
+  if(filtTotalEl){
+    if(isFiltered&&gs.length>0){
+      const total=gs.reduce((s,g)=>s+(g._isInstallment?g._cuota:+g.amount),0);
+      const label=q?`"${q}"`:(filt!=='Todos'?filt:'búsqueda');
+      filtTotalEl.textContent=`${label}: ${fmt(total)} en ${gs.length} gasto${gs.length!==1?'s':''}`;
+      filtTotalEl.style.display='block';
+    } else {
+      filtTotalEl.style.display='none';
+    }
+  }
 
   if(!gs.length){
     con.innerHTML=`<div class="empty"><div class="ee">🧾</div><div class="et">Sin gastos este mes</div><div class="es">Escaneá un recibo o cargá uno manualmente</div></div>`;
@@ -1224,6 +1244,18 @@ function rSummary(){
   document.getElementById('sumSpent').textContent=fmt(spent);
   document.getElementById('sumCount').textContent=`${S.gastos.filter(g=>{const d=new Date(g.date+'T12:00:00');return d.getMonth()===CM&&d.getFullYear()===CY;}).length} gasto${gs.length!==1?'s':''} →`;
   document.getElementById('sumBudget').textContent=fmt(budTot);
+  // Budget overrun indicator
+  const budCard=document.getElementById('budgetCard');
+  const budLbl=document.getElementById('sumBudgetLbl');
+  if(budTot>0){
+    const debitSpent=debitGs.reduce((s,g)=>s+(+g.amount),0);
+    const overBudget=debitSpent>budTot;
+    if(budCard){budCard.style.background=overBudget?'var(--red-light)':'';budCard.style.border=overBudget?'1.5px solid var(--red)':'';}
+    if(budLbl)budLbl.textContent=overBudget?`⚠️ Excedido por ${fmt(debitSpent-budTot)}`:'configurar ›';
+  } else {
+    if(budCard){budCard.style.background='';budCard.style.border='';}
+    if(budLbl)budLbl.textContent='configurar ›';
+  }
   document.getElementById('sumLeft').textContent=fmt(Math.abs(left));
   const leftLbl=left<0?'en exceso ⚠️':(savedThisMonth>0?'descontando ahorros':'libre este mes');
   document.getElementById('sumLeftLbl').textContent=leftLbl;
@@ -1458,6 +1490,11 @@ function txToggle(e,el){
   if(el.classList.contains('expanded')){
     setTimeout(()=>el.scrollIntoView({behavior:'smooth',block:'nearest'}),50);
   }
+}
+
+function filterCreditMonth(){
+  filt='Crédito';
+  tab('gastos');
 }
 
 function setF(c){filt=c;rTxList();}
@@ -2177,6 +2214,49 @@ function rAnual(){
     return s+Math.max(0,inst-diff)*cuota;
   },0);
   document.getElementById('yCredit').textContent=fmt(crPend);
+
+  // Category comparison by month
+  const catCon=document.getElementById('catComparison');
+  if(!catCon)return;
+  const activeMonths=MOS.map((_,m)=>m).filter(m=>{
+    const isPast=CY_annual<now.getFullYear()||(CY_annual===now.getFullYear()&&m<=now.getMonth());
+    const hasTx=S.gastos.some(g=>{const d=new Date(g.date+'T12:00:00');return d.getMonth()===m&&d.getFullYear()===CY_annual;});
+    return isPast||hasTx;
+  });
+  if(!activeMonths.length){catCon.innerHTML='<div style="padding:16px;text-align:center;color:var(--text-muted);font-size:13px">Sin datos</div>';return;}
+
+  catCon.innerHTML=S.categories.map(cat=>{
+    const monthData=activeMonths.map(m=>{
+      const gs=S.gastos.filter(g=>{const d=new Date(g.date+'T12:00:00');return d.getMonth()===m&&d.getFullYear()===CY_annual&&g.category===cat.name;});
+      return gs.reduce((s,g)=>s+(+g.amount),0);
+    });
+    const total=monthData.reduce((s,v)=>s+v,0);
+    if(total===0)return'';
+    const max=Math.max(...monthData,0.01);
+    const bu=+cat.budget||0;
+    const overMonths=bu>0?monthData.filter(v=>v>bu).length:0;
+    return `<div style="padding:12px 14px;border-bottom:1px solid var(--border)">
+      <div style="display:flex;align-items:center;gap:8px;margin-bottom:8px">
+        <span style="font-size:16px">${cat.emoji}</span>
+        <span style="font-size:13px;font-weight:600;flex:1">${cat.name}</span>
+        <span style="font-size:11px;color:var(--text-muted)">Total: ${fmt(total)}</span>
+        ${overMonths>0?`<span style="font-size:10px;background:var(--red-light);color:var(--red);border-radius:4px;padding:2px 6px;font-weight:700">⚠️ ${overMonths} mes${overMonths>1?'es':''} excedido${overMonths>1?'s':''}</span>`:''}
+      </div>
+      <div style="display:flex;gap:3px;align-items:flex-end;height:36px">
+        ${activeMonths.map((m,i)=>{
+          const v=monthData[i];
+          const pct=v>0?Math.round((v/max)*100):0;
+          const isOver=bu>0&&v>bu;
+          const isCurrent=m===CM&&CY_annual===CY;
+          return `<div style="flex:1;display:flex;flex-direction:column;align-items:center;gap:2px">
+            <div style="width:100%;background:${isOver?'var(--red)':isCurrent?'var(--accent)':cat.color};border-radius:3px 3px 0 0;height:${pct}%;min-height:${v>0?2:0}px;transition:height .3s"></div>
+            <div style="font-size:8px;color:var(--text-muted)">${MOS[m].substring(0,3)}</div>
+          </div>`;
+        }).join('')}
+      </div>
+      ${bu>0?`<div style="margin-top:4px;font-size:10px;color:var(--text-muted)">Presupuesto: ${fmt(bu)}/mes</div>`:''}
+    </div>`;
+  }).filter(Boolean).join('') || '<div style="padding:16px;text-align:center;color:var(--text-muted);font-size:13px">Sin gastos por categoría este año</div>';
 }
 
 
