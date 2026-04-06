@@ -700,7 +700,7 @@ onAuthStateChanged(auth, (user) => {
         <input type="file" id="fi" accept="image/*" onchange="handleFile(this.files[0])">
         <div class="scan-emoji">📸</div>
         <div class="scan-lbl">Fotografiá o subí un recibo / captura</div>
-        <div class="scan-sub">La IA extrae los datos automáticamente</div>
+        <div class="scan-sub">También podés <strong>pegar una imagen</strong> con ⌘V / mantener presionado → Pegar</div>
       </div>
       <div class="proc" id="proc"><div class="sp"></div><div class="pm" id="pm">Analizando...</div></div>
       <div class="prev" id="prev">
@@ -759,7 +759,7 @@ onAuthStateChanged(auth, (user) => {
         <input type="file" id="fiEstado" accept="image/*,application/pdf" onchange="handleEstado(this.files[0])">
         <div class="scan-emoji">📄</div>
         <div class="scan-lbl">Subí tu estado de cuenta</div>
-        <div class="scan-sub">Imagen o PDF — la IA identifica todas las transacciones</div>
+        <div class="scan-sub">Imagen o PDF — también podés <strong>pegar</strong> con ⌘V / mantener presionado → Pegar</div>
       </div>
 
       <div class="proc" id="procEstado"><div class="sp"></div><div class="pm" id="pmEstado">Analizando estado de cuenta...</div></div>
@@ -1060,14 +1060,16 @@ function mGastos(){
     }
     return null;
   }).filter(Boolean);
-  // For credit: create a virtual entry for the installment due this month
+  // For credit: installments are deferred 1 month (you pay next month's bill)
+  // Purchased in April → cuota 1 shows in May, cuota 2 in June, etc.
   const creditDue=[];
   S.gastos.filter(g=>g.payType==='credit').forEach(g=>{
     const start=new Date(g.date+'T12:00:00');
     const inst=+g.installments||1;
+    // diff>=1 means we're at least 1 month after purchase
     const diff=(CY-start.getFullYear())*12+(CM-start.getMonth());
-    if(diff>=0&&diff<inst){
-      creditDue.push({...g,_isInstallment:true,_instNum:diff+1,_instTotal:inst,_cuota:g.amount/inst});
+    if(diff>=1&&diff<=inst){
+      creditDue.push({...g,_isInstallment:true,_instNum:diff,_instTotal:inst,_cuota:g.amount/inst});
     }
   });
   return [...debits,...recurringDue,...creditDue];
@@ -1179,8 +1181,10 @@ function crDue(m,y){
   return S.gastos.filter(g=>{
     if(g.payType!=='credit')return false;
     const s=new Date(g.date+'T12:00:00');
+    const inst=+g.installments||1;
     const diff=(y-s.getFullYear())*12+(m-s.getMonth());
-    return diff>=0&&diff<(+g.installments||1);
+    // Deferred 1 month: cuota 1 shows the month after purchase
+    return diff>=1&&diff<=inst;
   });
 }
 
@@ -1276,8 +1280,9 @@ function rCredit(){
   const active=crGs.filter(g=>{
     const s=new Date(g.date+'T12:00:00');
     const tot=+g.installments||1;
-    const endM=s.getMonth()+tot-1;
-    const endY=s.getFullYear()+Math.floor((s.getMonth()+tot-1)/12);
+    // With 1-month deferral, last payment is tot months after purchase
+    const endM=s.getMonth()+tot;
+    const endY=s.getFullYear()+Math.floor((s.getMonth()+tot)/12);
     return new Date(endY,endM%12,1)>=new Date(now.getFullYear(),now.getMonth(),1);
   });
   const totPend=active.reduce((s,g)=>{
@@ -1285,7 +1290,8 @@ function rCredit(){
     const inst=+g.installments||1;
     const cuota=g.amount/inst;
     const diff=(now.getFullYear()-st.getFullYear())*12+(now.getMonth()-st.getMonth());
-    return s+Math.max(0,inst-diff)*cuota;
+    // Remaining = total - (diff-1) already paid (deferred by 1 month)
+    return s+Math.max(0,inst-(diff-1))*cuota;
   },0);
   const thisMon=crDue(CM,CY).reduce((s,g)=>s+(+g.amount/(+g.installments||1)),0);
 
@@ -1750,6 +1756,34 @@ function setEmojiDisplay(prefix, emoji) {
 }
 
 
+// ============================================================
+// PASTE IMAGE SUPPORT
+// ============================================================
+document.addEventListener('paste', (e) => {
+  const escTab = document.getElementById('t-escanear');
+  if (!escTab || escTab.style.display === 'none') return;
+  const items = e.clipboardData?.items;
+  if (!items) return;
+  for (const item of items) {
+    if (item.type.startsWith('image/')) {
+      e.preventDefault();
+      const file = item.getAsFile();
+      if (!file) return;
+      const modeEstado = document.getElementById('modeEstado-content');
+      if (modeEstado && modeEstado.style.display !== 'none') {
+        handleEstado(file);
+      } else {
+        handleFile(file);
+      }
+      toast('📋 Imagen pegada — analizando...');
+      return;
+    }
+  }
+});
+
+// ============================================================
+// SCAN MODE
+// ============================================================
 function setMode(mode){
   document.getElementById('modeRecibo-content').style.display=mode==='recibo'?'block':'none';
   document.getElementById('modeEstado-content').style.display=mode==='estado'?'block':'none';
