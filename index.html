@@ -533,6 +533,12 @@ onAuthStateChanged(auth, (user) => {
         <input type="number" class="fi" id="gTarget" placeholder="Sin meta">
       </div>
       <div class="fld">
+        <div class="fl">Fecha límite (opcional)</div>
+        <input type="date" class="fi" id="gDeadline" placeholder="">
+      </div>
+    </div>
+    <div class="fr" style="margin-bottom:14px">
+      <div class="fld">
         <div class="fl-row"><div class="fl">Ya ahorrado</div><div class="mini-cur" id="cur-gsaved"><button class="mini-cur-btn on" onclick="selTxCur('gsaved','USD',this)">USD</button><button class="mini-cur-btn" onclick="selTxCur('gsaved','UYU',this)">UYU</button></div></div>
         <input type="number" class="fi" id="gSaved" placeholder="0">
       </div>
@@ -1041,7 +1047,13 @@ function fmt(usd){
 }
 
 // Convert display amount to USD for storage — accepts explicit currency or uses active
-function toUSD(n,cur){const c=cur||S.currency;return c==='UYU'?(+n||0)/XR:(+n||0);}
+function toUSD(n,cur,tc){const c=cur||S.currency;const rate=tc||XR;return c==='UYU'?(+n||0)/rate:(+n||0);}
+// Convert using original TC if available (for historical accuracy)
+function toUSDHistoric(g){
+  if(g.origCur==='UYU'&&g.tcAtSave)return g.origAmount/g.tcAtSave;
+  if(g.origCur==='USD')return g.origAmount;
+  return g.amount; // fallback to stored amount
+}
 // Format a stored USD amount for display
 
 function chM(d){
@@ -1377,6 +1389,24 @@ function rSavings(){
     const hasTarget=g.target>0;
     const pct=hasTarget?Math.min((g.saved/g.target)*100,100):0;
     const done=hasTarget&&g.saved>=g.target;
+
+    // Deadline calculations
+    let deadlineHTML='';
+    if(g.deadline&&hasTarget&&!done){
+      const dlDate=new Date(g.deadline+'T12:00:00');
+      const now=new Date();
+      const monthsLeft=Math.max(0,(dlDate.getFullYear()-now.getFullYear())*12+(dlDate.getMonth()-now.getMonth()));
+      const remaining=Math.max(0,g.target-g.saved);
+      const perMonth=monthsLeft>0?remaining/monthsLeft:remaining;
+      const isLate=dlDate<now;
+      const dlStr=dlDate.toLocaleDateString('es-UY',{day:'numeric',month:'short',year:'numeric'});
+      deadlineHTML=`<div style="margin-top:8px;padding:8px 10px;background:${isLate?'var(--red-light)':monthsLeft<=2?'#fffbeb':'var(--accent-light)'};border-radius:var(--r);font-size:12px">
+        ${isLate
+          ? `<span style="color:var(--red);font-weight:700">⚠️ Fecha límite vencida</span> — ${dlStr}`
+          : `<span style="color:var(--accent);font-weight:700">📅 ${dlStr}</span> — ${monthsLeft} mes${monthsLeft!==1?'es':''} · <strong>${fmt(perMonth)}/mes</strong> necesarios`
+        }
+      </div>`;
+    }
     // Entries history
     const entries=(g.entries||[]).slice().sort((a,b)=>new Date(b.date)-new Date(a.date));
     const entriesHTML=entries.length?`
@@ -1407,6 +1437,7 @@ function rSavings(){
         <button class="gab gab-e" onclick="openEditGoal(${i})">Editar</button>
         <button class="gab gab-d" onclick="delGoal(${i})">Eliminar</button>
       </div>
+      ${deadlineHTML}
       ${entriesHTML}
     </div>`;
   }).join('');
@@ -1547,7 +1578,7 @@ function confirmPay(){
   const payType=isCr?'credit':'debit';
   const inst=isCr?parseInt(document.getElementById('instSel').value):1;
   const g=pendC;
-  S.gastos.push({id:Date.now()+Math.random().toString(36).substr(2,5),desc:g.desc,amount:+g.amount,category:g.category,date:g.date,note:g.note||'',payType,installments:inst,recurring:g.recurring||false});
+  S.gastos.push({id:Date.now()+Math.random().toString(36).substr(2,5),desc:g.desc,amount:+g.amount,category:g.category,date:g.date,note:g.note||'',payType,installments:inst,recurring:g.recurring||false,origAmount:g.origAmount,origCur:g.origCur,tcAtSave:g.origCur==='UYU'?XR:null});
   save();renderAll();closeM('mPayType');
   toast(payType==='credit'&&inst>1?`Crédito en ${inst} cuotas registrado ✓`:'Gasto agregado ✓');
   if(pendSrc==='scan')cancelPrev();
@@ -1575,7 +1606,7 @@ function saveSalary(){
 function openNewGoal(){
   eGoalIdx=null;
   document.getElementById('goalMT').textContent='Nuevo bolsillo de ahorro';
-  ['gName','gTarget','gSaved'].forEach(id=>document.getElementById(id).value='');
+  ['gName','gTarget','gSaved','gDeadline'].forEach(id=>document.getElementById(id).value='');
   setEmojiDisplay('g','🎯');
   openM('mNewGoal');
 }
@@ -1586,6 +1617,7 @@ function openEditGoal(i){
   setEmojiDisplay('g',g.emoji||'🎯');
   document.getElementById('gTarget').value=g.target||'';
   document.getElementById('gSaved').value=g.saved||'';
+  document.getElementById('gDeadline').value=g.deadline||'';
   openM('mNewGoal');
 }
 function saveGoal(){
@@ -1593,9 +1625,10 @@ function saveGoal(){
   const emoji=document.getElementById('gEmoji').value||'🎯';
   const target=toUSD(parseFloat(document.getElementById('gTarget').value)||0,txCur.gtarget);
   const saved=toUSD(parseFloat(document.getElementById('gSaved').value)||0,txCur.gsaved);
+  const deadline=document.getElementById('gDeadline').value||null;
   if(!name){toast('Ingresá un nombre');return;}
-  if(eGoalIdx!==null)S.goals[eGoalIdx]={...S.goals[eGoalIdx],name,emoji,target,saved};
-  else S.goals.push({id:Date.now().toString(),name,emoji,target,saved});
+  if(eGoalIdx!==null)S.goals[eGoalIdx]={...S.goals[eGoalIdx],name,emoji,target,saved,deadline};
+  else S.goals.push({id:Date.now().toString(),name,emoji,target,saved,deadline,entries:[]});
   save();rSavings();closeM('mNewGoal');toast('Objetivo guardado');
 }
 function openAddGoal(i){
@@ -1616,7 +1649,7 @@ function confirmAddGoal(){
   // Initialize entries array if not exists (migration from old format)
   if(!goal.entries)goal.entries=[];
   const amtUSD=toUSD(v,txCur.addgoal);
-  goal.entries.push({id:Date.now().toString(),amount:amtUSD,date,note,currency:txCur.addgoal,origAmount:v});
+  goal.entries.push({id:Date.now().toString(),amount:amtUSD,date,note,currency:txCur.addgoal,origAmount:v,tcAtSave:txCur.addgoal==='UYU'?XR:null});
   goal.saved=(goal.entries.reduce((s,e)=>s+(+e.amount),0));
   save();rSavings();closeM('mAddGoal');toast('Ahorro registrado ✓');
 }
