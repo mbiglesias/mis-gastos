@@ -356,6 +356,13 @@ onAuthStateChanged(auth, (user) => {
   .pw[onclick]{cursor:pointer}.cbox[onclick]{cursor:pointer}
 
   @media(min-width:481px){body{border-left:1px solid var(--border);border-right:1px solid var(--border)}}
+
+  /* CUSTOM DATE INPUT */
+  .date-wrap{position:relative;display:flex;align-items:center}
+  .date-wrap input[type="date"]{opacity:0;position:absolute;inset:0;width:100%;height:100%;cursor:pointer;z-index:2}
+  .date-display{background:var(--bg);border:1.5px solid var(--border);border-radius:var(--r);padding:8px 10px;font-family:inherit;font-size:13px;color:var(--text);width:100%;min-width:0;box-sizing:border-box;display:flex;align-items:center;justify-content:space-between;gap:6px;pointer-events:none}
+  .date-display span{flex:1}
+  .date-display svg{flex-shrink:0;opacity:.4}
 </style>
 </head>
 <body>
@@ -457,7 +464,7 @@ onAuthStateChanged(auth, (user) => {
     </div>
     <div class="fr" style="margin-bottom:8px">
       <div class="fld"><div class="fl">Categoría</div><select class="fi" id="egCat" onchange="handleCatSelect('egCat')"></select></div>
-      <div class="fld"><div class="fl">Fecha</div><input type="date" class="fi" id="egDate"></div>
+      <div class="fld"><div class="fl">Fecha</div><div class="date-wrap"><input type="date" class="fi" id="egDate" onchange="updDateDisplay('egDate','egDateDisp')"><div class="date-display" id="egDateDisp"><span>DD/MM/AAAA</span><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="4" width="18" height="18" rx="2"/><line x1="16" y1="2" x2="16" y2="6"/><line x1="8" y1="2" x2="8" y2="6"/><line x1="3" y1="10" x2="21" y2="10"/></svg></div></div></div>
     </div>
     <div class="fr" style="margin-bottom:8px">
       <div class="fld"><div class="fl">Tipo de pago</div>
@@ -534,7 +541,7 @@ onAuthStateChanged(auth, (user) => {
       </div>
       <div class="fld">
         <div class="fl">Fecha límite (opcional)</div>
-        <input type="date" class="fi" id="gDeadline" placeholder="">
+        <div class="date-wrap"><input type="date" class="fi" id="gDeadline" onchange="updDateDisplay('gDeadline','gDeadlineDisp')"><div class="date-display" id="gDeadlineDisp"><span>DD/MM/AAAA</span><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="4" width="18" height="18" rx="2"/><line x1="16" y1="2" x2="16" y2="6"/><line x1="8" y1="2" x2="8" y2="6"/><line x1="3" y1="10" x2="21" y2="10"/></svg></div></div>
       </div>
     </div>
     <div class="fr" style="margin-bottom:14px">
@@ -558,7 +565,7 @@ onAuthStateChanged(auth, (user) => {
         <div class="fl-row"><div class="fl">Monto</div><div class="mini-cur" id="cur-addgoal"><button class="mini-cur-btn on" onclick="selTxCur('addgoal','USD',this)">USD</button><button class="mini-cur-btn" onclick="selTxCur('addgoal','UYU',this)">UYU</button></div></div>
         <input type="number" class="fi" id="agAmt" placeholder="0">
       </div>
-      <div class="fld"><div class="fl">Fecha</div><input type="date" class="fi" id="agDate"></div>
+      <div class="fld"><div class="fl">Fecha</div><div class="date-wrap"><input type="date" class="fi" id="agDate" onchange="updDateDisplay('agDate','agDateDisp')"><div class="date-display" id="agDateDisp"><span>DD/MM/AAAA</span><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="4" width="18" height="18" rx="2"/><line x1="16" y1="2" x2="16" y2="6"/><line x1="8" y1="2" x2="8" y2="6"/><line x1="3" y1="10" x2="21" y2="10"/></svg></div></div></div>
     </div>
     <div class="fld" style="margin-bottom:14px">
       <div class="fl">Nota (opcional)</div>
@@ -721,7 +728,7 @@ onAuthStateChanged(auth, (user) => {
               <div class="fl-row"><div class="fl">Monto</div><div class="mini-cur" id="cur-scan"><button class="mini-cur-btn on" onclick="selTxCur('scan','USD',this)">USD</button><button class="mini-cur-btn" onclick="selTxCur('scan','UYU',this)">UYU</button></div></div>
               <input type="number" class="fi" id="pa" placeholder="0">
             </div>
-            <div class="fld"><div class="fl">Fecha</div><input type="date" class="fi" id="pf"></div>
+            <div class="fld"><div class="fl">Fecha</div><div class="date-wrap"><input type="date" class="fi" id="pf" onchange="updDateDisplay('pf','pfDisp')"><div class="date-display" id="pfDisp"><span>DD/MM/AAAA</span><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="4" width="18" height="18" rx="2"/><line x1="16" y1="2" x2="16" y2="6"/><line x1="8" y1="2" x2="8" y2="6"/><line x1="3" y1="10" x2="21" y2="10"/></svg></div></div></div>
           </div>
           <div class="fr">
             <div class="fld"><div class="fl">Categoría</div><select class="fi" id="pc" onchange="handleCatSelect('pc')"></select></div>
@@ -743,7 +750,7 @@ onAuthStateChanged(auth, (user) => {
             <div class="fl-row"><div class="fl">Monto</div><div class="mini-cur" id="cur-manual"><button class="mini-cur-btn on" onclick="selTxCur('manual','USD',this)">USD</button><button class="mini-cur-btn" onclick="selTxCur('manual','UYU',this)">UYU</button></div></div>
             <input type="number" class="fi" id="ma" placeholder="0">
           </div>
-          <div class="fld"><div class="fl">Fecha</div><input type="date" class="fi" id="mf"></div>
+          <div class="fld"><div class="fl">Fecha</div><div class="date-wrap"><input type="date" class="fi" id="mf" onchange="updDateDisplay('mf','mfDisp')"><div class="date-display" id="mfDisp"><span>DD/MM/AAAA</span><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="4" width="18" height="18" rx="2"/><line x1="16" y1="2" x2="16" y2="6"/><line x1="8" y1="2" x2="8" y2="6"/><line x1="3" y1="10" x2="21" y2="10"/></svg></div></div></div>
         </div>
         <div class="fr" style="margin-bottom:8px">
           <div class="fld"><div class="fl">Categoría</div><select class="fi" id="mc" onchange="handleCatSelect('mc')"></select></div>
@@ -810,7 +817,7 @@ onAuthStateChanged(auth, (user) => {
           <div class="fl-row"><div class="fl">Monto</div><div class="mini-cur" id="cur-ingreso"><button class="mini-cur-btn on" onclick="selTxCur('ingreso','USD',this)">USD</button><button class="mini-cur-btn" onclick="selTxCur('ingreso','UYU',this)">UYU</button></div></div>
           <input type="number" class="fi" id="ia" placeholder="0">
         </div>
-        <div class="fld"><div class="fl">Fecha</div><input type="date" class="fi" id="if"></div>
+        <div class="fld"><div class="fl">Fecha</div><div class="date-wrap"><input type="date" class="fi" id="if" onchange="updDateDisplay('if','ifDisp')"><div class="date-display" id="ifDisp"><span>DD/MM/AAAA</span><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="4" width="18" height="18" rx="2"/><line x1="16" y1="2" x2="16" y2="6"/><line x1="8" y1="2" x2="8" y2="6"/><line x1="3" y1="10" x2="21" y2="10"/></svg></div></div></div>
       </div>
       <div class="fr f1" style="margin-bottom:10px">
         <div class="fld"><div class="fl">Nota</div><input type="text" class="fi" id="in2" placeholder="Opcional..."></div>
@@ -1018,9 +1025,25 @@ function init() {
   });
 }
 
+function fmtDateDisp(val){
+  if(!val)return'DD/MM/AAAA';
+  const [y,m,d]=val.split('-');
+  return`${d}/${m}/${y}`;
+}
+function updDateDisplay(inputOrId,dispOrId){
+  const inp=typeof inputOrId==='string'?document.getElementById(inputOrId):inputOrId;
+  const disp=typeof dispOrId==='string'?document.getElementById(dispOrId):dispOrId;
+  if(!inp||!disp)return;
+  const span=disp.querySelector('span')||disp;
+  span.textContent=inp.value?fmtDateDisp(inp.value):'DD/MM/AAAA';
+}
+
 function setToday(){
   const t=new Date().toISOString().split('T')[0];
-  ['pf','mf','if','agDate'].forEach(id=>{const e=document.getElementById(id);if(e)e.value=t;});
+  ['pf','mf','if','agDate'].forEach(id=>{
+    const e=document.getElementById(id);
+    if(e){e.value=t;updDateDisplay(id,id.replace(/^(pf|mf|if|agDate)$/,m=>m+'Disp'));}
+  });
 }
 
 // ============================================================
@@ -1635,7 +1658,7 @@ function openAddGoal(i){
   addGoalIdx=i;
   document.getElementById('agTitle').textContent=`Agregar a "${S.goals[i].name}"`;
   document.getElementById('agAmt').value='';
-  document.getElementById('agDate').value=new Date().toISOString().split('T')[0];
+  const agDateVal=new Date().toISOString().split('T')[0];document.getElementById('agDate').value=agDateVal;updDateDisplay('agDate','agDateDisp');
   document.getElementById('agNote').value='';
   openM('mAddGoal');
 }
@@ -1672,7 +1695,7 @@ function openEditGasto(id){
   document.getElementById('cur-edit').querySelectorAll('.mini-cur-btn').forEach(b=>{
     b.className='mini-cur-btn'+(b.textContent==='USD'?' on':'');
   });
-  document.getElementById('egDate').value=g.date||'';
+  document.getElementById('egDate').value=g.date||'';updDateDisplay('egDate','egDateDisp');
   document.getElementById('egNote').value=g.note||'';
   document.getElementById('egPayType').value=g.payType||'debit';
   document.getElementById('egInstall').value=g.installments||1;
@@ -2008,7 +2031,10 @@ function renderBulk(){
         </div>
         <div class="fld">
           <div class="fl">Fecha</div>
-          <input type="date" class="fi" style="font-size:11px;padding:5px 8px" value="${tx.date||''}" onchange="bulkTxs[${i}].date=this.value">
+          <div class="date-wrap">
+            <input type="date" class="fi" style="font-size:11px;padding:5px 8px" value="${tx.date||''}" onchange="bulkTxs[${i}].date=this.value;updDateDisplay(this,this.nextElementSibling)">
+            <div class="date-display" style="font-size:11px;padding:5px 8px"><span>${tx.date?fmtDateDisp(tx.date):'DD/MM/AAAA'}</span><svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="4" width="18" height="18" rx="2"/><line x1="16" y1="2" x2="16" y2="6"/><line x1="8" y1="2" x2="8" y2="6"/><line x1="3" y1="10" x2="21" y2="10"/></svg></div>
+          </div>
         </div>
       </div>
       <div style="display:flex;gap:8px;margin-top:6px;align-items:center;flex-wrap:wrap">
@@ -2145,7 +2171,7 @@ function showPreview(data){
   document.getElementById('pd').value=data.desc||'';
   document.getElementById('pa').value=data.amount||'';
   document.getElementById('pn').value=data.note||'';
-  if(data.date)document.getElementById('pf').value=data.date;
+  if(data.date){document.getElementById('pf').value=data.date;updDateDisplay('pf','pfDisp');}
   const sel=document.getElementById('pc');
   if(data.category){const o=[...sel.options].find(o=>o.value===data.category);if(o)sel.value=data.category;}
   // Apply currency detected by AI
