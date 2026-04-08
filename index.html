@@ -329,7 +329,7 @@ onAuthStateChanged(auth, (user) => {
   .emoji-sel-display:hover{border-color:var(--accent)}
   .emoji-grid-wrap{background:var(--white);border:1.5px solid var(--border);border-radius:var(--r);padding:10px;margin-top:6px;box-shadow:var(--shm)}
   .emoji-grid-wrap.hid{display:none}
-  .emoji-grid{display:grid;grid-template-columns:repeat(8,1fr);gap:4px;max-height:160px;overflow-y:auto}
+  .emoji-grid{display:grid;grid-template-columns:repeat(8,1fr);gap:4px;max-height:220px;overflow-y:auto}
   .emoji-cell{font-size:22px;text-align:center;padding:4px;border-radius:6px;cursor:pointer;transition:background .1s}
   .emoji-cell:hover{background:var(--accent-light)}
   .emoji-cell.selected{background:var(--accent-light);outline:2px solid var(--accent)}
@@ -435,7 +435,7 @@ onAuthStateChanged(auth, (user) => {
     <div class="mt">Nueva categoría</div>
     <div class="fr" style="margin-bottom:8px">
       <div class="fld"><div class="fl">Nombre</div><input type="text" class="fi" id="ncName" placeholder="Farmacia"></div>
-      <div class="fld"><div class="fl cur-lbl">Presupuesto (USD)</div><input type="number" class="fi" id="ncBudget" placeholder="0"></div>
+      <div class="fld"><div class="fl-row"><div class="fl">Presupuesto</div><div class="mini-cur" id="cur-ncbudget"><button class="mini-cur-btn on" onclick="selTxCur('ncbudget','USD',this)">USD</button><button class="mini-cur-btn" onclick="selTxCur('ncbudget','UYU',this)">UYU</button></div></div><input type="number" class="fi" id="ncBudget" placeholder="0"></div>
     </div>
     <div class="fld" style="margin-bottom:8px">
       <div class="fl">Categoría padre (opcional)</div>
@@ -509,7 +509,7 @@ onAuthStateChanged(auth, (user) => {
     <div class="mt" id="ebTitle">Editar categoría</div>
     <div class="fr" style="margin-bottom:8px">
       <div class="fld"><div class="fl">Nombre</div><input type="text" class="fi" id="ebName" placeholder="Nombre"></div>
-      <div class="fld"><div class="fl cur-lbl">Presupuesto (USD)</div><input type="number" class="fi" id="ebInput" placeholder="0"></div>
+      <div class="fld"><div class="fl-row"><div class="fl">Presupuesto</div><div class="mini-cur" id="cur-ebinput"><button class="mini-cur-btn on" onclick="selTxCur('ebinput','USD',this)">USD</button><button class="mini-cur-btn" onclick="selTxCur('ebinput','UYU',this)">UYU</button></div></div><input type="number" class="fi" id="ebInput" placeholder="0"></div>
     </div>
     <div class="fld" style="margin-bottom:8px">
       <div class="fl">Categoría padre (opcional)</div>
@@ -1622,7 +1622,7 @@ function handleCatSelect(selId){
 }
 
 // Per-transaction currency state
-const txCur={scan:'USD',manual:'USD',ingreso:'USD',gtarget:'USD',gsaved:'USD',addgoal:'USD',edit:'USD'};
+const txCur={scan:'USD',manual:'USD',ingreso:'USD',gtarget:'USD',gsaved:'USD',addgoal:'USD',edit:'USD',ncbudget:'USD',ebinput:'USD'};
 function selTxCur(key,cur,btn){
   txCur[key]=cur;
   const container=btn.closest('.mini-cur');
@@ -1838,7 +1838,7 @@ function deleteFromEdit(){
 
 function saveNewCat(){
   const name=document.getElementById('ncName').value.trim();
-  const budget=toUSD(parseFloat(document.getElementById('ncBudget').value)||0);
+  const budget=toUSD(parseFloat(document.getElementById('ncBudget').value)||0, txCur.ncbudget||'USD');
   const emoji=document.getElementById('ncEmoji').value||'📦';
   if(!name){toast('Ingresá un nombre');return;}
   if(S.categories.find(c=>c.name.toLowerCase()===name.toLowerCase())){toast('Ya existe');return;}
@@ -1889,7 +1889,7 @@ function saveEditBudget(){
   const oldName=S.categories[eCatIdx].name;
   const newParentId=document.getElementById('ebParent')?.value||null;
   S.categories[eCatIdx].name=name;
-  S.categories[eCatIdx].budget=toUSD(v);
+  S.categories[eCatIdx].budget=toUSD(v,txCur.ebinput||'USD');
   S.categories[eCatIdx].emoji=emoji;
   S.categories[eCatIdx].parentId=newParentId||null;
   // Update all gastos that used the old category name
@@ -1916,10 +1916,31 @@ function saveApiKey(){
 // EMOJI PICKER
 // ============================================================
 const EMOJIS = [
-  '🛒','🍽️','🚗','💊','🎬','👗','📦','✈️','🏠','💻','📱','🎮','🎵','📚','🏋️','🐶','🐱','🌿','☕','🍕',
-  '🍣','🥗','🍷','🍺','🎁','💄','👟','👔','🧴','🧹','⚡','🚌','🚕','⛽','✂️','🔧','🏥','💉','🧪','🎓',
-  '🏦','💰','💳','🎯','🏆','🌍','🏖️','⛷️','🎸','🎨','📷','🧘','🚴','🏊','⚽','🎾','🏀','🎰','🃏','🎲',
-  '🛁','🛋️','🏡','🌱','🔑','📋','🗓️','⏰','🔔','💡','🔌','🧺','🧻','🛍️','🎀','💝','🌸','🌻','🍀','🦋'
+  // Comida y bebida
+  '🛒','🍽️','🍕','🍔','🌮','🍜','🍣','🥗','🍷','🍺','☕','🧃','🥤','🍰','🧁','🥐','🍞','🧀','🥩','🍗',
+  '🥚','🥦','🥕','🍎','🍌','🍓','🧄','🌽','🥑','🍜','🫕','🥘','🍱','🥟','🍤','🦐','🦞','🥞','🧆','🫔',
+  // Transporte
+  '🚗','🚕','🚌','🚎','🏎️','🚓','🚑','🚒','✈️','🚢','🚂','🚁','🛵','🏍️','🚲','🛴','⛽','🅿️','🛣️','🗺️',
+  // Hogar y casa
+  '🏠','🏡','🛋️','🛁','🪑','🛏️','🚿','🪣','🧹','🧺','🧻','🔑','🪟','🚪','🏗️','💡','🔌','🪴','🧯','🔧',
+  // Salud y bienestar
+  '💊','🏥','💉','🩺','🩹','🧪','🦷','👁️','🧘','🏋️','🚑','🩻','🫀','🧬','🩶','🏃','🤸','🧖','💆','🛀',
+  // Entretenimiento
+  '🎬','🎮','🎵','🎸','🎨','📷','🎭','🎪','🎠','🎢','🎡','🎯','🎲','🃏','🎰','♟️','🎤','🎧','🎻','🥁',
+  // Ropa y moda
+  '👗','👟','👔','👠','👒','🧣','🧤','🧥','👜','💄','💍','💎','🕶️','🧦','🩱','🧢','👑','🪭','💅','🛍️',
+  // Educación y trabajo
+  '📚','🎓','💻','📱','📋','🗓️','📝','🖊️','📐','🔬','📡','🏫','📊','📈','💼','🗂️','📌','📎','✂️','🖥️',
+  // Finanzas
+  '💰','💳','🏦','💵','📈','📉','🪙','💸','🏧','🤑','💹','📊','🧾','💱','🏛️','📑','🗃️','💡','🔐','🗝️',
+  // Naturaleza y clima
+  '🌿','🌱','🌸','🌻','🍀','🌍','🌊','⛰️','🦋','🐶','🐱','🐠','🦜','🐝','🌈','☀️','🌙','⭐','❄️','🔥',
+  // Viajes y ocio
+  '🏖️','⛷️','🏕️','🏔️','🗽','🗼','🏰','🎡','🌅','🧳','🎣','🤿','🏄','⛺','🎠','🌴','🏝️','🗿','🎑','🌃',
+  // Deportes
+  '⚽','🎾','🏀','🏈','⚾','🏐','🏉','🎱','🏓','🏸','🥊','🏊','🚴','🤼','🧗','🏇','🤺','🥋','⛳','🎿',
+  // Símbolos y misc
+  '📦','🎁','🎀','💝','🔔','⏰','🏆','🥇','🎯','🌟','✨','💫','🔮','🪄','🧲','🔒','🗑️','♻️','🚀','🛸',
 ];
 
 function buildEmojiGrid(gridId, hiddenId, displayId) {
