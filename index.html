@@ -153,7 +153,8 @@ onAuthStateChanged(auth, (user) => {
 
   /* CHIPS */
   .chips{display:flex;gap:6px;overflow-x:auto;padding-bottom:2px;margin-bottom:10px;scrollbar-width:none}
-  .chips::-webkit-scrollbar{display:none}
+  .chip-sub{font-size:11px;opacity:.85;padding:5px 10px}
+  .chip-sub.on{opacity:1}
   .chip{padding:5px 11px;border-radius:20px;font-size:11px;font-weight:700;cursor:pointer;border:1.5px solid var(--border);color:var(--text-mid);background:var(--white);white-space:nowrap;font-family:inherit;transition:all .15s;flex-shrink:0}
   .chip.on{background:var(--accent);color:#fff;border-color:var(--accent)}
 
@@ -1136,12 +1137,41 @@ function rTxList(){
   const chEl=document.getElementById('chips');
   if(!con)return;
   let gs=mGastos();
-  const cats=['Todos',...S.categories.map(c=>c.name),'Crédito'];
-  if(chEl)chEl.innerHTML=cats.map(c=>`<button class="chip${filt===c?' on':''}" onclick="setF('${c}')">${c}</button>`).join('');
+  const parents=getParents();
+  let chipsHTML=`<button class="chip${filt==='Todos'?' on':''}" onclick="setF('Todos')">Todos</button>`;
+  parents.forEach(p=>{
+    const children=getChildren(getCatId(p));
+    if(children.length>0){
+      // Parent chip (filters by parent name — will match all children via setF logic)
+      chipsHTML+=`<button class="chip${filt===p.name?' on':''}" onclick="setF('${p.name}')" style="font-weight:700">${p.emoji} ${p.name}</button>`;
+      // Child chips indented
+      children.forEach(c=>{
+        chipsHTML+=`<button class="chip chip-sub${filt===c.name?' on':''}" onclick="setF('${c.name}')">${c.emoji} ${c.name}</button>`;
+      });
+    } else {
+      chipsHTML+=`<button class="chip${filt===p.name?' on':''}" onclick="setF('${p.name}')">${p.emoji} ${p.name}</button>`;
+    }
+  });
+  chipsHTML+=`<button class="chip${filt==='Crédito'?' on':''}" onclick="setF('Crédito')">🟣 Crédito</button>`;
+  if(chEl)chEl.innerHTML=chipsHTML;
 
   const q=(document.getElementById('txSearch')?.value||'').toLowerCase().trim();
   if(filt==='Crédito')gs=gs.filter(g=>g.payType==='credit'||g._isInstallment);
-  else if(filt!=='Todos')gs=gs.filter(g=>g.category===filt);
+  else if(filt!=='Todos'){
+    // Check if filt is a parent category — if so show all children too
+    const filtCat=S.categories.find(c=>c.name===filt);
+    if(filtCat){
+      const children=getChildren(getCatId(filtCat));
+      if(children.length>0){
+        const childNames=new Set(children.map(c=>c.name));
+        gs=gs.filter(g=>g.category===filt||childNames.has(g.category));
+      } else {
+        gs=gs.filter(g=>g.category===filt);
+      }
+    } else {
+      gs=gs.filter(g=>g.category===filt);
+    }
+  }
   if(q)gs=gs.filter(g=>g.desc.toLowerCase().includes(q)||g.category.toLowerCase().includes(q)||(g.note||'').toLowerCase().includes(q));
   gs=[...gs].sort((a,b)=>new Date(b.date)-new Date(a.date));
 
