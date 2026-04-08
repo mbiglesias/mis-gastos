@@ -437,6 +437,12 @@ onAuthStateChanged(auth, (user) => {
       <div class="fld"><div class="fl">Nombre</div><input type="text" class="fi" id="ncName" placeholder="Farmacia"></div>
       <div class="fld"><div class="fl cur-lbl">Presupuesto (USD)</div><input type="number" class="fi" id="ncBudget" placeholder="0"></div>
     </div>
+    <div class="fld" style="margin-bottom:8px">
+      <div class="fl">Categoría padre (opcional)</div>
+      <select class="fi" id="ncParent">
+        <option value="">— Sin padre (categoría principal) —</option>
+      </select>
+    </div>
     <div class="fld" style="margin-bottom:14px">
       <div class="fl">Emoji</div>
       <div class="emoji-picker-wrap">
@@ -504,6 +510,12 @@ onAuthStateChanged(auth, (user) => {
     <div class="fr" style="margin-bottom:8px">
       <div class="fld"><div class="fl">Nombre</div><input type="text" class="fi" id="ebName" placeholder="Nombre"></div>
       <div class="fld"><div class="fl cur-lbl">Presupuesto (USD)</div><input type="number" class="fi" id="ebInput" placeholder="0"></div>
+    </div>
+    <div class="fld" style="margin-bottom:8px">
+      <div class="fl">Categoría padre (opcional)</div>
+      <select class="fi" id="ebParent">
+        <option value="">— Sin padre (categoría principal) —</option>
+      </select>
     </div>
     <div class="fld" style="margin-bottom:14px">
       <div class="fl">Emoji</div>
@@ -899,13 +911,13 @@ onAuthStateChanged(auth, (user) => {
 // ============================================================
 const DEF = {
   categories:[
-    {name:'Supermercado',emoji:'🛒',color:'#4772fa',budget:0},
-    {name:'Restaurantes',emoji:'🍽️',color:'#22c55e',budget:0},
-    {name:'Transporte',emoji:'🚗',color:'#f97316',budget:0},
-    {name:'Salud',emoji:'💊',color:'#ef4444',budget:0},
-    {name:'Entretenimiento',emoji:'🎬',color:'#a855f7',budget:0},
-    {name:'Ropa',emoji:'👗',color:'#ec4899',budget:0},
-    {name:'Otros',emoji:'📦',color:'#6b7280',budget:0},
+    {name:'Supermercado',emoji:'🛒',color:'#4772fa',budget:0,parentId:null},
+    {name:'Restaurantes',emoji:'🍽️',color:'#22c55e',budget:0,parentId:null},
+    {name:'Transporte',emoji:'🚗',color:'#f97316',budget:0,parentId:null},
+    {name:'Salud',emoji:'💊',color:'#ef4444',budget:0,parentId:null},
+    {name:'Entretenimiento',emoji:'🎬',color:'#a855f7',budget:0,parentId:null},
+    {name:'Ropa',emoji:'👗',color:'#ec4899',budget:0,parentId:null},
+    {name:'Otros',emoji:'📦',color:'#6b7280',budget:0,parentId:null},
   ],
   gastos:[],goals:[],ingresos:[],salary:6300,currency:'USD',apiKey:''
 };
@@ -1323,22 +1335,27 @@ function rSummary(){
 function rCatRows(){
   const debitGs=mGastos().filter(g=>g.payType!=='credit');
   const creditInstGs=crDue(CM,CY);
-  document.getElementById('catRows').innerHTML=S.categories.map(cat=>{
-    const debitSp=debitGs.filter(g=>g.category===cat.name).reduce((s,g)=>s+(+g.amount),0);
-    const creditSp=creditInstGs.filter(g=>g.category===cat.name).reduce((s,g)=>s+(g._cuota||g.amount/(+g.installments||1)),0);
-    const sp=debitSp+creditSp;
-    const bu=+cat.budget||0;
+  const parents=getParents();
+  document.getElementById('catRows').innerHTML=parents.map(cat=>{
+    const children=getChildren(getCatId(cat));
+    const hasChildren=children.length>0;
+    const sp=hasChildren
+      ? children.reduce((s,c)=>s+catSpend(c.name,debitGs,creditInstGs),0)
+      : catSpend(cat.name,debitGs,creditInstGs);
+    const bu=hasChildren
+      ? children.reduce((s,c)=>s+(+c.budget||0),0)
+      : +cat.budget||0;
     const pct=bu>0?Math.min((sp/bu)*100,100):0;
     const ov=sp>bu&&bu>0;
-    const atMax=bu>0&&sp>=bu&&!ov;
     const col=ov?'var(--red)':(pct>=100?'var(--accent)':cat.color);
+    if(sp===0)return'';
     return `<div class="cr" style="cursor:pointer" onclick="setF('${cat.name}');tab('gastos')">
       <div class="ci" style="background:${cat.color}22">${cat.emoji}</div>
-      <div style="flex:1"><div class="cn">${cat.name}</div><div class="cbw"><div class="cbf" style="width:${pct}%;background:${col}"></div></div></div>
+      <div style="flex:1"><div class="cn">${cat.name}${hasChildren?` <span style="font-size:10px;color:var(--text-muted)">(${children.length})</span>`:''}</div><div class="cbw"><div class="cbf" style="width:${pct}%;background:${col}"></div></div></div>
       <div><div class="ca">${fmt(sp)}</div><div class="cbl">${bu>0?'de '+fmt(bu):'sin límite'}</div></div>
       <div style="color:var(--text-muted);font-size:13px">›</div>
     </div>`;
-  }).join('');
+  }).filter(Boolean).join('');
 }
 
 
@@ -1479,36 +1496,115 @@ function delGoalEntry(goalIdx,entryIdx){
 // ============================================================
 // BUDGET TAB
 // ============================================================
+function catSpend(catName,debitGs,creditInstGs){
+  const d=debitGs.filter(g=>g.category===catName).reduce((s,g)=>s+(+g.amount),0);
+  const c=creditInstGs.filter(g=>g.category===catName).reduce((s,g)=>s+(g._cuota||g.amount/(+g.installments||1)),0);
+  return d+c;
+}
+
 function rBudget(){
-  // Include debit gastos + credit installments due this month
   const debitGs=mGastos().filter(g=>g.payType!=='credit');
-  const creditInstGs=crDue(CM,CY); // virtual installment rows for this month
-  const allGs=[...debitGs,...creditInstGs];
+  const creditInstGs=crDue(CM,CY);
   const con=document.getElementById('budList');if(!con)return;
-  con.innerHTML=S.categories.map((cat,i)=>{
-    const debitSp=debitGs.filter(g=>g.category===cat.name).reduce((s,g)=>s+(+g.amount),0);
-    const creditSp=creditInstGs.filter(g=>g.category===cat.name).reduce((s,g)=>s+(g._cuota||g.amount/(+g.installments||1)),0);
-    const sp=debitSp+creditSp;
-    const bu=+cat.budget||0;
-    const pct=bu>0?Math.min((sp/bu)*100,100):0;
-    const ov=sp>bu&&bu>0;
-    const col=ov?'var(--red)':(pct>=100?'var(--accent)':cat.color);
-    return `<div class="bi">
-      <div class="biico" style="background:${cat.color}22">${cat.emoji}</div>
-      <div class="bib"><div class="bin">${cat.name}</div><div class="bibar"><div class="bibf" style="width:${pct}%;background:${col}"></div></div></div>
-      <div class="bir"><div class="biam" style="color:${ov?'#ef4444':'inherit'}">${fmt(sp)}</div><div class="bilm">${bu>0?'de '+fmt(bu):'sin límite'}</div></div>
-      <div class="bias">
-        <button class="bab" onclick="openEB(${i})">✏️</button>
-        <button class="bab dng" onclick="delCat(${i})">✕</button>
-      </div>
-    </div>`;
-  }).join('');
+  const parents=getParents();
+  let html='';
+
+  parents.forEach((cat,pi)=>{
+    const i=S.categories.indexOf(cat);
+    const children=getChildren(getCatId(cat));
+    const hasChildren=children.length>0;
+
+    if(hasChildren){
+      // Parent row — sum of all children
+      const totalSp=children.reduce((s,c)=>s+catSpend(c.name,debitGs,creditInstGs),0);
+      const totalBu=children.reduce((s,c)=>s+(+c.budget||0),0);
+      const pct=totalBu>0?Math.min((totalSp/totalBu)*100,100):0;
+      const ov=totalSp>totalBu&&totalBu>0;
+      html+=`<div class="bi" style="background:var(--bg);border-radius:var(--r) var(--r) 0 0;margin-bottom:0">
+        <div class="biico" style="background:${cat.color}22">${cat.emoji}</div>
+        <div class="bib"><div class="bin" style="font-weight:700">${cat.name}</div>${totalBu>0?`<div class="bibar"><div class="bibf" style="width:${pct}%;background:${ov?'var(--red)':'var(--accent)'}"></div></div>`:''}</div>
+        <div class="bir"><div class="biam" style="color:${ov?'var(--red)':'inherit'}">${fmt(totalSp)}</div><div class="bilm">${totalBu>0?'de '+fmt(totalBu):'grupo'}</div></div>
+        <div class="bias">
+          <button class="bab" onclick="openEB(${i})">✏️</button>
+          <button class="bab dng" onclick="delCat(${i})">✕</button>
+        </div>
+      </div>`;
+      // Children rows
+      children.forEach((child,ci)=>{
+        const ci2=S.categories.indexOf(child);
+        const sp=catSpend(child.name,debitGs,creditInstGs);
+        const bu=+child.budget||0;
+        const pct=bu>0?Math.min((sp/bu)*100,100):0;
+        const ov=sp>bu&&bu>0;
+        const col=ov?'var(--red)':(pct>=100?'var(--accent)':child.color);
+        const isLast=ci===children.length-1;
+        html+=`<div class="bi" style="padding-left:32px;background:var(--white);${isLast?'border-radius:0 0 var(--r) var(--r);margin-bottom:10px':'border-radius:0'}">
+          <div class="biico" style="background:${child.color}22;width:28px;height:28px;font-size:14px">${child.emoji}</div>
+          <div class="bib"><div class="bin" style="font-size:12px">${child.name}</div><div class="bibar"><div class="bibf" style="width:${pct}%;background:${col}"></div></div></div>
+          <div class="bir"><div class="biam" style="font-size:12px;color:${ov?'var(--red)':'inherit'}">${fmt(sp)}</div><div class="bilm">${bu>0?'de '+fmt(bu):'sin límite'}</div></div>
+          <div class="bias">
+            <button class="bab" onclick="openEB(${ci2})">✏️</button>
+            <button class="bab dng" onclick="delCat(${ci2})">✕</button>
+          </div>
+        </div>`;
+      });
+    } else {
+      // Simple cat, no children
+      const sp=catSpend(cat.name,debitGs,creditInstGs);
+      const bu=+cat.budget||0;
+      const pct=bu>0?Math.min((sp/bu)*100,100):0;
+      const ov=sp>bu&&bu>0;
+      const col=ov?'var(--red)':(pct>=100?'var(--accent)':cat.color);
+      html+=`<div class="bi">
+        <div class="biico" style="background:${cat.color}22">${cat.emoji}</div>
+        <div class="bib"><div class="bin">${cat.name}</div><div class="bibar"><div class="bibf" style="width:${pct}%;background:${col}"></div></div></div>
+        <div class="bir"><div class="biam" style="color:${ov?'var(--red)':'inherit'}">${fmt(sp)}</div><div class="bilm">${bu>0?'de '+fmt(bu):'sin límite'}</div></div>
+        <div class="bias">
+          <button class="bab" onclick="openEB(${i})">✏️</button>
+          <button class="bab dng" onclick="delCat(${i})">✕</button>
+        </div>
+      </div>`;
+    }
+  });
+  con.innerHTML=html;
+}
+
+function getCatId(cat){return cat.id||cat.name;}
+function getParents(){return S.categories.filter(c=>!c.parentId);}
+function getChildren(parentId){return S.categories.filter(c=>c.parentId===parentId);}
+function getLeafCats(){
+  // Leaf cats = cats with no children (these are assignable to gastos)
+  const parentIds=new Set(S.categories.filter(c=>c.parentId).map(c=>c.parentId));
+  // Also include parent cats that have no children (simple cats)
+  return S.categories.filter(c=>!parentIds.has(getCatId(c)));
 }
 
 function popCats(){
-  const o=S.categories.map(c=>`<option value="${c.name}">${c.emoji} ${c.name}</option>`).join('')
-    +'<option value="__newcat__">+ Nueva categoría...</option>';
-  ['pc','mc','egCat'].forEach(id=>{const e=document.getElementById(id);if(e)e.innerHTML=o;});
+  // Build grouped options for gasto selects
+  const parents=getParents();
+  let opts='';
+  parents.forEach(p=>{
+    const pid=getCatId(p);
+    const children=getChildren(pid);
+    if(children.length>0){
+      // Has subcategories — show as optgroup
+      opts+=`<optgroup label="${p.emoji} ${p.name}">`;
+      children.forEach(c=>opts+=`<option value="${c.name}">${c.emoji} ${c.name}</option>`);
+      opts+=`</optgroup>`;
+    } else {
+      // No children — show as regular option
+      opts+=`<option value="${p.name}">${p.emoji} ${p.name}</option>`;
+    }
+  });
+  opts+='<option value="__newcat__">+ Nueva categoría...</option>';
+  ['pc','mc','egCat'].forEach(id=>{const e=document.getElementById(id);if(e)e.innerHTML=opts;});
+
+  // Populate parent selectors in modals (only show top-level cats as possible parents)
+  const parentOpts=parents.map(p=>`<option value="${getCatId(p)}">${p.emoji} ${p.name}</option>`).join('');
+  ['ncParent','ebParent'].forEach(id=>{
+    const e=document.getElementById(id);
+    if(e)e.innerHTML=`<option value="">— Sin padre (categoría principal) —</option>${parentOpts}`;
+  });
 }
 
 function handleCatSelect(selId){
@@ -1747,7 +1843,9 @@ function saveNewCat(){
   if(!name){toast('Ingresá un nombre');return;}
   if(S.categories.find(c=>c.name.toLowerCase()===name.toLowerCase())){toast('Ya existe');return;}
   const pal=['#4772fa','#22c55e','#f97316','#ef4444','#a855f7','#ec4899','#06b6d4','#eab308'];
-  S.categories.push({name,emoji,color:pal[S.categories.length%pal.length],budget});
+  const parentId=document.getElementById('ncParent')?.value||null;
+  const catId='cat_'+Date.now();
+  S.categories.push({id:catId,name,emoji,color:pal[S.categories.length%pal.length],budget,parentId:parentId||null});
   ['ncName','ncBudget'].forEach(id=>document.getElementById(id).value='');
   setEmojiDisplay('nc','📦');
   save();popCats();renderAll();
@@ -1772,8 +1870,15 @@ function openEB(i){
   const cat=S.categories[i];
   document.getElementById('ebTitle').textContent=`Editar — ${cat.name}`;
   document.getElementById('ebName').value=cat.name;
-  document.getElementById('ebInput').value=toUSD(cat.budget||0)===cat.budget?cat.budget||0:cat.budget||0;
+  document.getElementById('ebInput').value=cat.budget||0;
   setEmojiDisplay('eb',cat.emoji||'📦');
+  // Populate parent selector excluding self and own children
+  const selfId=getCatId(cat);
+  const childIds=new Set(getChildren(selfId).map(c=>getCatId(c)));
+  const validParents=S.categories.filter(c=>getCatId(c)!==selfId&&!childIds.has(getCatId(c))&&!c.parentId);
+  const parentOpts=validParents.map(p=>`<option value="${getCatId(p)}"${cat.parentId===getCatId(p)?' selected':''}>${p.emoji} ${p.name}</option>`).join('');
+  const ebParent=document.getElementById('ebParent');
+  if(ebParent)ebParent.innerHTML=`<option value=""${!cat.parentId?' selected':''}>— Sin padre (categoría principal) —</option>${parentOpts}`;
   openM('mEditBudget');
 }
 function saveEditBudget(){
@@ -1782,9 +1887,11 @@ function saveEditBudget(){
   const v=parseFloat(document.getElementById('ebInput').value)||0;
   const emoji=document.getElementById('ebEmoji').value||'📦';
   const oldName=S.categories[eCatIdx].name;
+  const newParentId=document.getElementById('ebParent')?.value||null;
   S.categories[eCatIdx].name=name;
   S.categories[eCatIdx].budget=toUSD(v);
   S.categories[eCatIdx].emoji=emoji;
+  S.categories[eCatIdx].parentId=newParentId||null;
   // Update all gastos that used the old category name
   if(oldName!==name){
     S.gastos.forEach(g=>{if(g.category===oldName)g.category=name;});
