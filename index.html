@@ -152,11 +152,14 @@ onAuthStateChanged(auth, (user) => {
   .cbox-amt{font-size:18px;font-weight:700;color:var(--purple);text-align:right}
 
   /* CHIPS */
-  .chips{display:flex;gap:6px;overflow-x:auto;padding-bottom:2px;margin-bottom:10px;scrollbar-width:none}
-  .chip-sub{font-size:11px;opacity:.85;padding:5px 10px}
-  .chip-sub.on{opacity:1}
+  .chips{display:flex;gap:6px;overflow-x:auto;padding-bottom:2px;margin-bottom:10px;scrollbar-width:none;align-items:center}
   .chip{padding:5px 11px;border-radius:20px;font-size:11px;font-weight:700;cursor:pointer;border:1.5px solid var(--border);color:var(--text-mid);background:var(--white);white-space:nowrap;font-family:inherit;transition:all .15s;flex-shrink:0}
   .chip.on{background:var(--accent);color:#fff;border-color:var(--accent)}
+  .chip-group{display:flex;align-items:center;gap:3px;background:var(--bg);border:1.5px solid var(--border);border-radius:24px;padding:3px;flex-shrink:0}
+  .chip-group-parent{padding:3px 8px;border-radius:18px;font-size:11px;font-weight:700;cursor:pointer;border:none;background:transparent;white-space:nowrap;font-family:inherit;transition:all .15s;color:var(--text-mid)}
+  .chip-group-parent.on{background:var(--accent);color:#fff}
+  .chip-sub{padding:3px 8px;border-radius:18px;font-size:10px;font-weight:600;cursor:pointer;border:none;background:transparent;white-space:nowrap;font-family:inherit;transition:all .15s;color:var(--text-muted)}
+  .chip-sub.on{background:var(--white);color:var(--accent);box-shadow:0 1px 3px rgba(0,0,0,.1)}
 
   /* TX */
   .txl{display:flex;flex-direction:column}
@@ -413,14 +416,26 @@ onAuthStateChanged(auth, (user) => {
     <div class="inst-row" id="instRow">
       <div class="fld"><div class="fl">¿En cuántas cuotas?</div>
         <select class="fi" id="instSel">
-          <option value="1">1 cuota (pago completo)</option>
+          <option value="1">1 cuota</option>
           <option value="2">2 cuotas</option>
           <option value="3">3 cuotas</option>
+          <option value="4">4 cuotas</option>
+          <option value="5">5 cuotas</option>
           <option value="6">6 cuotas</option>
+          <option value="7">7 cuotas</option>
+          <option value="8">8 cuotas</option>
           <option value="9">9 cuotas</option>
+          <option value="10">10 cuotas</option>
+          <option value="11">11 cuotas</option>
           <option value="12">12 cuotas</option>
+          <option value="15">15 cuotas</option>
           <option value="18">18 cuotas</option>
+          <option value="21">21 cuotas</option>
           <option value="24">24 cuotas</option>
+          <option value="30">30 cuotas</option>
+          <option value="36">36 cuotas</option>
+          <option value="48">48 cuotas</option>
+          <option value="60">60 cuotas</option>
         </select>
       </div>
     </div>
@@ -486,11 +501,23 @@ onAuthStateChanged(auth, (user) => {
           <option value="1">1 cuota</option>
           <option value="2">2 cuotas</option>
           <option value="3">3 cuotas</option>
+          <option value="4">4 cuotas</option>
+          <option value="5">5 cuotas</option>
           <option value="6">6 cuotas</option>
+          <option value="7">7 cuotas</option>
+          <option value="8">8 cuotas</option>
           <option value="9">9 cuotas</option>
+          <option value="10">10 cuotas</option>
+          <option value="11">11 cuotas</option>
           <option value="12">12 cuotas</option>
+          <option value="15">15 cuotas</option>
           <option value="18">18 cuotas</option>
+          <option value="21">21 cuotas</option>
           <option value="24">24 cuotas</option>
+          <option value="30">30 cuotas</option>
+          <option value="36">36 cuotas</option>
+          <option value="48">48 cuotas</option>
+          <option value="60">60 cuotas</option>
         </select>
       </div>
     </div>
@@ -1142,12 +1169,15 @@ function rTxList(){
   parents.forEach(p=>{
     const children=getChildren(getCatId(p));
     if(children.length>0){
-      // Parent chip (filters by parent name — will match all children via setF logic)
-      chipsHTML+=`<button class="chip${filt===p.name?' on':''}" onclick="setF('${p.name}')" style="font-weight:700">${p.emoji} ${p.name}</button>`;
-      // Child chips indented
+      const parentActive=filt===p.name;
+      const childActive=children.some(c=>c.name===filt);
+      const groupActive=parentActive||childActive;
+      chipsHTML+=`<div class="chip-group${groupActive?' on':''}">`;
+      chipsHTML+=`<button class="chip-group-parent${parentActive?' on':''}" onclick="setF('${p.name}')">${p.emoji} ${p.name}</button>`;
       children.forEach(c=>{
-        chipsHTML+=`<button class="chip chip-sub${filt===c.name?' on':''}" onclick="setF('${c.name}')">${c.emoji} ${c.name}</button>`;
+        chipsHTML+=`<button class="chip-sub${filt===c.name?' on':''}" onclick="setF('${c.name}')">${c.emoji} ${c.name}</button>`;
       });
+      chipsHTML+=`</div>`;
     } else {
       chipsHTML+=`<button class="chip${filt===p.name?' on':''}" onclick="setF('${p.name}')">${p.emoji} ${p.name}</button>`;
     }
@@ -1244,14 +1274,16 @@ function rTxList(){
 
       // Only show original credit purchase in the month it was made, not as duplicate alongside cuota
       // For installment rows: show cuota info cleanly
-      const actions=!isInst
+      // Installment rows: show edit on the original gasto id (not the virtual _isInstallment row)
+      const editId=isInst?g.id:g.id; // always use original id
+      const actions=(isCr||!isInst)
         ?`<div class="tx-actions">
             <button style="flex:1;padding:10px;font-size:13px;font-weight:600;border-radius:var(--r);border:none;background:var(--accent-light);color:var(--accent);cursor:pointer" onclick="event.stopPropagation();openEditGasto('${g.id}')">✏️ Editar</button>
             <button style="flex:1;padding:10px;font-size:13px;font-weight:600;border-radius:var(--r);border:none;background:var(--red-light);color:var(--red);cursor:pointer" onclick="event.stopPropagation();delG('${g.id}')">🗑 Eliminar</button>
           </div>`
         :'';
 
-      const tapAttr=!isInst?`onclick="txToggle(event,this)"`:''
+      const tapAttr=(isCr||!isInst)?`onclick="txToggle(event,this)"`:''
 
       h+=`<div class="txi"${isInst?' style="border-left:3px solid var(--purple)"':''} ${tapAttr}>
         <div class="txi-row">
@@ -1264,7 +1296,7 @@ function rTxList(){
             <div class="txa" style="${isInst?'color:var(--purple)':''}">${displayAmt}</div>
             ${subAmt}
           </div>
-          ${!isInst?`<div style="color:var(--text-muted);font-size:18px;flex-shrink:0">›</div>`:''}
+          ${(isCr||!isInst)?`<div style="color:var(--text-muted);font-size:18px;flex-shrink:0">›</div>`:''}
         </div>
         ${actions}
       </div>`;
@@ -2203,7 +2235,7 @@ function renderBulk(){
         <div id="bulk-inst-${i}" style="display:${tx.payType==='credit'?'flex':'none'};align-items:center;gap:4px">
           <span style="font-size:10px;color:var(--text-muted);font-weight:700">CUOTAS</span>
           <select class="fi" style="font-size:11px;padding:3px 6px;width:auto" onchange="bulkTxs[${i}].installments=parseInt(this.value)">
-            ${[1,2,3,6,9,12,18,24].map(n=>`<option value="${n}"${tx.installments===n?' selected':''}>${n}</option>`).join('')}
+            ${[1,2,3,4,5,6,7,8,9,10,11,12,15,18,21,24,30,36,48,60].map(n=>`<option value="${n}"${tx.installments===n?' selected':''}>${n}</option>`).join('')}
           </select>
         </div>
         <div class="mini-cur" style="margin-left:auto">
