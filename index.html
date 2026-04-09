@@ -152,14 +152,15 @@ onAuthStateChanged(auth, (user) => {
   .cbox-amt{font-size:18px;font-weight:700;color:var(--purple);text-align:right}
 
   /* CHIPS */
-  .chips{display:flex;gap:6px;overflow-x:auto;padding-bottom:2px;margin-bottom:10px;scrollbar-width:none;align-items:center}
+  .chips-wrap{margin-bottom:10px}
+  .chips{display:flex;gap:6px;overflow-x:auto;padding-bottom:2px;scrollbar-width:none;align-items:center}
+  .chips::-webkit-scrollbar{display:none}
+  .chips-sub-row{display:flex;gap:6px;flex-wrap:wrap;padding:6px 0 2px 12px;border-left:2px solid var(--accent-light);margin:4px 0 0}
   .chip{padding:5px 11px;border-radius:20px;font-size:11px;font-weight:700;cursor:pointer;border:1.5px solid var(--border);color:var(--text-mid);background:var(--white);white-space:nowrap;font-family:inherit;transition:all .15s;flex-shrink:0}
   .chip.on{background:var(--accent);color:#fff;border-color:var(--accent)}
-  .chip-group{display:flex;align-items:center;gap:3px;background:var(--bg);border:1.5px solid var(--border);border-radius:24px;padding:3px;flex-shrink:0}
-  .chip-group-parent{padding:3px 8px;border-radius:18px;font-size:11px;font-weight:700;cursor:pointer;border:none;background:transparent;white-space:nowrap;font-family:inherit;transition:all .15s;color:var(--text-mid)}
-  .chip-group-parent.on{background:var(--accent);color:#fff}
-  .chip-sub{padding:3px 8px;border-radius:18px;font-size:10px;font-weight:600;cursor:pointer;border:none;background:transparent;white-space:nowrap;font-family:inherit;transition:all .15s;color:var(--text-muted)}
-  .chip-sub.on{background:var(--white);color:var(--accent);box-shadow:0 1px 3px rgba(0,0,0,.1)}
+  .chip.has-subs.open{background:var(--accent-light);border-color:var(--accent);color:var(--accent)}
+  .chip-sub{padding:4px 10px;border-radius:20px;font-size:11px;font-weight:600;cursor:pointer;border:1.5px solid var(--border);color:var(--text-mid);background:var(--white);white-space:nowrap;font-family:inherit;transition:all .15s;flex-shrink:0}
+  .chip-sub.on{background:var(--accent);color:#fff;border-color:var(--accent)}
 
   /* TX */
   .txl{display:flex;flex-direction:column}
@@ -650,7 +651,7 @@ onAuthStateChanged(auth, (user) => {
 <!-- APP -->
 <div class="hdr">
   <div class="hdr-top">
-    <div class="app-title">💰 Mis Gastos</div>
+    <div class="app-title" onclick="tab('resumen')" style="cursor:pointer">💰 Mis Gastos</div>
     <div class="hdr-right">
       <div class="cur-toggle">
         <button class="cur-btn on" id="btnUSD" onclick="setCur('USD')">USD</button>
@@ -731,7 +732,7 @@ onAuthStateChanged(auth, (user) => {
     <div style="padding:0 16px 8px">
       <input type="text" class="fi" id="txSearch" placeholder="🔍  Buscar gastos..." oninput="rTxList()" style="background:var(--white)">
     </div>
-    <div class="chips" id="chips"></div>
+    <div id="chipsWrap"></div>
     <div id="filtTotal" style="display:none;padding:8px 16px;background:var(--accent-light);border-radius:var(--r);margin:0 0 8px;font-size:13px;font-weight:600;color:var(--accent)"></div>
     <div id="txList"></div>
   </div>
@@ -1164,26 +1165,49 @@ function rTxList(){
   const chEl=document.getElementById('chips');
   if(!con)return;
   let gs=mGastos();
+  const chWrap=document.getElementById('chipsWrap');
+  if(!chWrap)return;
   const parents=getParents();
-  let chipsHTML=`<button class="chip${filt==='Todos'?' on':''}" onclick="setF('Todos')">Todos</button>`;
+
+  // Find which parent is open (has active child or is itself active)
+  let openParentId=null;
   parents.forEach(p=>{
     const children=getChildren(getCatId(p));
-    if(children.length>0){
-      const parentActive=filt===p.name;
-      const childActive=children.some(c=>c.name===filt);
-      const groupActive=parentActive||childActive;
-      chipsHTML+=`<div class="chip-group${groupActive?' on':''}">`;
-      chipsHTML+=`<button class="chip-group-parent${parentActive?' on':''}" onclick="setF('${p.name}')">${p.emoji} ${p.name}</button>`;
-      children.forEach(c=>{
-        chipsHTML+=`<button class="chip-sub${filt===c.name?' on':''}" onclick="setF('${c.name}')">${c.emoji} ${c.name}</button>`;
-      });
-      chipsHTML+=`</div>`;
-    } else {
-      chipsHTML+=`<button class="chip${filt===p.name?' on':''}" onclick="setF('${p.name}')">${p.emoji} ${p.name}</button>`;
+    if(children.length>0&&(filt===p.name||children.some(c=>c.name===filt))){
+      openParentId=getCatId(p);
     }
   });
-  chipsHTML+=`<button class="chip${filt==='Crédito'?' on':''}" onclick="setF('Crédito')">🟣 Crédito</button>`;
-  if(chEl)chEl.innerHTML=chipsHTML;
+
+  // Main row chips
+  let mainRow=`<div class="chips" id="chips"><button class="chip${filt==='Todos'?' on':''}" onclick="setF('Todos')">Todos</button>`;
+  parents.forEach(p=>{
+    const children=getChildren(getCatId(p));
+    const pid=getCatId(p);
+    const isOpen=openParentId===pid;
+    const isActive=filt===p.name;
+    if(children.length>0){
+      mainRow+=`<button class="chip has-subs${isActive?' on':(isOpen?' open':'')}" onclick="toggleChipGroup('${pid}','${p.name}')">${p.emoji} ${p.name} ${isOpen?'▾':'▸'}</button>`;
+    } else {
+      mainRow+=`<button class="chip${isActive?' on':''}" onclick="setF('${p.name}')">${p.emoji} ${p.name}</button>`;
+    }
+  });
+  mainRow+=`<button class="chip${filt==='Crédito'?' on':''}" onclick="setF('Crédito')">🟣 Crédito</button>`;
+  mainRow+=`</div>`;
+
+  // Sub row (only if a parent with children is open)
+  let subRow='';
+  if(openParentId){
+    const openParent=S.categories.find(c=>getCatId(c)===openParentId);
+    const children=getChildren(openParentId);
+    subRow=`<div class="chips-sub-row">`;
+    subRow+=`<button class="chip-sub${filt===openParent.name?' on':''}" onclick="setF('${openParent.name}')">Todos en ${openParent.name}</button>`;
+    children.forEach(c=>{
+      subRow+=`<button class="chip-sub${filt===c.name?' on':''}" onclick="setF('${c.name}')">${c.emoji} ${c.name}</button>`;
+    });
+    subRow+=`</div>`;
+  }
+
+  chWrap.innerHTML=mainRow+subRow;
 
   const q=(document.getElementById('txSearch')?.value||'').toLowerCase().trim();
   if(filt==='Crédito')gs=gs.filter(g=>g.payType==='credit'||g._isInstallment);
@@ -1708,6 +1732,19 @@ function txToggle(e,el){
 function filterCreditMonth(){
   filt='Crédito';
   tab('gastos');
+}
+
+function toggleChipGroup(parentId, parentName){
+  // If already showing this group, collapse and go to parent filter
+  // If not showing, open it and select parent filter
+  const children=getChildren(parentId);
+  const isOpen=children.some(c=>c.name===filt)||filt===parentName;
+  if(isOpen){
+    filt='Todos';
+  } else {
+    filt=parentName;
+  }
+  rTxList();
 }
 
 function setF(c){filt=c;rTxList();}
