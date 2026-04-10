@@ -2631,8 +2631,16 @@ function rAnual(){
 }
 
 
-function openM(id){document.getElementById(id).classList.remove('hid');}
-function closeM(id){document.getElementById(id).classList.add('hid');}
+function openM(id){
+  document.querySelectorAll('.mo:not(.hid)').forEach(m=>{if(m.id!==id)m.classList.add('hid');});
+  document.getElementById(id).classList.remove('hid');
+  document.body.style.overflow='hidden';
+}
+function closeM(id){
+  document.getElementById(id).classList.add('hid');
+  // Only restore scroll if no other modals are open
+  if(!document.querySelector('.mo:not(.hid)'))document.body.style.overflow='';
+}
 function overlayClose(e,id){if(e.target===e.currentTarget)closeM(id);}
 function openMas(){openM('mMas');}
 function closeMas(){closeM('mMas');}
