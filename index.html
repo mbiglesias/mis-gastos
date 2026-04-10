@@ -598,7 +598,28 @@ onAuthStateChanged(auth, (user) => {
   </div>
 </div>
 
-<div class="mo hid" id="mAddGoal" onclick="overlayClose(event,'mAddGoal')">
+<div class="mo hid" id="mEditGoalEntry" onclick="overlayClose(event,'mEditGoalEntry')">
+  <div class="modal"><div class="mh"></div>
+    <div class="mt">Editar entrada</div>
+    <div class="fr" style="margin-bottom:8px">
+      <div class="fld">
+        <div class="fl-row"><div class="fl">Monto</div><div class="mini-cur" id="cur-editentry"><button class="mini-cur-btn on" onclick="selTxCur('editentry','USD',this)">USD</button><button class="mini-cur-btn" onclick="selTxCur('editentry','UYU',this)">UYU</button></div></div>
+        <input type="number" class="fi" id="eeAmt" placeholder="0">
+      </div>
+      <div class="fld"><div class="fl">Fecha</div><div class="date-wrap"><input type="date" class="fi" id="eeDate" onchange="updDateDisplay('eeDate','eeDateDisp')"><div class="date-display" id="eeDateDisp"><span>DD/MM/AAAA</span><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="4" width="18" height="18" rx="2"/><line x1="16" y1="2" x2="16" y2="6"/><line x1="8" y1="2" x2="8" y2="6"/><line x1="3" y1="10" x2="21" y2="10"/></svg></div></div></div>
+    </div>
+    <div class="fld" style="margin-bottom:14px">
+      <div class="fl">Nota (opcional)</div>
+      <input type="text" class="fi" id="eeNote" placeholder="Ej: Retiro de emergencia">
+    </div>
+    <div style="display:flex;gap:8px">
+      <button class="btn bgn" onclick="saveEditGoalEntry()">Guardar</button>
+      <button class="btn bg" onclick="closeM('mEditGoalEntry')">Cancelar</button>
+    </div>
+  </div>
+</div>
+
+
   <div class="modal"><div class="mh"></div>
     <div class="mt" id="agTitle">Agregar ahorro</div>
     <div class="fr" style="margin-bottom:8px">
@@ -1538,14 +1559,19 @@ function rSavings(){
     const entriesHTML=entries.length?`
       <div style="margin-top:10px;border-top:1px solid var(--border);padding-top:8px">
         <div style="font-size:10px;font-weight:700;color:var(--text-muted);text-transform:uppercase;letter-spacing:.5px;margin-bottom:6px">Historial</div>
-        ${entries.map((e,ei)=>`
-          <div style="display:flex;align-items:center;gap:8px;padding:6px 0;border-bottom:1px solid var(--border-light)">
+        ${entries.map((e,ei)=>{
+          const isWithdrawal=e.amount<0;
+          const realIdx=(g.entries||[]).findIndex((x,xi)=>x===g.entries.slice().sort((a,b)=>new Date(b.date)-new Date(a.date))[ei]);
+          const origIdx=(g.entries||[]).indexOf(g.entries.slice().sort((a,b)=>new Date(b.date)-new Date(a.date))[ei]);
+          return `<div style="display:flex;align-items:center;gap:8px;padding:8px 0;border-bottom:1px solid var(--border-light)">
             <div style="flex:1">
-              <div style="font-size:12px;font-weight:600;color:var(--green)">${fmt(e.amount)}</div>
-              <div style="font-size:10px;color:var(--text-muted)">${new Date(e.date+'T12:00:00').toLocaleDateString('es-UY',{day:'numeric',month:'short',year:'numeric'})}${e.note?` · ${e.note}`:''}</div>
+              <div style="font-size:12px;font-weight:700;color:${isWithdrawal?'var(--red)':'var(--green)'}">${isWithdrawal?'':'+'} ${fmt(Math.abs(e.amount))}</div>
+              <div style="font-size:10px;color:var(--text-muted)">${isWithdrawal?'🔴 Retiro':'🟢 Depósito'} · ${new Date(e.date+'T12:00:00').toLocaleDateString('es-UY',{day:'numeric',month:'short',year:'numeric'})}${e.note?` · ${e.note}`:''}</div>
             </div>
-            <button onclick="delGoalEntry(${i},${ei})" style="background:var(--red-light);border:none;color:var(--red);width:24px;height:24px;border-radius:6px;cursor:pointer;font-size:12px;display:flex;align-items:center;justify-content:center;flex-shrink:0">✕</button>
-          </div>`).join('')}
+            <button onclick="openEditGoalEntry(${i},${origIdx})" style="background:var(--accent-light);border:none;color:var(--accent);width:28px;height:28px;border-radius:6px;cursor:pointer;font-size:12px;flex-shrink:0">✏️</button>
+            <button onclick="delGoalEntry(${i},${origIdx})" style="background:var(--red-light);border:none;color:var(--red);width:28px;height:28px;border-radius:6px;cursor:pointer;font-size:12px;flex-shrink:0">✕</button>
+          </div>`;
+        }).join('')}
       </div>`:
       `<div style="font-size:11px;color:var(--text-muted);margin-top:8px;text-align:center">Sin entradas todavía</div>`;
 
@@ -1559,7 +1585,8 @@ function rSavings(){
         <span>${hasTarget?'de '+fmt(g.target):'sin meta'}</span>
       </div>
       <div class="gacts">
-        <button class="gab gab-a" onclick="openAddGoal(${i})">+ Agregar</button>
+        <button class="gab gab-a" onclick="openAddGoal(${i},false)">+ Depositar</button>
+        <button class="gab" style="background:var(--red-light);color:var(--red);border:1.5px solid var(--red-light)" onclick="openAddGoal(${i},true)">− Retirar</button>
         <button class="gab gab-e" onclick="openEditGoal(${i})">Editar</button>
         <button class="gab gab-d" onclick="delGoal(${i})">Eliminar</button>
       </div>
@@ -1708,7 +1735,7 @@ function handleCatSelect(selId){
 }
 
 // Per-transaction currency state
-const txCur={scan:'USD',manual:'USD',ingreso:'USD',gtarget:'USD',gsaved:'USD',addgoal:'USD',edit:'USD',ncbudget:'USD',ebinput:'USD'};
+const txCur={scan:'USD',manual:'USD',ingreso:'USD',gtarget:'USD',gsaved:'USD',addgoal:'USD',edit:'USD',ncbudget:'USD',ebinput:'USD',editentry:'USD'};
 function selTxCur(key,cur,btn){
   txCur[key]=cur;
   const container=btn.closest('.mini-cur');
@@ -1849,14 +1876,20 @@ function saveGoal(){
   else S.goals.push({id:Date.now().toString(),name,emoji,target,saved,deadline,entries:[]});
   save();rSavings();closeM('mNewGoal');toast('Objetivo guardado');
 }
-function openAddGoal(i){
+let _editEntryGoalIdx=null, _editEntryIdx=null, _isWithdrawal=false;
+
+function openAddGoal(i, isWithdrawal=false){
   addGoalIdx=i;
-  document.getElementById('agTitle').textContent=`Agregar a "${S.goals[i].name}"`;
+  _isWithdrawal=isWithdrawal;
+  document.getElementById('agTitle').textContent=isWithdrawal?`Retirar de "${S.goals[i].name}"`:`Depositar en "${S.goals[i].name}"`;
   document.getElementById('agAmt').value='';
-  const agDateVal=new Date().toISOString().split('T')[0];document.getElementById('agDate').value=agDateVal;updDateDisplay('agDate','agDateDisp');
+  const agDateVal=new Date().toISOString().split('T')[0];
+  document.getElementById('agDate').value=agDateVal;
+  updDateDisplay('agDate','agDateDisp');
   document.getElementById('agNote').value='';
   openM('mAddGoal');
 }
+
 function confirmAddGoal(){
   const v=parseFloat(document.getElementById('agAmt').value);
   const date=document.getElementById('agDate').value;
@@ -1864,12 +1897,51 @@ function confirmAddGoal(){
   if(isNaN(v)||v<=0){toast('Ingresá un monto');return;}
   if(!date){toast('Ingresá una fecha');return;}
   const goal=S.goals[addGoalIdx];
-  // Initialize entries array if not exists (migration from old format)
   if(!goal.entries)goal.entries=[];
-  const amtUSD=toUSD(v,txCur.addgoal);
+  const amtUSD=toUSD(v,txCur.addgoal)*(_isWithdrawal?-1:1);
   goal.entries.push({id:Date.now().toString(),amount:amtUSD,date,note,currency:txCur.addgoal,origAmount:v,tcAtSave:txCur.addgoal==='UYU'?XR:null});
-  goal.saved=(goal.entries.reduce((s,e)=>s+(+e.amount),0));
-  save();rSavings();closeM('mAddGoal');toast('Ahorro registrado ✓');
+  goal.saved=goal.entries.reduce((s,e)=>s+(+e.amount),0);
+  save();rSavings();closeM('mAddGoal');
+  toast(_isWithdrawal?'Retiro registrado ✓':'Ahorro registrado ✓');
+}
+
+function openEditGoalEntry(goalIdx, entryIdx){
+  _editEntryGoalIdx=goalIdx;
+  _editEntryIdx=entryIdx;
+  const entry=S.goals[goalIdx].entries[entryIdx];
+  const absAmt=Math.abs(entry.origAmount||Math.abs(entry.amount));
+  document.getElementById('eeAmt').value=absAmt;
+  document.getElementById('eeDate').value=entry.date||'';
+  updDateDisplay('eeDate','eeDateDisp');
+  document.getElementById('eeNote').value=entry.note||'';
+  // Set currency
+  const cur=entry.currency||'USD';
+  txCur.editentry=cur;
+  const curEl=document.getElementById('cur-editentry');
+  if(curEl)curEl.querySelectorAll('.mini-cur-btn').forEach(b=>{
+    b.className='mini-cur-btn'+(b.textContent.trim()===cur?(cur==='UYU'?' on-uyu':' on'):'');
+  });
+  openM('mEditGoalEntry');
+}
+
+function saveEditGoalEntry(){
+  const v=parseFloat(document.getElementById('eeAmt').value);
+  const date=document.getElementById('eeDate').value;
+  const note=document.getElementById('eeNote').value.trim();
+  if(isNaN(v)||v<=0){toast('Ingresá un monto');return;}
+  if(!date){toast('Ingresá una fecha');return;}
+  const goal=S.goals[_editEntryGoalIdx];
+  const entry=goal.entries[_editEntryIdx];
+  const wasNegative=entry.amount<0;
+  const amtUSD=toUSD(v,txCur.editentry)*(wasNegative?-1:1);
+  entry.amount=amtUSD;
+  entry.date=date;
+  entry.note=note;
+  entry.origAmount=v;
+  entry.currency=txCur.editentry;
+  entry.tcAtSave=txCur.editentry==='UYU'?XR:null;
+  goal.saved=goal.entries.reduce((s,e)=>s+(+e.amount),0);
+  save();rSavings();closeM('mEditGoalEntry');toast('Entrada actualizada ✓');
 }
 function delGoal(i){if(!confirm(`¿Eliminar "${S.goals[i].name}"?`))return;S.goals.splice(i,1);save();rSavings();toast('Objetivo eliminado');}
 
