@@ -1290,7 +1290,12 @@ function rTxList(){
   keys.forEach(key=>{
     const its=grp[key];
     if(key.startsWith('inst-')){
-      h+=`<div class="txg">Cuota del mes</div>`;
+      // Calculate expected payment date: purchase date + instNum months (1-month deferral)
+      const g0=its[0];
+      const start=new Date(g0.date+'T12:00:00');
+      const payMonth=new Date(start.getFullYear(), start.getMonth()+g0._instNum, 1);
+      const payStr=payMonth.toLocaleDateString('es-UY',{day:'numeric',month:'short',year:'numeric'});
+      h+=`<div class="txg">Cobro esperado: ${payStr}</div>`;
     } else {
       const d=new Date(key+'T12:00:00');
       h+=`<div class="txg">${d.toLocaleDateString('es-UY',{weekday:'short',day:'numeric',month:'short'})}</div>`;
