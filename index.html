@@ -770,14 +770,21 @@ onAuthStateChanged(auth, (user) => {
 
     <!-- SINGLE RECEIPT MODE -->
     <div id="modeRecibo-content">
-      <div class="scan-area" id="scanArea"
-        onclick="document.getElementById('fi').click()"
-        ondragover="evDrag(event)" ondrop="evDrop(event)"
-        ondragleave="document.getElementById('scanArea').classList.remove('dov')">
-        <input type="file" id="fi" accept="image/*" onchange="handleFile(this.files[0])">
-        <div class="scan-emoji">📸</div>
-        <div class="scan-lbl">Fotografiá o subí un recibo / captura</div>
-        <div class="scan-sub">También podés <strong>pegar una imagen</strong> con ⌘V / mantener presionado → Pegar</div>
+      <!-- Paste zone — textarea captures iOS paste, looks like scan area -->
+      <div style="position:relative;margin-bottom:14px">
+        <textarea id="pasteZoneRecibo"
+          class="scan-area"
+          style="resize:none;min-height:130px;font-size:13px;color:transparent;caret-color:transparent;background:transparent;position:absolute;inset:0;width:100%;height:100%;z-index:2;cursor:pointer"
+          placeholder=""
+          onpaste="handlePasteEvent(event,'recibo')"
+          onclick="if(!this.value){document.getElementById('fi').click()}"
+          readonly></textarea>
+        <div class="scan-area" style="pointer-events:none;min-height:130px" id="scanAreaDisplay">
+          <input type="file" id="fi" accept="image/*" onchange="handleFile(this.files[0])" style="display:none">
+          <div class="scan-emoji">📸</div>
+          <div class="scan-lbl">Fotografiá o subí un recibo / captura</div>
+          <div class="scan-sub">En iOS: <strong>mantené presionado → Pegar</strong><br>En desktop: <strong>⌘V</strong> o arrastrá la imagen</div>
+        </div>
       </div>
       <div class="proc" id="proc"><div class="sp"></div><div class="pm" id="pm">Analizando...</div></div>
       <div class="prev" id="prev">
@@ -829,14 +836,20 @@ onAuthStateChanged(auth, (user) => {
 
     <!-- ESTADO DE CUENTA MODE -->
     <div id="modeEstado-content" style="display:none">
-      <div class="scan-area" id="estadoArea"
-        onclick="document.getElementById('fiEstado').click()"
-        ondragover="evDrag2(event)" ondrop="evDrop2(event)"
-        ondragleave="document.getElementById('estadoArea').classList.remove('dov')">
-        <input type="file" id="fiEstado" accept="image/*,application/pdf" onchange="handleEstado(this.files[0])">
-        <div class="scan-emoji">📄</div>
-        <div class="scan-lbl">Subí tu estado de cuenta</div>
-        <div class="scan-sub">Imagen o PDF — también podés <strong>pegar</strong> con ⌘V / mantener presionado → Pegar</div>
+      <div style="position:relative;margin-bottom:14px">
+        <textarea id="pasteZoneEstado"
+          class="scan-area"
+          style="resize:none;min-height:130px;font-size:13px;color:transparent;caret-color:transparent;background:transparent;position:absolute;inset:0;width:100%;height:100%;z-index:2;cursor:pointer"
+          placeholder=""
+          onpaste="handlePasteEvent(event,'estado')"
+          onclick="if(!this.value){document.getElementById('fiEstado').click()}"
+          readonly></textarea>
+        <div class="scan-area" style="pointer-events:none;min-height:130px">
+          <input type="file" id="fiEstado" accept="image/*,application/pdf" onchange="handleEstado(this.files[0])" style="display:none">
+          <div class="scan-emoji">🏦</div>
+          <div class="scan-lbl">Subí tu estado de cuenta</div>
+          <div class="scan-sub">En iOS: <strong>mantené presionado → Pegar</strong><br>En desktop: <strong>⌘V</strong> o arrastrá la imagen</div>
+        </div>
       </div>
 
       <div class="proc" id="procEstado"><div class="sp"></div><div class="pm" id="pmEstado">Analizando estado de cuenta...</div></div>
@@ -1399,7 +1412,7 @@ function rSummary(){
     const entries=g.entries||[];
     return s+entries.filter(e=>{const d=new Date(e.date+'T12:00:00');return d.getMonth()===CM&&d.getFullYear()===CY;}).reduce((a,e)=>a+(+e.amount),0);
   },0);
-  const left=totalIncome-spent-savedThisMonth;
+  const left=totalIncome-spent-savedThisMonth-creditThisMonth;
 
   document.getElementById('sumSpent').textContent=fmt(spent);
   document.getElementById('sumCount').textContent=`${S.gastos.filter(g=>{const d=new Date(g.date+'T12:00:00');return d.getMonth()===CM&&d.getFullYear()===CY;}).length} gasto${gs.length!==1?'s':''} →`;
@@ -1417,7 +1430,7 @@ function rSummary(){
     if(budLbl)budLbl.textContent='configurar ›';
   }
   document.getElementById('sumLeft').textContent=fmt(Math.abs(left));
-  const leftLbl=left<0?'en exceso ⚠️':(savedThisMonth>0?'descontando ahorros':'libre este mes');
+  const leftLbl=left<0?'en exceso ⚠️':((savedThisMonth>0||creditThisMonth>0)?'descontando compromisos':'libre este mes');
   document.getElementById('sumLeftLbl').textContent=leftLbl;
   document.getElementById('sumLeft').className='sv li';
   document.getElementById('sumSalary').textContent=fmt(totalIncome);
@@ -1505,24 +1518,41 @@ function rCredit(){
     const cuota=g.amount/inst;
     const s=new Date(g.date+'T12:00:00');
     const diff=(now.getFullYear()-s.getFullYear())*12+(now.getMonth()-s.getMonth());
-    const paid=Math.min(diff,inst);
+    const paid=Math.max(0,diff-1); // 1-month deferral: paid = months elapsed - 1
     const rem=inst-paid;
     const pct=(paid/inst)*100;
-    const end=new Date(s);end.setMonth(end.getMonth()+inst-1);
+    // Next payment date: purchase date + paid+1 months (next cuota)
+    const nextPay=new Date(s.getFullYear(),s.getMonth()+paid+1,1);
+    // Last payment date
+    const lastPay=new Date(s.getFullYear(),s.getMonth()+inst,1);
+    const purchaseStr=s.toLocaleDateString('es-UY',{day:'numeric',month:'short',year:'numeric'});
+    const nextStr=nextPay.toLocaleDateString('es-UY',{day:'numeric',month:'short',year:'numeric'});
+    const lastStr=lastPay.toLocaleDateString('es-UY',{month:'short',year:'numeric'});
+    const cat=S.categories.find(c=>c.name===g.category);
+    const em=cat?cat.emoji:'📦';const col=cat?cat.color:'#6b7280';
     return `<div class="cri">
       <div class="crit">
-        <div class="crid">${g.desc}</div>
-        <div style="display:flex;align-items:center;gap:8px">
-          <div class="cria">${fmt(g.amount)}</div>
-          <button class="bab" style="width:24px;height:24px;font-size:11px" onclick="openEditGasto('${g.id}')">✏️</button>
-          <button class="bab dng" style="width:24px;height:24px;font-size:11px" onclick="delG('${g.id}')">✕</button>
+        <div style="display:flex;align-items:center;gap:10px">
+          <div class="txico" style="background:${col}22;flex-shrink:0;width:36px;height:36px;font-size:18px">${em}</div>
+          <div style="flex:1">
+            <div class="crid">${g.desc}</div>
+            <div style="font-size:10px;color:var(--text-muted);margin-top:2px">Compra: ${purchaseStr}</div>
+          </div>
+          <div style="display:flex;align-items:center;gap:6px">
+            <div class="cria">${fmt(g.amount)}</div>
+            <button class="bab" style="width:24px;height:24px;font-size:11px" onclick="openEditGasto('${g.id}')">✏️</button>
+            <button class="bab dng" style="width:24px;height:24px;font-size:11px" onclick="delG('${g.id}')">✕</button>
+          </div>
         </div>
       </div>
-      <div class="crim">
+      <div class="crim" style="margin-top:8px">
+        <span style="background:var(--purple-light);color:var(--purple);padding:2px 8px;border-radius:10px;font-weight:700">📅 Próx. cobro: ${nextStr}</span>
+      </div>
+      <div class="crim" style="margin-top:4px">
         <span>${fmt(cuota)}/mes</span><span>·</span>
-        <span>${paid}/${inst} cuotas</span><span>·</span>
+        <span>${paid}/${inst} cuotas pagadas</span><span>·</span>
         <span>${rem} restante${rem!==1?'s':''}</span><span>·</span>
-        <span>hasta ${end.toLocaleDateString('es-UY',{month:'short',year:'numeric'})}</span>
+        <span>último cobro: ${lastStr}</span>
       </div>
       <div class="crib"><div class="crif" style="width:${pct}%"></div></div>
     </div>`;
@@ -2156,9 +2186,29 @@ function setEmojiDisplay(prefix, emoji) {
 
 
 // ============================================================
-// PASTE IMAGE SUPPORT
+// PASTE IMAGE SUPPORT — textarea (iOS) + global Cmd+V (desktop)
 // ============================================================
+function handlePasteEvent(e, mode){
+  const items = e.clipboardData?.items;
+  if(!items)return;
+  for(const item of items){
+    if(item.type.startsWith('image/')){
+      e.preventDefault();
+      const file=item.getAsFile();
+      if(!file)return;
+      if(mode==='estado'){handleEstado(file);}
+      else{handleFile(file);}
+      toast('📋 Imagen pegada — analizando...');
+      const zone=document.getElementById(mode==='estado'?'pasteZoneEstado':'pasteZoneRecibo');
+      if(zone)setTimeout(()=>{zone.value='';},200);
+      return;
+    }
+  }
+}
+
 document.addEventListener('paste', (e) => {
+  // Skip if already handled by textarea paste
+  if(e.target.id==='pasteZoneRecibo'||e.target.id==='pasteZoneEstado')return;
   const escTab = document.getElementById('t-escanear');
   if (!escTab || escTab.style.display === 'none') return;
   const items = e.clipboardData?.items;
