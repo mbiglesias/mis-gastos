@@ -762,6 +762,18 @@ onAuthStateChanged(auth, (user) => {
   <!-- ESCANEAR -->
   <div id="t-escanear" style="display:none">
 
+    <!-- PASTE INPUT — always visible, works for both modes -->
+    <div class="fc" style="margin-bottom:12px">
+      <div class="ft">Pegar captura de pantalla</div>
+      <input type="text" id="pasteInput" class="fi"
+        placeholder="📋 Tocá acá → mantené presionado → Pegar"
+        style="font-size:13px;text-align:center"
+        onpaste="handleInputPaste(event)"
+        onfocus="this.select()"
+      >
+      <div style="font-size:11px;color:var(--text-muted);margin-top:5px;text-align:center">Detecta automáticamente si es ticket o estado bancario</div>
+    </div>
+
     <!-- MODE TOGGLE -->
     <div style="display:flex;gap:8px;margin-bottom:14px">
       <button class="btn" id="modeRecibo" onclick="setMode('recibo')" style="flex:1;background:var(--accent);color:#fff;font-size:12px">📸 Foto de ticket</button>
@@ -2188,7 +2200,7 @@ function setEmojiDisplay(prefix, emoji) {
 // ============================================================
 // PASTE IMAGE SUPPORT — textarea (iOS) + global Cmd+V (desktop)
 // ============================================================
-function handlePasteEvent(e, mode){
+function handleInputPaste(e){
   const items = e.clipboardData?.items;
   if(!items)return;
   for(const item of items){
@@ -2196,19 +2208,25 @@ function handlePasteEvent(e, mode){
       e.preventDefault();
       const file=item.getAsFile();
       if(!file)return;
-      if(mode==='estado'){handleEstado(file);}
+      // Clear input so it can be reused
+      setTimeout(()=>{document.getElementById('pasteInput').value='';},100);
+      // Route based on active mode
+      const modeEstado=document.getElementById('modeEstado-content');
+      const isEstado=modeEstado&&modeEstado.style.display!=='none';
+      toast('📋 Procesando captura...');
+      if(isEstado){handleEstado(file);}
       else{handleFile(file);}
-      toast('📋 Imagen pegada — analizando...');
-      const zone=document.getElementById(mode==='estado'?'pasteZoneEstado':'pasteZoneRecibo');
-      if(zone)setTimeout(()=>{zone.value='';},200);
       return;
     }
   }
+  // If no image found, clear any text that was pasted
+  setTimeout(()=>{document.getElementById('pasteInput').value='';},50);
 }
+
 
 document.addEventListener('paste', (e) => {
   // Skip if already handled by textarea paste
-  if(e.target.id==='pasteZoneRecibo'||e.target.id==='pasteZoneEstado')return;
+  if(e.target.id==='pasteZoneRecibo'||e.target.id==='pasteZoneEstado'||e.target.id==='pasteInput')return;
   const escTab = document.getElementById('t-escanear');
   if (!escTab || escTab.style.display === 'none') return;
   const items = e.clipboardData?.items;
