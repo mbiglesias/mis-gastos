@@ -267,7 +267,7 @@ onAuthStateChanged(auth, (user) => {
   .sal-val{font-size:22px;font-weight:700;color:#fff;letter-spacing:-.5px}
   .sal-edit{background:rgba(255,255,255,.2);border:none;color:#fff;border-radius:var(--r);padding:5px 10px;font-size:11px;font-weight:700;cursor:pointer;font-family:inherit;transition:background .15s}
   .sal-edit:hover{background:rgba(255,255,255,.3)}
-  .bi{background:var(--white);border-radius:var(--R);padding:12px 13px;display:flex;align-items:center;gap:10px;box-shadow:var(--sh);margin-bottom:6px}
+  .bi{background:var(--white);border-radius:var(--R);padding:12px 13px;display:flex;flex-direction:column;gap:0;box-shadow:var(--sh);margin-bottom:6px}
   .biico{width:34px;height:34px;border-radius:10px;display:flex;align-items:center;justify-content:center;font-size:16px;flex-shrink:0}
   .bib{flex:1;min-width:0}.bin{font-size:13px;font-weight:700}
   .bibar{margin-top:4px;height:3px;background:var(--border);border-radius:2px;overflow:hidden}
@@ -1825,65 +1825,123 @@ function rBudget(){
   const con=document.getElementById('budList');if(!con)return;
   const parents=getParents();
   let html='';
+  if(!window._budExpanded)window._budExpanded={};
+  if(!window._budMode)window._budMode={};
+
+  // Helper: get gastos for a category in a given mode
+  function catGastos(catName, mode){
+    const debits=debitGs.filter(g=>g.category===catName);
+    if(mode==='consumo'){
+      // Credit purchased this month
+      const crPurch=S.gastos.filter(g=>g.payType==='credit'&&g.category===catName&&(()=>{const d=new Date(g.date+'T12:00:00');return d.getMonth()===CM&&d.getFullYear()===CY;})());
+      return [...debits,...crPurch.map(g=>({...g,_displayAmt:g.amount,_label:'compra'}))];
+    } else {
+      // Credit cuotas due this month
+      const crInst=creditInstGs.filter(g=>g.category===catName);
+      return [...debits,...crInst.map(g=>({...g,_displayAmt:g._cuota||g.amount/(+g.installments||1),_label:`Cuota ${g._instNum}/${g._instTotal||g.installments}`}))];
+    }
+  }
+
+  function catDetailHTML(catName, key){
+    const mode=window._budMode[key]||(S.crMode||'consumo');
+    const gastos=catGastos(catName,mode);
+    if(!gastos.length)return `<div style="font-size:11px;color:var(--text-muted);padding:8px 0;text-align:center">Sin gastos este mes</div>`;
+    return gastos.map(g=>{
+      const amt=g._displayAmt!==undefined?g._displayAmt:+g.amount;
+      const label=g._label||(g.payType==='credit'?`Cuota ${g._instNum||1}/${g._instTotal||g.installments||1}`:'');
+      const cat=S.categories.find(c=>c.name===g.category);
+      return `<div style="display:flex;align-items:center;gap:8px;padding:5px 0;border-bottom:1px solid var(--border)">
+        <div style="flex:1;min-width:0">
+          <div style="font-size:12px;font-weight:600;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">${g.desc}</div>
+          ${label?`<div style="font-size:10px;color:var(--purple)">${label}</div>`:''}
+        </div>
+        <div style="font-size:12px;font-weight:700;flex-shrink:0">${fmt(amt)}</div>
+      </div>`;
+    }).join('');
+  }
+
+  function expandBtn(catName, key, sp){
+    // Only show expand if there are credit gastos
+    const hasCr=S.gastos.some(g=>g.payType==='credit'&&g.category===catName);
+    if(!hasCr&&sp===0)return'';
+    const isExp=window._budExpanded[key];
+    const mode=window._budMode[key]||(S.crMode||'consumo');
+    const detail=isExp?`
+      <div style="padding:8px 0 4px">
+        <div style="display:flex;gap:4px;margin-bottom:8px">
+          <button onclick="setBudMode('${key}','consumo');rBudget()" style="flex:1;padding:4px 6px;border-radius:6px;border:none;font-family:inherit;font-size:10px;font-weight:700;cursor:pointer;background:${mode==='consumo'?'var(--accent)':'var(--bg)'};color:${mode==='consumo'?'#fff':'var(--text-muted)'}">📅 Consumí</button>
+          <button onclick="setBudMode('${key}','pago');rBudget()" style="flex:1;padding:4px 6px;border-radius:6px;border:none;font-family:inherit;font-size:10px;font-weight:700;cursor:pointer;background:${mode==='pago'?'var(--purple)':'var(--bg)'};color:${mode==='pago'?'#fff':'var(--text-muted)'}">💳 Pago</button>
+        </div>
+        ${catDetailHTML(catName,key)}
+      </div>`:'';
+    return `<button onclick="toggleBudExp('${key}');rBudget()" style="width:100%;margin-top:6px;padding:5px;background:var(--bg);border:none;border-radius:6px;font-family:inherit;font-size:10px;font-weight:700;color:var(--accent);cursor:pointer">${isExp?'▲ Ocultar':'▼ Ver gastos'}</button>${detail}`;
+  }
 
   parents.forEach((cat,pi)=>{
     const i=S.categories.indexOf(cat);
     const children=getChildren(getCatId(cat));
     const hasChildren=children.length>0;
+    const key=getCatId(cat);
 
     if(hasChildren){
-      // Parent row — sum of all children
       const totalSp=children.reduce((s,c)=>s+catSpend(c.name,debitGs,creditInstGs),0);
       const totalBu=children.reduce((s,c)=>s+(+c.budget||0),0);
       const pct=totalBu>0?Math.min((totalSp/totalBu)*100,100):0;
       const ov=totalSp>totalBu&&totalBu>0;
-      html+=`<div class="bi" style="background:var(--bg);border-radius:var(--r) var(--r) 0 0;margin-bottom:0">
-        <div class="biico" style="background:${cat.color}22">${cat.emoji}</div>
-        <div class="bib"><div class="bin" style="font-weight:700">${cat.name}</div>${totalBu>0?`<div class="bibar"><div class="bibf" style="width:${pct}%;background:${ov?'var(--red)':'var(--accent)'}"></div></div>`:''}</div>
-        <div class="bir"><div class="biam" style="color:${ov?'var(--red)':'inherit'}">${fmt(totalSp)}</div><div class="bilm">${totalBu>0?'de '+fmt(totalBu):'grupo'}</div></div>
-        <div class="bias">
-          <button class="bab" onclick="openEB(${i})">✏️</button>
-          <button class="bab dng" onclick="delCat(${i})">✕</button>
+      html+=`<div class="bi" style="background:var(--bg);border-radius:var(--r) var(--r) 0 0;margin-bottom:0;flex-direction:column;align-items:stretch;gap:0">
+        <div style="display:flex;align-items:center;gap:8px">
+          <div class="biico" style="background:${cat.color}22">${cat.emoji}</div>
+          <div class="bib" style="flex:1"><div class="bin" style="font-weight:700">${cat.name}</div>${totalBu>0?`<div class="bibar"><div class="bibf" style="width:${pct}%;background:${ov?'var(--red)':'var(--accent)'}"></div></div>`:''}</div>
+          <div class="bir"><div class="biam" style="color:${ov?'var(--red)':'inherit'}">${fmt(totalSp)}</div><div class="bilm">${totalBu>0?'de '+fmt(totalBu):'grupo'}</div></div>
+          <div class="bias"><button class="bab" onclick="openEB(${i})">✏️</button><button class="bab dng" onclick="delCat(${i})">✕</button></div>
         </div>
       </div>`;
-      // Children rows
       children.forEach((child,ci)=>{
         const ci2=S.categories.indexOf(child);
         const sp=catSpend(child.name,debitGs,creditInstGs);
         const bu=+child.budget||0;
-        const pct=bu>0?Math.min((sp/bu)*100,100):0;
-        const ov=sp>bu&&bu>0;
-        const col=ov?'var(--red)':(pct>=100?'var(--accent)':child.color);
+        const pct2=bu>0?Math.min((sp/bu)*100,100):0;
+        const ov2=sp>bu&&bu>0;
+        const col=ov2?'var(--red)':(pct2>=100?'var(--accent)':child.color);
         const isLast=ci===children.length-1;
-        html+=`<div class="bi" style="padding-left:32px;background:var(--white);${isLast?'border-radius:0 0 var(--r) var(--r);margin-bottom:10px':'border-radius:0'}">
-          <div class="biico" style="background:${child.color}22;width:28px;height:28px;font-size:14px">${child.emoji}</div>
-          <div class="bib"><div class="bin" style="font-size:12px">${child.name}</div><div class="bibar"><div class="bibf" style="width:${pct}%;background:${col}"></div></div></div>
-          <div class="bir"><div class="biam" style="font-size:12px;color:${ov?'var(--red)':'inherit'}">${fmt(sp)}</div><div class="bilm">${bu>0?'de '+fmt(bu):'sin límite'}</div></div>
-          <div class="bias">
-            <button class="bab" onclick="openEB(${ci2})">✏️</button>
-            <button class="bab dng" onclick="delCat(${ci2})">✕</button>
+        const ck=getCatId(child);
+        html+=`<div class="bi" style="padding-left:32px;background:var(--white);${isLast?'border-radius:0 0 var(--r) var(--r);margin-bottom:10px':'border-radius:0'};flex-direction:column;align-items:stretch;gap:0">
+          <div style="display:flex;align-items:center;gap:8px">
+            <div class="biico" style="background:${child.color}22;width:28px;height:28px;font-size:14px">${child.emoji}</div>
+            <div class="bib" style="flex:1"><div class="bin" style="font-size:12px">${child.name}</div><div class="bibar"><div class="bibf" style="width:${pct2}%;background:${col}"></div></div></div>
+            <div class="bir"><div class="biam" style="font-size:12px;color:${ov2?'var(--red)':'inherit'}">${fmt(sp)}</div><div class="bilm">${bu>0?'de '+fmt(bu):'sin límite'}</div></div>
+            <div class="bias"><button class="bab" onclick="openEB(${ci2})">✏️</button><button class="bab dng" onclick="delCat(${ci2})">✕</button></div>
           </div>
+          ${expandBtn(child.name,ck,sp)}
         </div>`;
       });
     } else {
-      // Simple cat, no children
       const sp=catSpend(cat.name,debitGs,creditInstGs);
       const bu=+cat.budget||0;
       const pct=bu>0?Math.min((sp/bu)*100,100):0;
       const ov=sp>bu&&bu>0;
       const col=ov?'var(--red)':(pct>=100?'var(--accent)':cat.color);
-      html+=`<div class="bi">
-        <div class="biico" style="background:${cat.color}22">${cat.emoji}</div>
-        <div class="bib"><div class="bin">${cat.name}</div><div class="bibar"><div class="bibf" style="width:${pct}%;background:${col}"></div></div></div>
-        <div class="bir"><div class="biam" style="color:${ov?'var(--red)':'inherit'}">${fmt(sp)}</div><div class="bilm">${bu>0?'de '+fmt(bu):'sin límite'}</div></div>
-        <div class="bias">
-          <button class="bab" onclick="openEB(${i})">✏️</button>
-          <button class="bab dng" onclick="delCat(${i})">✕</button>
+      html+=`<div class="bi" style="flex-direction:column;align-items:stretch;gap:0">
+        <div style="display:flex;align-items:center;gap:8px">
+          <div class="biico" style="background:${cat.color}22">${cat.emoji}</div>
+          <div class="bib" style="flex:1"><div class="bin">${cat.name}</div><div class="bibar"><div class="bibf" style="width:${pct}%;background:${col}"></div></div></div>
+          <div class="bir"><div class="biam" style="color:${ov?'var(--red)':'inherit'}">${fmt(sp)}</div><div class="bilm">${bu>0?'de '+fmt(bu):'sin límite'}</div></div>
+          <div class="bias"><button class="bab" onclick="openEB(${i})">✏️</button><button class="bab dng" onclick="delCat(${i})">✕</button></div>
         </div>
+        ${expandBtn(cat.name,key,sp)}
       </div>`;
     }
   });
   con.innerHTML=html;
+}
+
+function toggleBudExp(key){
+  if(!window._budExpanded)window._budExpanded={};
+  window._budExpanded[key]=!window._budExpanded[key];
+}
+function setBudMode(key,mode){
+  if(!window._budMode)window._budMode={};
+  window._budMode[key]=mode;
 }
 
 function getCatId(cat){return cat.id||cat.name;}
