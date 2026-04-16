@@ -982,6 +982,9 @@ onAuthStateChanged(auth, (user) => {
         <button id="btnCrPago" class="btn bg" style="flex:1;font-size:12px;padding:8px" onclick="setCrMode('pago')">💳 Mes que pago</button>
       </div>
       <div style="font-size:11px;color:var(--text-muted);margin-top:8px" id="crModeDesc">El gasto aparece en el presupuesto del mes en que compraste. Las cuotas siguen afectando el disponible mes a mes.</div>
+      <!-- Comparison panel -->
+      <button onclick="toggleCrComparison()" style="width:100%;margin-top:10px;padding:8px;background:var(--bg);border:none;border-radius:var(--r);font-family:inherit;font-size:12px;font-weight:600;color:var(--accent);cursor:pointer" id="crCompBtn">▼ Ver comparativa de crédito</button>
+      <div id="crComparison" style="display:none;margin-top:10px"></div>
     </div>
     <div id="budList"></div>
     <button class="btn bg" onclick="openM('mNewCat')" style="width:100%;margin-top:4px">+ Nueva categoría</button>
@@ -1695,9 +1698,82 @@ function delGoalEntry(goalIdx,entryIdx){
 // ============================================================
 // BUDGET TAB
 // ============================================================
-// ============================================================
-// CREDIT ACCOUNTING MODE
-// ============================================================
+function toggleCrComparison(){
+  const panel=document.getElementById('crComparison');
+  const btn=document.getElementById('crCompBtn');
+  const isOpen=panel.style.display!=='none';
+  if(isOpen){
+    panel.style.display='none';
+    btn.textContent='▼ Ver comparativa de crédito';
+  } else {
+    panel.style.display='block';
+    renderCrComparison();
+    btn.textContent='▲ Ocultar comparativa';
+  }
+}
+
+function renderCrComparison(){
+  const panel=document.getElementById('crComparison');
+  if(!panel)return;
+
+  // All credit gastos
+  const crGs=S.gastos.filter(g=>g.payType==='credit');
+
+  // Column A — "Mes que consumí": compras realizadas este mes
+  const consumidoThisMonth=crGs.filter(g=>{
+    const d=new Date(g.date+'T12:00:00');
+    return d.getMonth()===CM&&d.getFullYear()===CY;
+  });
+
+  // Column B — "Mes que pago": cuotas que caen este mes (deferred by 1)
+  const pagadoThisMonth=crDue(CM,CY);
+
+  const totalConsumo=consumidoThisMonth.reduce((s,g)=>s+(+g.amount),0);
+  const totalPago=pagadoThisMonth.reduce((s,g)=>s+(g._cuota||g.amount/(+g.installments||1)),0);
+
+  const rowStyle='display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-bottom:6px';
+  const cellStyle='background:var(--bg);border-radius:var(--r);padding:8px 10px';
+
+  let html=`
+    <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-bottom:8px">
+      <div style="font-size:10px;font-weight:700;color:var(--accent);text-transform:uppercase;letter-spacing:.5px">📅 Consumí en ${MOS[CM]}</div>
+      <div style="font-size:10px;font-weight:700;color:var(--purple);text-transform:uppercase;letter-spacing:.5px">💳 Pago en ${MOS[CM]}</div>
+    </div>`;
+
+  // Rows for consumed
+  if(consumidoThisMonth.length===0&&pagadoThisMonth.length===0){
+    html+=`<div style="text-align:center;color:var(--text-muted);font-size:12px;padding:12px">Sin movimientos de crédito este mes</div>`;
+  } else {
+    const maxRows=Math.max(consumidoThisMonth.length,pagadoThisMonth.length);
+    for(let i=0;i<maxRows;i++){
+      const c=consumidoThisMonth[i];
+      const p=pagadoThisMonth[i];
+      html+=`<div style="${rowStyle}">
+        <div style="${cellStyle}">
+          ${c?`<div style="font-size:12px;font-weight:600;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">${c.desc}</div>
+               <div style="font-size:11px;color:var(--accent);font-weight:700;margin-top:2px">${fmt(c.amount)}</div>
+               <div style="font-size:10px;color:var(--text-muted)">${c.installments>1?c.installments+' cuotas':'pago único'}</div>`
+          :'<div style="font-size:11px;color:var(--text-muted)">—</div>'}
+        </div>
+        <div style="${cellStyle}">
+          ${p?`<div style="font-size:12px;font-weight:600;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">${p.desc}</div>
+               <div style="font-size:11px;color:var(--purple);font-weight:700;margin-top:2px">${fmt(p._cuota||p.amount/(+p.installments||1))}/mes</div>
+               <div style="font-size:10px;color:var(--text-muted)">Cuota ${p._instNum}/${p._instTotal||p.installments}</div>`
+          :'<div style="font-size:11px;color:var(--text-muted)">—</div>'}
+        </div>
+      </div>`;
+    }
+    html+=`<div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-top:4px;border-top:1px solid var(--border);padding-top:8px">
+      <div style="font-size:13px;font-weight:700;color:var(--accent)">${fmt(totalConsumo)}</div>
+      <div style="font-size:13px;font-weight:700;color:var(--purple)">${fmt(totalPago)}</div>
+    </div>
+    <div style="font-size:10px;color:var(--text-muted);margin-top:4px">Modo activo: <strong>${(S.crMode||'consumo')==='consumo'?'Mes que consumí':'Mes que pago'}</strong> → este total impacta tu presupuesto</div>`;
+  }
+
+  panel.innerHTML=html;
+}
+
+
 function setCrMode(mode){
   S.crMode=mode;
   save();
