@@ -355,6 +355,11 @@ onAuthStateChanged(auth, (user) => {
   .tx-actions{display:none;gap:6px;margin-top:8px;padding-top:8px;border-top:1px solid var(--border);width:100%}
   .txi.expanded .tx-actions{display:flex}
 
+  .detail-row{display:flex;justify-content:space-between;align-items:flex-start;gap:12px;padding:10px 14px;border-bottom:1px solid var(--border)}
+  .detail-row:last-child{border-bottom:none}
+  .detail-lbl{font-size:12px;color:var(--text-muted);flex-shrink:0}
+  .detail-val{font-size:12px;font-weight:600;text-align:right}
+
   /* FLOATING SCAN BUTTON */
   .fab{position:fixed;bottom:28px;right:20px;width:56px;height:56px;border-radius:50%;background:var(--accent);border:none;color:#fff;font-size:28px;font-weight:300;cursor:pointer;box-shadow:0 4px 16px rgba(71,114,250,.4);display:flex;align-items:center;justify-content:center;z-index:40;transition:transform .2s,box-shadow .15s;line-height:1}
   .fab.open{transform:rotate(45deg)}
@@ -641,6 +646,12 @@ onAuthStateChanged(auth, (user) => {
       <button class="btn bgn" onclick="confirmAddGoal()">Agregar</button>
       <button class="btn bg" onclick="closeM('mAddGoal')">Cancelar</button>
     </div>
+  </div>
+</div>
+
+<div class="mo hid" id="mGastoDetail" onclick="overlayClose(event,'mGastoDetail')">
+  <div class="modal"><div class="mh"></div>
+    <div id="gastoDetailContent"></div>
   </div>
 </div>
 
@@ -1373,14 +1384,9 @@ function rTxList(){
       // For installment rows: show cuota info cleanly
       // Installment rows: show edit on the original gasto id (not the virtual _isInstallment row)
       const editId=isInst?g.id:g.id; // always use original id
-      const actions=(isCr||!isInst)
-        ?`<div class="tx-actions">
-            <button style="flex:1;padding:10px;font-size:13px;font-weight:600;border-radius:var(--r);border:none;background:var(--accent-light);color:var(--accent);cursor:pointer" onclick="event.stopPropagation();openEditGasto('${g.id}')">✏️ Editar</button>
-            <button style="flex:1;padding:10px;font-size:13px;font-weight:600;border-radius:var(--r);border:none;background:var(--red-light);color:var(--red);cursor:pointer" onclick="event.stopPropagation();delG('${g.id}')">🗑 Eliminar</button>
-          </div>`
-        :'';
+      // Actions now inside detail modal
 
-      const tapAttr=(isCr||!isInst)?`onclick="txToggle(event,this)"`:''
+      const tapAttr=`onclick="openGastoDetail('${g.id}',${JSON.stringify(isInst)},${JSON.stringify(instNum)},${JSON.stringify(inst)})"`
 
       h+=`<div class="txi"${isInst?' style="border-left:3px solid var(--purple)"':''} ${tapAttr}>
         <div class="txi-row">
@@ -1393,9 +1399,8 @@ function rTxList(){
             <div class="txa" style="${isInst?'color:var(--purple)':''}">${displayAmt}</div>
             ${subAmt}
           </div>
-          ${(isCr||!isInst)?`<div style="color:var(--text-muted);font-size:18px;flex-shrink:0">›</div>`:''}
+          <div style="color:var(--text-muted);font-size:18px;flex-shrink:0">›</div>
         </div>
-        ${actions}
       </div>`;
     });
   });
@@ -1573,7 +1578,7 @@ function rCredit(){
     const lastStr=lastPay.toLocaleDateString('es-UY',{month:'short',year:'numeric'});
     const cat=S.categories.find(c=>c.name===g.category);
     const em=cat?cat.emoji:'📦';const col=cat?cat.color:'#6b7280';
-    return `<div class="cri">
+    return `<div class="cri" style="cursor:pointer" onclick="openGastoDetail('${g.id}',false,${paid+1},${inst})">
       <div class="crit">
         <div style="display:flex;align-items:center;gap:10px">
           <div class="txico" style="background:${col}22;flex-shrink:0;width:36px;height:36px;font-size:18px">${em}</div>
@@ -1581,10 +1586,9 @@ function rCredit(){
             <div class="crid">${g.desc}</div>
             <div style="font-size:10px;color:var(--text-muted);margin-top:2px">Compra: ${purchaseStr}</div>
           </div>
-          <div style="display:flex;align-items:center;gap:6px">
+          <div style="display:flex;align-items:center;gap:8px">
             <div class="cria">${fmt(g.amount)}</div>
-            <button class="bab" style="width:24px;height:24px;font-size:11px" onclick="openEditGasto('${g.id}')">✏️</button>
-            <button class="bab dng" style="width:24px;height:24px;font-size:11px" onclick="delG('${g.id}')">✕</button>
+            <div style="color:var(--text-muted);font-size:16px">›</div>
           </div>
         </div>
       </div>
@@ -1849,13 +1853,18 @@ function rBudget(){
     return gastos.map(g=>{
       const amt=g._displayAmt!==undefined?g._displayAmt:+g.amount;
       const label=g._label||(g.payType==='credit'?`Cuota ${g._instNum||1}/${g._instTotal||g.installments||1}`:'');
-      const cat=S.categories.find(c=>c.name===g.category);
-      return `<div style="display:flex;align-items:center;gap:8px;padding:5px 0;border-bottom:1px solid var(--border)">
+      const isInstRow=!!g._isInstallment;
+      const instN=g._instNum||1;
+      const instT=g._instTotal||+g.installments||1;
+      return `<div style="display:flex;align-items:center;gap:8px;padding:8px 0;border-bottom:1px solid var(--border);cursor:pointer" onclick="openGastoDetail('${g.id}',${isInstRow},${instN},${instT})">
         <div style="flex:1;min-width:0">
           <div style="font-size:12px;font-weight:600;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">${g.desc}</div>
           ${label?`<div style="font-size:10px;color:var(--purple)">${label}</div>`:''}
         </div>
-        <div style="font-size:12px;font-weight:700;flex-shrink:0">${fmt(amt)}</div>
+        <div style="display:flex;align-items:center;gap:6px;flex-shrink:0">
+          <div style="font-size:12px;font-weight:700">${fmt(amt)}</div>
+          <div style="color:var(--text-muted);font-size:14px">›</div>
+        </div>
       </div>`;
     }).join('');
   }
@@ -2009,13 +2018,76 @@ function selTxCur(key,cur,btn){
 // ============================================================
 // GASTO FLOW
 // ============================================================
-function txToggle(e,el){
-  // Close all others first
-  document.querySelectorAll('.txi.expanded').forEach(x=>{if(x!==el)x.classList.remove('expanded');});
-  el.classList.toggle('expanded');
-  if(el.classList.contains('expanded')){
-    setTimeout(()=>el.scrollIntoView({behavior:'smooth',block:'nearest'}),50);
+function openGastoDetail(id, isInst, instNum, instTotal){
+  const g=S.gastos.find(x=>x.id===id);
+  if(!g)return;
+  const cat=S.categories.find(c=>c.name===g.category);
+  const em=cat?cat.emoji:'📦';
+  const col=cat?cat.color:'#6b7280';
+  const isCr=g.payType==='credit';
+  const inst=+g.installments||1;
+  const cuota=g.amount/inst;
+  const purchaseDate=new Date(g.date+'T12:00:00').toLocaleDateString('es-UY',{weekday:'long',day:'numeric',month:'long',year:'numeric'});
+
+  // Payment info
+  let payInfo='';
+  if(isCr){
+    const nextPayDate=new Date(new Date(g.date+'T12:00:00'));
+    nextPayDate.setMonth(nextPayDate.getMonth()+(isInst?instNum:1));
+    const lastPayDate=new Date(new Date(g.date+'T12:00:00'));
+    lastPayDate.setMonth(lastPayDate.getMonth()+inst);
+    payInfo=`
+      <div class="detail-row">
+        <span class="detail-lbl">Cuota mensual</span>
+        <span class="detail-val" style="color:var(--purple)">${fmt(cuota)}/mes</span>
+      </div>
+      <div class="detail-row">
+        <span class="detail-lbl">${isInst?'Esta cuota':'Primera cuota'}</span>
+        <span class="detail-val">${isInst?`${instNum} de ${instTotal}`:'1 de '+inst}</span>
+      </div>
+      <div class="detail-row">
+        <span class="detail-lbl">Último cobro</span>
+        <span class="detail-val">${lastPayDate.toLocaleDateString('es-UY',{month:'short',year:'numeric'})}</span>
+      </div>`;
   }
+
+  const html=`
+    <div style="display:flex;align-items:center;gap:12px;margin-bottom:16px">
+      <div style="width:48px;height:48px;border-radius:12px;background:${col}22;display:flex;align-items:center;justify-content:center;font-size:24px;flex-shrink:0">${em}</div>
+      <div>
+        <div style="font-size:17px;font-weight:700;letter-spacing:-.3px">${g.desc}</div>
+        <div style="font-size:12px;color:var(--text-muted);margin-top:2px">${g.category}</div>
+      </div>
+    </div>
+
+    <div style="background:${isCr?'var(--purple-light)':'var(--accent-light)'};border-radius:var(--R);padding:14px;text-align:center;margin-bottom:14px">
+      <div style="font-size:11px;font-weight:700;color:${isCr?'var(--purple)':'var(--accent)'};text-transform:uppercase;letter-spacing:.5px;margin-bottom:4px">${isInst?`Cuota ${instNum}/${instTotal}`:(isCr?`Total en ${inst} cuota${inst>1?'s':''}`:'Monto')}</div>
+      <div style="font-size:32px;font-weight:700;color:${isCr?'var(--purple)':'var(--text)'};letter-spacing:-1px">${isInst?fmt(cuota):fmt(g.amount)}</div>
+      ${isCr&&!isInst&&inst>1?`<div style="font-size:13px;color:var(--purple);margin-top:4px">${fmt(cuota)}/mes</div>`:''}
+    </div>
+
+    <div style="background:var(--bg);border-radius:var(--R);padding:2px 0;margin-bottom:14px">
+      <div class="detail-row">
+        <span class="detail-lbl">Fecha de compra</span>
+        <span class="detail-val">${purchaseDate}</span>
+      </div>
+      <div class="detail-row">
+        <span class="detail-lbl">Forma de pago</span>
+        <span class="detail-val">${isCr?'🟣 Crédito':'💳 Débito'}</span>
+      </div>
+      ${g.recurring?`<div class="detail-row"><span class="detail-lbl">Recurrencia</span><span class="detail-val">🔁 Mensual</span></div>`:''}
+      ${payInfo}
+      ${g.note?`<div class="detail-row"><span class="detail-lbl">Nota</span><span class="detail-val" style="color:var(--text-mid)">${g.note}</span></div>`:''}
+      ${g.origAmount&&g.origCur==='UYU'?`<div class="detail-row"><span class="detail-lbl">Monto original</span><span class="detail-val">$U ${g.origAmount.toLocaleString('es-UY')}</span></div>`:''}
+    </div>
+
+    <div style="display:flex;gap:8px">
+      <button class="btn bp" style="flex:1" onclick="closeM('mGastoDetail');openEditGasto('${g.id}')">✏️ Editar</button>
+      <button class="btn" style="background:var(--red-light);color:var(--red);flex:1" onclick="closeM('mGastoDetail');delG('${g.id}')">🗑 Eliminar</button>
+    </div>`;
+
+  document.getElementById('gastoDetailContent').innerHTML=html;
+  openM('mGastoDetail');
 }
 
 function filterCreditMonth(){
