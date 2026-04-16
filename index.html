@@ -95,8 +95,8 @@ onAuthStateChanged(auth, (user) => {
   body{background:var(--bg);color:var(--text);font-family:'Plus Jakarta Sans',sans-serif;font-size:14px;min-height:100vh;max-width:480px;margin:0 auto}
 
   /* HEADER */
-  .hdr{background:var(--white);padding:14px 16px 0;position:sticky;top:0;z-index:50;border-bottom:1px solid var(--border)}
-  .hdr-top{display:flex;align-items:center;justify-content:space-between;margin-bottom:12px}
+  .hdr{background:var(--white);padding:10px 16px 0;position:sticky;top:0;z-index:50;border-bottom:1px solid var(--border)}
+  .hdr-top{display:flex;align-items:center;justify-content:space-between;margin-bottom:8px}
   .app-title{font-size:17px;font-weight:700;letter-spacing:-.3px}
   .hdr-right{display:flex;gap:6px;align-items:center}
   .cur-toggle{display:flex;background:var(--bg);border-radius:20px;padding:2px}
@@ -120,10 +120,12 @@ onAuthStateChanged(auth, (user) => {
   /* CARDS */
   .sg{display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-bottom:10px}
   .sc{background:var(--white);border-radius:var(--R);padding:13px 14px;box-shadow:var(--sh)}
+  .sc.primary{padding:16px 14px}
   .sc.ab{background:var(--accent)}.sc.pb{background:var(--purple)}.sc.gb{background:var(--green)}
   .sl{font-size:10px;font-weight:700;color:var(--text-muted);text-transform:uppercase;letter-spacing:.5px;margin-bottom:4px}
   .sl.li{color:rgba(255,255,255,.7)}
-  .sv{font-size:20px;font-weight:700;color:var(--text);letter-spacing:-.5px;line-height:1}
+  .sv{font-size:22px;font-weight:700;color:var(--text);letter-spacing:-.5px;line-height:1}
+  .sc.primary .sv{font-size:26px}
   .sv.li{color:#fff}.sv.rd{color:var(--red)}.sv.gn{color:var(--green)}.sv.pu{color:var(--purple)}
   .ss{font-size:10px;color:var(--text-muted);margin-top:3px}
   .ss.li{color:rgba(255,255,255,.65)}
@@ -354,7 +356,8 @@ onAuthStateChanged(auth, (user) => {
   .txi.expanded .tx-actions{display:flex}
 
   /* FLOATING SCAN BUTTON */
-  .fab{position:fixed;bottom:28px;right:20px;width:56px;height:56px;border-radius:50%;background:var(--accent);border:none;color:#fff;font-size:24px;cursor:pointer;box-shadow:0 4px 16px rgba(71,114,250,.4);display:flex;align-items:center;justify-content:center;z-index:40;transition:transform .15s,box-shadow .15s}
+  .fab{position:fixed;bottom:28px;right:20px;width:56px;height:56px;border-radius:50%;background:var(--accent);border:none;color:#fff;font-size:28px;font-weight:300;cursor:pointer;box-shadow:0 4px 16px rgba(71,114,250,.4);display:flex;align-items:center;justify-content:center;z-index:40;transition:transform .2s,box-shadow .15s;line-height:1}
+  .fab.open{transform:rotate(45deg)}
   .fab:hover{transform:scale(1.08);box-shadow:0 6px 20px rgba(71,114,250,.5)}
   .fab:active{transform:scale(0.95)}
   .sc[onclick]{cursor:pointer;transition:opacity .15s}.sc[onclick]:active{opacity:.8}
@@ -682,7 +685,7 @@ onAuthStateChanged(auth, (user) => {
       <span id="userInfo" style="display:flex;align-items:center;cursor:pointer" onclick="openMas()"></span>
     </div>
   </div>
-  <div style="font-size:10px;color:var(--text-muted);text-align:right;padding:0 16px 8px;margin-top:-6px" class="tc-display">cargando TC...</div>
+
   <div class="nav-tabs">
     <button class="nav-tab on" id="nt-resumen" onclick="tab('resumen')">Resumen</button>
     <button class="nav-tab" id="nt-gastos" onclick="tab('gastos')">Gastos</button>
@@ -702,12 +705,12 @@ onAuthStateChanged(auth, (user) => {
       <button class="marr" onclick="chM(1)">›</button>
     </div>
     <div class="sg">
-      <div class="sc ab tap-card" onclick="tab('gastos')">
+      <div class="sc ab primary tap-card" onclick="tab('gastos')">
         <div class="sl li">Gastado este mes</div>
         <div class="sv li" id="sumSpent">$0</div>
         <div class="ss li" id="sumCount">ver gastos ›</div>
       </div>
-      <div class="sc gb tap-card" onclick="tab('ahorros')">
+      <div class="sc gb primary tap-card" onclick="tab('ahorros')">
         <div class="sl li">Disponible</div>
         <div class="sv li" id="sumLeft">$0</div>
         <div class="ss li" id="sumLeftLbl">libre este mes ›</div>
@@ -733,7 +736,7 @@ onAuthStateChanged(auth, (user) => {
     </div>
     <div class="pw" style="cursor:pointer" onclick="tab('gastos')">
       <div class="ph">
-        <div class="pt">Por categoría</div>
+        <div class="pt">Por categoría <span style="font-size:10px;color:var(--text-muted);font-weight:400">del presupuesto</span></div>
         <div style="display:flex;align-items:center;gap:6px">
           <div class="pp" id="progPct">0%</div>
           <div style="color:var(--text-muted);font-size:13px">›</div>
@@ -771,7 +774,7 @@ onAuthStateChanged(auth, (user) => {
         onpaste="handleInputPaste(event)"
         onfocus="this.select()"
       >
-      <div style="font-size:11px;color:var(--text-muted);margin-top:5px;text-align:center">Detecta automáticamente si es ticket o estado bancario</div>
+      <div style="font-size:11px;color:var(--text-muted);margin-top:5px;text-align:center" id="pasteInputDesc">Seleccioná el modo abajo y pegá la captura acá</div>
     </div>
 
     <!-- MODE TOGGLE -->
@@ -971,6 +974,15 @@ onAuthStateChanged(auth, (user) => {
       <div><div class="sal-lbl">Salario mensual</div><div class="sal-val" id="salDisp">USD 6,300</div></div>
       <button class="sal-edit" onclick="openM('mSalary')">Editar</button>
     </div>
+    <!-- Credit accounting mode toggle -->
+    <div style="background:var(--white);border-radius:var(--R);padding:12px 14px;margin-bottom:10px;box-shadow:var(--sh)">
+      <div style="font-size:11px;font-weight:700;color:var(--text-muted);text-transform:uppercase;letter-spacing:.5px;margin-bottom:8px">Crédito en presupuesto</div>
+      <div style="display:flex;gap:8px">
+        <button id="btnCrConsumo" class="btn bp" style="flex:1;font-size:12px;padding:8px" onclick="setCrMode('consumo')">📅 Mes que consumí</button>
+        <button id="btnCrPago" class="btn bg" style="flex:1;font-size:12px;padding:8px" onclick="setCrMode('pago')">💳 Mes que pago</button>
+      </div>
+      <div style="font-size:11px;color:var(--text-muted);margin-top:8px" id="crModeDesc">El gasto aparece en el presupuesto del mes en que compraste. Las cuotas siguen afectando el disponible mes a mes.</div>
+    </div>
     <div id="budList"></div>
     <button class="btn bg" onclick="openM('mNewCat')" style="width:100%;margin-top:4px">+ Nueva categoría</button>
   </div>
@@ -979,7 +991,12 @@ onAuthStateChanged(auth, (user) => {
 <div class="toast" id="toast"></div>
 
 <!-- FLOATING SCAN BUTTON -->
-<button class="fab" onclick="tab('escanear')" title="Escanear recibo">📸</button>
+<div id="fabMenu" style="display:none;position:fixed;bottom:96px;right:20px;z-index:40;flex-direction:column;gap:8px;align-items:flex-end">
+  <button onclick="closeFab();tab('escanear')" style="display:flex;align-items:center;gap:8px;background:var(--white);border:none;border-radius:24px;padding:10px 16px;box-shadow:var(--shm);font-family:inherit;font-size:13px;font-weight:600;cursor:pointer;white-space:nowrap">📸 Escanear recibo</button>
+  <button onclick="closeFab();openQuickAdd()" style="display:flex;align-items:center;gap:8px;background:var(--white);border:none;border-radius:24px;padding:10px 16px;box-shadow:var(--shm);font-family:inherit;font-size:13px;font-weight:600;cursor:pointer;white-space:nowrap">✏️ Gasto rápido</button>
+</div>
+<div id="fabOverlay" style="display:none;position:fixed;inset:0;z-index:39" onclick="closeFab()"></div>
+<button class="fab" id="fabBtn" onclick="toggleFab()" title="Agregar">+</button>
 
 <script>
 // ============================================================
@@ -1058,6 +1075,7 @@ function ensureDefaults() {
   if (!S.gastos) S.gastos = [];
   if (!S.apiKey) S.apiKey = localStorage.getItem('mg_apikey') || '';
   if (S.apiKey) localStorage.setItem('mg_apikey', S.apiKey);
+  if (!S.crMode) S.crMode = 'consumo';
 }
 
 // ============================================================
@@ -1402,7 +1420,7 @@ function renderAll(){
   const m2=document.getElementById('mlbl2');if(m2)m2.textContent=lbl;
   const m3=document.getElementById('mlbl3');if(m3)m3.textContent=lbl;
   const sd2=document.getElementById('salDisp2');if(sd2)sd2.textContent=fmt(S.salary);
-  rSummary();rCatRows();rTxList();rIngresos();rCredit();rSavings();rBudget();rAnual();
+  rSummary();rCatRows();rTxList();rIngresos();rCredit();rSavings();rBudget();rAnual();updCrModeUI();
 }
 
 // ============================================================
@@ -1412,6 +1430,16 @@ function rSummary(){
   const gs=mGastos();
   const debitGs=gs.filter(g=>g.payType!=='credit');
   const spent=debitGs.reduce((s,g)=>s+(+g.amount),0);
+  // In 'consumo' mode, add full credit purchases from this month to "gastado"
+  const crMode=S.crMode||'consumo';
+  const crPurchasedThisMonth=crMode==='consumo'
+    ? S.gastos.filter(g=>{
+        if(g.payType!=='credit')return false;
+        const d=new Date(g.date+'T12:00:00');
+        return d.getMonth()===CM&&d.getFullYear()===CY;
+      }).reduce((s,g)=>s+(+g.amount),0)
+    : 0;
+  const spentDisplay=spent+crPurchasedThisMonth;
   const budTot=S.categories.reduce((s,c)=>s+(+c.budget||0),0);
   const sal=+S.salary||0;
   const extraInc=S.ingresos.filter(i=>{const d=new Date(i.date+'T12:00:00');return d.getMonth()===CM&&d.getFullYear()===CY;}).reduce((s,i)=>s+(+i.amount),0);
@@ -1426,7 +1454,7 @@ function rSummary(){
   },0);
   const left=totalIncome-spent-savedThisMonth-creditThisMonth;
 
-  document.getElementById('sumSpent').textContent=fmt(spent);
+  document.getElementById('sumSpent').textContent=fmt(spentDisplay);
   document.getElementById('sumCount').textContent=`${S.gastos.filter(g=>{const d=new Date(g.date+'T12:00:00');return d.getMonth()===CM&&d.getFullYear()===CY;}).length} gasto${gs.length!==1?'s':''} →`;
   document.getElementById('sumBudget').textContent=fmt(budTot);
   // Budget overrun indicator
@@ -1566,7 +1594,12 @@ function rCredit(){
         <span>${rem} restante${rem!==1?'s':''}</span><span>·</span>
         <span>último cobro: ${lastStr}</span>
       </div>
-      <div class="crib"><div class="crif" style="width:${pct}%"></div></div>
+      <div style="margin-top:8px">
+        <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:4px">
+          <div style="display:flex;gap:2px">${Array.from({length:inst},(_,idx)=>`<div style="width:${Math.max(6,Math.min(24,180/inst))}px;height:6px;border-radius:3px;background:${idx<paid?'var(--purple)':'var(--border)'}"></div>`).join('')}</div>
+          <div style="font-size:10px;color:var(--text-muted);font-weight:600">Cuota ${paid+1}/${inst}</div>
+        </div>
+      </div>
     </div>`;
   }).join('');
 }
@@ -1604,10 +1637,15 @@ function rSavings(){
     }
     // Entries history
     const entries=(g.entries||[]).slice().sort((a,b)=>new Date(b.date)-new Date(a.date));
+    const showAll=window._savingsExpanded&&window._savingsExpanded[i];
+    const visibleEntries=showAll?entries:entries.slice(0,3);
     const entriesHTML=entries.length?`
       <div style="margin-top:10px;border-top:1px solid var(--border);padding-top:8px">
-        <div style="font-size:10px;font-weight:700;color:var(--text-muted);text-transform:uppercase;letter-spacing:.5px;margin-bottom:6px">Historial</div>
-        ${entries.map((e,ei)=>{
+        <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:6px">
+          <div style="font-size:10px;font-weight:700;color:var(--text-muted);text-transform:uppercase;letter-spacing:.5px">Historial (${entries.length})</div>
+          ${entries.length>3?`<button onclick="toggleSavingsHistory(${i})" style="font-size:10px;color:var(--accent);background:none;border:none;cursor:pointer;font-weight:700">${showAll?'▲ Ver menos':'▼ Ver todo ('+entries.length+')'}</button>`:''}
+        </div>
+        ${visibleEntries.map((e,ei)=>{
           const isWithdrawal=e.amount<0;
           const realIdx=(g.entries||[]).findIndex((x,xi)=>x===g.entries.slice().sort((a,b)=>new Date(b.date)-new Date(a.date))[ei]);
           const origIdx=(g.entries||[]).indexOf(g.entries.slice().sort((a,b)=>new Date(b.date)-new Date(a.date))[ei]);
@@ -1657,9 +1695,51 @@ function delGoalEntry(goalIdx,entryIdx){
 // ============================================================
 // BUDGET TAB
 // ============================================================
+// ============================================================
+// CREDIT ACCOUNTING MODE
+// ============================================================
+function setCrMode(mode){
+  S.crMode=mode;
+  save();
+  // Update button styles
+  document.getElementById('btnCrConsumo').className=`btn ${mode==='consumo'?'bp':'bg'} ` ;
+  document.getElementById('btnCrConsumo').style.cssText='flex:1;font-size:12px;padding:8px';
+  document.getElementById('btnCrPago').className=`btn ${mode==='pago'?'bp':'bg'}`;
+  document.getElementById('btnCrPago').style.cssText='flex:1;font-size:12px;padding:8px';
+  const desc=document.getElementById('crModeDesc');
+  if(desc)desc.textContent=mode==='consumo'
+    ?'El gasto aparece en el presupuesto del mes en que compraste. Las cuotas siguen afectando el disponible mes a mes.'
+    :'Las cuotas aparecen en el presupuesto del mes en que se cobran. Igual al comportamiento anterior.';
+  renderAll();
+}
+
+function updCrModeUI(){
+  const mode=S.crMode||'consumo';
+  const bc=document.getElementById('btnCrConsumo');
+  const bp=document.getElementById('btnCrPago');
+  if(bc){bc.className=`btn ${mode==='consumo'?'bp':'bg'}`;bc.style.cssText='flex:1;font-size:12px;padding:8px';}
+  if(bp){bp.className=`btn ${mode==='pago'?'bp':'bg'}`;bp.style.cssText='flex:1;font-size:12px;padding:8px';}
+  const desc=document.getElementById('crModeDesc');
+  if(desc)desc.textContent=mode==='consumo'
+    ?'El gasto aparece en el presupuesto del mes en que compraste. Las cuotas siguen afectando el disponible mes a mes.'
+    :'Las cuotas aparecen en el presupuesto del mes en que se cobran. Igual al comportamiento anterior.';
+}
+
 function catSpend(catName,debitGs,creditInstGs){
   const d=debitGs.filter(g=>g.category===catName).reduce((s,g)=>s+(+g.amount),0);
-  const c=creditInstGs.filter(g=>g.category===catName).reduce((s,g)=>s+(g._cuota||g.amount/(+g.installments||1)),0);
+  const mode=S.crMode||'consumo';
+  let c=0;
+  if(mode==='consumo'){
+    // Count full credit purchase amount if purchased this month
+    const crGs=S.gastos.filter(g=>g.payType==='credit'&&g.category===catName);
+    crGs.forEach(g=>{
+      const date=new Date(g.date+'T12:00:00');
+      if(date.getMonth()===CM&&date.getFullYear()===CY) c+=+g.amount;
+    });
+  } else {
+    // Count only cuota amount due this month
+    c=creditInstGs.filter(g=>g.category===catName).reduce((s,g)=>s+(g._cuota||g.amount/(+g.installments||1)),0);
+  }
   return d+c;
 }
 
@@ -1810,19 +1890,62 @@ function filterCreditMonth(){
 }
 
 function toggleChipGroup(parentId, parentName){
-  // If already showing this group, collapse and go to parent filter
-  // If not showing, open it and select parent filter
   const children=getChildren(parentId);
   const isOpen=children.some(c=>c.name===filt)||filt===parentName;
-  if(isOpen){
+  if(isOpen&&filt===parentName){
+    // Already on parent — collapse to Todos
     filt='Todos';
+  } else if(isOpen){
+    // On a child — go to parent (keeps sub-row open)
+    filt=parentName;
   } else {
+    // Open group, select parent
     filt=parentName;
   }
   rTxList();
 }
 
 function setF(c){filt=c;rTxList();}
+
+// ============================================================
+// FAB MENU
+// ============================================================
+let _fabOpen=false;
+function toggleFab(){
+  _fabOpen=!_fabOpen;
+  document.getElementById('fabMenu').style.display=_fabOpen?'flex':'none';
+  document.getElementById('fabOverlay').style.display=_fabOpen?'block':'none';
+  document.getElementById('fabBtn').classList.toggle('open',_fabOpen);
+  document.getElementById('fabBtn').textContent=_fabOpen?'+':'+';
+}
+function closeFab(){
+  _fabOpen=false;
+  document.getElementById('fabMenu').style.display='none';
+  document.getElementById('fabOverlay').style.display='none';
+  document.getElementById('fabBtn').classList.remove('open');
+}
+
+// ============================================================
+// QUICK ADD — skip scan, go straight to manual form
+// ============================================================
+function openQuickAdd(){
+  tab('escanear');
+  setMode('recibo');
+  // Scroll to manual form
+  setTimeout(()=>{
+    const el=document.getElementById('md');
+    if(el){el.focus();el.scrollIntoView({behavior:'smooth',block:'center'});}
+  },100);
+}
+
+// ============================================================
+// SAVINGS HISTORY TOGGLE
+// ============================================================
+window._savingsExpanded={};
+function toggleSavingsHistory(i){
+  window._savingsExpanded[i]=!window._savingsExpanded[i];
+  rSavings();
+}
 function delG(id){
   const g=S.gastos.find(x=>x.id===id);
   const label=g?`"${g.desc}"`:'este gasto';
@@ -2254,6 +2377,10 @@ document.addEventListener('paste', (e) => {
 function setMode(mode){
   document.getElementById('modeRecibo-content').style.display=mode==='recibo'?'block':'none';
   document.getElementById('modeEstado-content').style.display=mode==='estado'?'block':'none';
+  const desc=document.getElementById('pasteInputDesc');
+  if(desc)desc.textContent=mode==='estado'
+    ?'Modo: Estado bancario — pegá tu captura arriba'
+    :'Modo: Foto de ticket — pegá tu captura arriba';
   document.getElementById('modeRecibo').className='btn'+(mode==='recibo'?' bp':' bg');
   document.getElementById('modeEstado').className='btn'+(mode==='estado'?' bp':' bg');
   if(mode==='recibo'){
