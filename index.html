@@ -3194,6 +3194,11 @@ function connectSheets(){
     return;
   }
   if(!_sheetsTokenClient)initSheetsClient();
+  // Clear stale sheet ID so a fresh one gets created
+  const el=document.getElementById('sheetsIdInput');
+  if(el&&el.value)el.value='';
+  S.sheetsId=null;
+  localStorage.removeItem('mg_sheets_id');
   _sheetsTokenClient.requestAccessToken();
 }
 
@@ -3294,9 +3299,16 @@ async function getOrCreateSheet(){
 }
 
 async function clearAndWrite(sheetId,tab,values){
+  // Use batchClear (POST) instead of DELETE — avoids CORS issues
   const range=`${tab}!A1:Z10000`;
-  await sheetsReq('DELETE',`https://sheets.googleapis.com/v4/spreadsheets/${sheetId}/values/${encodeURIComponent(range)}:clear`,{});
-  await sheetsReq('PUT',`https://sheets.googleapis.com/v4/spreadsheets/${sheetId}/values/${encodeURIComponent(range)}?valueInputOption=USER_ENTERED`,{values});
+  await sheetsReq('POST',
+    `https://sheets.googleapis.com/v4/spreadsheets/${sheetId}/values:batchClear`,
+    {ranges:[range]}
+  );
+  await sheetsReq('PUT',
+    `https://sheets.googleapis.com/v4/spreadsheets/${sheetId}/values/${encodeURIComponent(range)}?valueInputOption=USER_ENTERED`,
+    {values}
+  );
 }
 
 async function syncToSheets(){
