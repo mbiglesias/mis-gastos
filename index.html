@@ -3323,17 +3323,25 @@ async function syncToSheets(){
     const meta=await sheetsReq('GET',`https://sheets.googleapis.com/v4/spreadsheets/${sid}?fields=sheets.properties`);
     const getGid=name=>meta.sheets?.find(s=>s.properties.title===name)?.properties?.sheetId;
 
-    // ── GASTOS ──
+    // Collect all format requests into one batch to avoid quota limits
+    window._sheetsFmtBatch=[];
+
+    // ── Write all data first (sequential to avoid rate limits) ──
+    setSheetsStatus('Escribiendo Gastos...','');
     await buildGastosSheet(sid, getGid('Gastos'));
-
-    // ── INGRESOS ──
+    setSheetsStatus('Escribiendo Ingresos...','');
     await buildIngresosSheet(sid, getGid('Ingresos'));
-
-    // ── AHORROS ──
+    setSheetsStatus('Escribiendo Ahorros...','');
     await buildAhorrosSheet(sid, getGid('Ahorros'));
-
-    // ── RESUMEN MENSUAL ──
+    setSheetsStatus('Escribiendo Resumen...','');
     await buildResumenSheet(sid, getGid('Resumen mensual'));
+
+    // ── Apply ALL formatting in one single batchUpdate ──
+    setSheetsStatus('Aplicando formato...','');
+    if(window._sheetsFmtBatch.length){
+      await sheetsReq('POST',`https://sheets.googleapis.com/v4/spreadsheets/${sid}:batchUpdate`,{requests:window._sheetsFmtBatch});
+    }
+    window._sheetsFmtBatch=null;
 
     const now=new Date().toLocaleTimeString('es-UY',{hour:'2-digit',minute:'2-digit'});
     setSheetsStatus(`✅ Sincronizado a las ${now}`,'ok');
@@ -3352,15 +3360,12 @@ async function syncToSheets(){
 async function writeAndFormat(sid, tabName, gid, values, fmtRequests, colWidths){
   await clearAndWrite(sid, tabName, values);
   const allReqs=[...fmtRequests];
-  // Freeze header row
   allReqs.push({updateSheetProperties:{properties:{sheetId:gid,gridProperties:{frozenRowCount:1}},fields:'gridProperties.frozenRowCount'}});
-  // Auto filter on header row
   allReqs.push({setBasicFilter:{filter:{range:{sheetId:gid,startRowIndex:0,endRowIndex:1,startColumnIndex:0,endColumnIndex:colWidths.length}}}});
-  // Column widths
   colWidths.forEach((w,i)=>allReqs.push({updateDimensionProperties:{range:{sheetId:gid,dimension:'COLUMNS',startIndex:i,endIndex:i+1},properties:{pixelSize:w},fields:'pixelSize'}}));
-  if(allReqs.length){
-    await sheetsReq('POST',`https://sheets.googleapis.com/v4/spreadsheets/${sid}:batchUpdate`,{requests:allReqs});
-  }
+  // Push to global batch instead of firing immediately
+  if(window._sheetsFmtBatch)window._sheetsFmtBatch.push(...allReqs);
+  else if(allReqs.length)await sheetsReq('POST',`https://sheets.googleapis.com/v4/spreadsheets/${sid}:batchUpdate`,{requests:allReqs});
 }
 
 async function buildGastosSheet(sid, gid){
@@ -3429,7 +3434,8 @@ async function buildIngresosSheet(sid, gid){
   const allReqs=[...fmtReqs];
   allReqs.push({updateSheetProperties:{properties:{sheetId:gid,gridProperties:{frozenRowCount:3}},fields:'gridProperties.frozenRowCount'}});
   colWidths.forEach((w,i)=>allReqs.push({updateDimensionProperties:{range:{sheetId:gid,dimension:'COLUMNS',startIndex:i,endIndex:i+1},properties:{pixelSize:w},fields:'pixelSize'}}));
-  await sheetsReq('POST',`https://sheets.googleapis.com/v4/spreadsheets/${sid}:batchUpdate`,{requests:allReqs});
+  if(window._sheetsFmtBatch)window._sheetsFmtBatch.push(...allReqs);
+  else await sheetsReq('POST',`https://sheets.googleapis.com/v4/spreadsheets/${sid}:batchUpdate`,{requests:allReqs});
 }
 
 async function buildAhorrosSheet(sid, gid){
@@ -3463,139 +3469,173 @@ async function buildResumenSheet(sid, sheetGid){
   const years=[...new Set(S.gastos.map(g=>new Date(g.date+'T12:00:00').getFullYear()))].sort();
   if(!years.length)return;
   const ALL_MONTHS=MOS;
+  const tc=+XR||1;
   const hex2rgb=h=>{const r=parseInt(h.slice(1,3),16)/255,g=parseInt(h.slice(3,5),16)/255,b=parseInt(h.slice(5,7),16)/255;return{red:r,green:g,blue:b};};
-  const BLUE_HDR=hex2rgb('#1a73e8');
-  const GREY_HDR=hex2rgb('#f8f9fa');
   const GREY_MID=hex2rgb('#e8eaed');
   const GREEN_BG=hex2rgb('#e6f4ea');
   const DARK_BG =hex2rgb('#d3d3d3');
-  const WHITE   ={red:1,green:1,blue:1};
-  const BLACK   ={red:0,green:0,blue:0};
-  const GREY_TXT=hex2rgb('#9aa0a6');
+  const GREY_HDR=hex2rgb('#f8f9fa');
 
-  // Build values rows
+  // App stores everything in USD. Mirror that exactly.
+  // gastoUSD(g) = g.amount (already USD)
+  const gastoUSD=g=>+g.amount;
+
+  // crDue for a given month/year (mirrors app's crDue function)
+  const crDueForMonth=(m,y)=>S.gastos.filter(g=>{
+    if(g.payType!=='credit')return false;
+    const s=new Date(g.date+'T12:00:00');
+    const inst=+g.installments||1;
+    const diff=(y-s.getFullYear())*12+(m-s.getMonth());
+    return diff>=1&&diff<=inst;
+  }).map(g=>({...g,_cuota:g.amount/(+g.installments||1)}));
+
   const values=[];
-  const formatRequests=[];
-  let row=0; // 0-indexed
+  const fmt=[];
+  let row=0;
 
   years.forEach(y=>{
-    // Row 0: TC row  (A = TC label, B = value)
-    const tcRow=[`1 USD = $U ${XR||''}`, '', ...ALL_MONTHS.map(()=>''),'',''];
-    values.push(tcRow);
-    // Style TC row - light grey
-    formatRequests.push(bgFmt(sheetGid,row,0,row+1,3+12,GREY_HDR));
+    // ── Row 0: TC reference ──
+    values.push([`1 USD = $U ${Math.round(tc)}`, ...Array(14).fill('')]);
+    fmt.push(bgFmt(sheetGid,row,0,row+1,15,GREY_HDR));
+    fmt.push(lightFmt(sheetGid,row,0,row+1,15));
     row++;
 
-    // Row 1: "Entra" row — salary per month
-    const salary=+S.salary||0;
-    const entraMos=ALL_MONTHS.map((_,m)=>{
+    // ── Row 1: Ingresos mensuales (USD) — mirrors totalIncome in app ──
+    const incByMonth=ALL_MONTHS.map((_,m)=>{
+      const sal=+S.salary||0;
       const extras=S.ingresos.filter(i=>{const d=new Date(i.date+'T12:00:00');return d.getMonth()===m&&d.getFullYear()===y;}).reduce((s,i)=>s+(+i.amount),0);
-      return salary+extras>0?+(salary+extras).toFixed(2):'';
+      return sal+extras>0?Math.round((sal+extras)*100)/100:'';
     });
-    values.push(['','Entra','',...entraMos,'','']);
-    formatRequests.push(boldFmt(sheetGid,row,0,row+1,3+12));
+    values.push(['','Ingresos (USD)','',...incByMonth]);
+    fmt.push(boldFmt(sheetGid,row,0,row+1,15));
+    fmt.push(numFmt(sheetGid,row,3,row+1,15,'"USD "#,##0'));
     row++;
 
-    // Row 2: blank
+    // ── Row 2: blank ──
     values.push([]);
     row++;
 
-    // Row 3: header — Categoría | Average | Total | Enero ... Diciembre
-    values.push([`${y}`,'Average','Total',...ALL_MONTHS]);
-    formatRequests.push(bgFmt(sheetGid,row,0,row+1,3+12,GREY_MID));
-    formatRequests.push(boldFmt(sheetGid,row,0,row+1,3+12));
-    // Merge year cell A across nothing — just bold
+    // ── Row 3: header ──
+    values.push([`${y}`,'Promedio','Total',...ALL_MONTHS]);
+    fmt.push(bgFmt(sheetGid,row,0,row+1,15,GREY_MID));
+    fmt.push(boldFmt(sheetGid,row,0,row+1,15));
     row++;
 
-    // Category rows
-    const catStartRow=row;
-    const cats=S.categories;
-    cats.forEach(cat=>{
-      const monthData=ALL_MONTHS.map((_,m)=>
-        S.gastos.filter(g=>{const d=new Date(g.date+'T12:00:00');return d.getMonth()===m&&d.getFullYear()===y&&g.category===cat.name;}).reduce((s,g)=>s+(+g.amount),0)
-      );
-      const tot=monthData.reduce((s,v)=>s+v,0);
-      const nz=monthData.filter(v=>v>0).length;
-      const avg=nz>0?tot/nz:0;
-      values.push([
-        cat.name,
-        avg>0?+avg.toFixed(2):0,
-        tot>0?+tot.toFixed(2):0,
-        ...monthData.map(v=>v>0?+v.toFixed(2):0)
-      ]);
-      // Bold cat name
-      formatRequests.push(boldFmt(sheetGid,row,0,row+1,1));
-      // UYU format for data columns
-      formatRequests.push(numFmt(sheetGid,row,1,row+1,3+12,'"$U "#,##0.00'));
-      // Grey/italic zero cells
-      monthData.forEach((v,mi)=>{
-        if(v===0){
-          formatRequests.push(italicGreyFmt(sheetGid,row,3+mi,row+1,4+mi));
-        }
+    // ── Category rows — USD amounts matching app ──
+    S.categories.forEach(cat=>{
+      const monthDataUSD=ALL_MONTHS.map((_,m)=>{
+        const gs=S.gastos.filter(g=>{
+          const d=new Date(g.date+'T12:00:00');
+          return d.getMonth()===m&&d.getFullYear()===y&&g.category===cat.name&&g.payType!=='credit';
+        });
+        return gs.reduce((s,g)=>s+gastoUSD(g),0);
       });
-      if(avg===0)formatRequests.push(italicGreyFmt(sheetGid,row,1,row+1,2));
-      if(tot===0)formatRequests.push(italicGreyFmt(sheetGid,row,2,row+1,3));
+      const tot=monthDataUSD.reduce((s,v)=>s+v,0);
+      const nz=monthDataUSD.filter(v=>v>0).length;
+      const avg=nz>0?tot/nz:0;
+
+      values.push([
+        `${cat.emoji} ${cat.name}`,
+        avg>0?Math.round(avg*100)/100:'',
+        tot>0?Math.round(tot*100)/100:'',
+        ...monthDataUSD.map(v=>v>0?Math.round(v*100)/100:'')
+      ]);
+      fmt.push(boldFmt(sheetGid,row,0,row+1,1));
+      if(tot>0)fmt.push(numFmt(sheetGid,row,1,row+1,15,'"USD "#,##0'));
+      else fmt.push(lightFmt(sheetGid,row,1,row+1,15));
       row++;
     });
 
-    // Total Gastos row
-    const tots=ALL_MONTHS.map((_,m)=>S.gastos.filter(g=>{const d=new Date(g.date+'T12:00:00');return d.getMonth()===m&&d.getFullYear()===y;}).reduce((s,g)=>s+(+g.amount),0));
-    const gt=tots.reduce((s,v)=>s+v,0);
-    const gtnz=tots.filter(v=>v>0).length;
-    values.push([`Total Gastos (UYU)`,+((gtnz>0?gt/gtnz:0)).toFixed(2),+gt.toFixed(2),...tots.map(v=>+v.toFixed(2))]);
-    formatRequests.push(bgFmt(sheetGid,row,0,row+1,3+12,DARK_BG));
-    formatRequests.push(boldFmt(sheetGid,row,0,row+1,3+12));
-    // UYU format
-    formatRequests.push(numFmt(sheetGid,row,1,row+1,3+12,'"$U "#,##0.00'));
+    // ── Total Gastos débito (USD) — mirrors "spent" in app ──
+    const debitByMonth=ALL_MONTHS.map((_,m)=>{
+      return S.gastos.filter(g=>{
+        const d=new Date(g.date+'T12:00:00');
+        return d.getMonth()===m&&d.getFullYear()===y&&g.payType!=='credit';
+      }).reduce((s,g)=>s+gastoUSD(g),0);
+    });
+    const debitTot=debitByMonth.reduce((s,v)=>s+v,0);
+    const debitNz=debitByMonth.filter(v=>v>0).length;
+    values.push([
+      'Total Gastos (USD)',
+      debitNz>0?Math.round(debitTot/debitNz*100)/100:'',
+      Math.round(debitTot*100)/100,
+      ...debitByMonth.map(v=>v>0?Math.round(v*100)/100:'')
+    ]);
+    fmt.push(bgFmt(sheetGid,row,0,row+1,15,DARK_BG));
+    fmt.push(boldFmt(sheetGid,row,0,row+1,15));
+    fmt.push(numFmt(sheetGid,row,1,row+1,15,'"USD "#,##0'));
     row++;
 
-    // Total Gastos USD
-    const totsUSD=tots.map(v=>+(v/(XR||1)).toFixed(2));
-    const gtUSD=+(gt/(XR||1)).toFixed(2);
-    const gtUSDavg=+(gtnz>0?gtUSD/gtnz:0).toFixed(2);
-    values.push([`Total Gastos (USD)`,gtUSDavg,gtUSD,...totsUSD]);
-    formatRequests.push(bgFmt(sheetGid,row,0,row+1,3+12,DARK_BG));
-    formatRequests.push(boldFmt(sheetGid,row,0,row+1,3+12));
-    formatRequests.push(numFmt(sheetGid,row,1,row+1,3+12,'"USD "#,##0.00'));
+    // ── Cuotas crédito este mes (USD) — mirrors creditThisMonth in app ──
+    const crdByMonth=ALL_MONTHS.map((_,m)=>
+      crDueForMonth(m,y).reduce((s,g)=>s+(g.amount/(+g.installments||1)),0)
+    );
+    const crdTot=crdByMonth.reduce((s,v)=>s+v,0);
+    values.push([
+      'Cuotas crédito (USD)',
+      '','',
+      ...crdByMonth.map(v=>v>0?Math.round(v*100)/100:'')
+    ]);
+    fmt.push(bgFmt(sheetGid,row,0,row+1,15,DARK_BG));
+    fmt.push(boldFmt(sheetGid,row,0,row+1,15));
+    fmt.push(numFmt(sheetGid,row,3,row+1,15,'"USD "#,##0'));
     row++;
 
-    // Ahorro row — green background
-    const savs=ALL_MONTHS.map((_,m)=>S.goals.reduce((s,g)=>s+(g.entries||[]).filter(e=>{const d=new Date(e.date+'T12:00:00');return d.getMonth()===m&&d.getFullYear()===y;}).reduce((a,e)=>a+(+e.amount),0),0));
-    const savTot=savs.reduce((s,v)=>s+v,0);
-    const savNz=savs.filter(v=>v>0).length;
-    values.push(['Ahorro (USD)',+(savNz>0?savTot/savNz:0).toFixed(2),+savTot.toFixed(2),...savs.map(v=>v>0?+v.toFixed(2):0)]);
-    formatRequests.push(bgFmt(sheetGid,row,0,row+1,3+12,GREEN_BG));
-    formatRequests.push(boldFmt(sheetGid,row,0,row+1,3+12));
-    formatRequests.push(numFmt(sheetGid,row,1,row+1,3+12,'"USD "#,##0.00'));
+    // ── Ahorro del mes (USD) — mirrors savedThisMonth in app ──
+    const savsByMonth=ALL_MONTHS.map((_,m)=>
+      S.goals.reduce((s,g)=>s+(g.entries||[]).filter(e=>{
+        const d=new Date(e.date+'T12:00:00');
+        return d.getMonth()===m&&d.getFullYear()===y;
+      }).reduce((a,e)=>a+(+e.amount),0),0)
+    );
+    const savsTot=savsByMonth.reduce((s,v)=>s+v,0);
+    const savsNz=savsByMonth.filter(v=>v>0).length;
+    values.push([
+      'Ahorro (USD)',
+      savsNz>0?Math.round(savsTot/savsNz*100)/100:'',
+      Math.round(savsTot*100)/100,
+      ...savsByMonth.map(v=>v>0?Math.round(v*100)/100:'')
+    ]);
+    fmt.push(bgFmt(sheetGid,row,0,row+1,15,GREEN_BG));
+    fmt.push(boldFmt(sheetGid,row,0,row+1,15));
+    fmt.push(numFmt(sheetGid,row,1,row+1,15,'"USD "#,##0'));
     row++;
 
-    // Left (USD) row
-    const incs=ALL_MONTHS.map((_,m)=>(+S.salary||0)+S.ingresos.filter(i=>{const d=new Date(i.date+'T12:00:00');return d.getMonth()===m&&d.getFullYear()===y;}).reduce((s,i)=>s+(+i.amount),0));
-    const lefts=ALL_MONTHS.map((_,m)=>+((incs[m]-tots[m]-savs[m])/(XR||1)).toFixed(2));
-    values.push(['Left (USD)','','',...lefts]);
-    formatRequests.push(boldFmt(sheetGid,row,0,row+1,1));
-    formatRequests.push(numFmt(sheetGid,row,3,row+1,3+12,'"USD "#,##0.00'));
+    // ── Disponible (USD) — mirrors "left" in app exactly ──
+    // left = totalIncome - debit - savedThisMonth - creditThisMonth
+    const incByMonthNum=ALL_MONTHS.map((_,m)=>{
+      const sal=+S.salary||0;
+      const extras=S.ingresos.filter(i=>{const d=new Date(i.date+'T12:00:00');return d.getMonth()===m&&d.getFullYear()===y;}).reduce((s,i)=>s+(+i.amount),0);
+      return sal+extras;
+    });
+    const leftByMonth=ALL_MONTHS.map((_,m)=>{
+      const inc=incByMonthNum[m];
+      if(inc===0)return'';
+      const val=inc-debitByMonth[m]-savsByMonth[m]-crdByMonth[m];
+      return Math.round(val*100)/100;
+    });
+    values.push(['Disponible (USD)','','',...leftByMonth]);
+    fmt.push(boldFmt(sheetGid,row,0,row+1,1));
+    fmt.push(numFmt(sheetGid,row,3,row+1,15,'"USD "#,##0'));
     row++;
 
+    // blank separator
     values.push([]);
     row++;
   });
 
-  // Write values
   await clearAndWrite(sid,'Resumen mensual',values);
 
-  // Column widths: A=180, B=90(avg), C=90(total), D-O=90 each
-  const colWidths=[180,90,90,...Array(12).fill(90)];
-  colWidths.forEach((w,i)=>{
-    formatRequests.push({updateDimensionProperties:{range:{sheetId:sheetGid,dimension:'COLUMNS',startIndex:i,endIndex:i+1},properties:{pixelSize:w},fields:'pixelSize'}});
-  });
-  // Freeze first 4 rows and first column
-  formatRequests.push({updateSheetProperties:{properties:{sheetId:sheetGid,gridProperties:{frozenRowCount:4,frozenColumnCount:1}},fields:'gridProperties.frozenRowCount,gridProperties.frozenColumnCount'}});
+  const colWidths=[180,90,90,...Array(12).fill(85)];
+  colWidths.forEach((w,i)=>fmt.push({updateDimensionProperties:{range:{sheetId:sheetGid,dimension:'COLUMNS',startIndex:i,endIndex:i+1},properties:{pixelSize:w},fields:'pixelSize'}}));
+  fmt.push({updateSheetProperties:{properties:{sheetId:sheetGid,gridProperties:{frozenRowCount:4,frozenColumnCount:1}},fields:'gridProperties.frozenRowCount,gridProperties.frozenColumnCount'}});
 
-  // Apply all formatting in one batchUpdate
-  if(formatRequests.length){
-    await sheetsReq('POST',`https://sheets.googleapis.com/v4/spreadsheets/${sid}:batchUpdate`,{requests:formatRequests});
-  }
+  if(window._sheetsFmtBatch)window._sheetsFmtBatch.push(...fmt);
+  else if(fmt.length)await sheetsReq('POST',`https://sheets.googleapis.com/v4/spreadsheets/${sid}:batchUpdate`,{requests:fmt});
+}
+
+function lightFmt(sheetId,r1,c1,r2,c2){
+  return{repeatCell:{range:{sheetId,startRowIndex:r1,endRowIndex:r2,startColumnIndex:c1,endColumnIndex:c2},cell:{userEnteredFormat:{textFormat:{foregroundColor:{red:.7,green:.7,blue:.7}}}},fields:'userEnteredFormat.textFormat.foregroundColor'}};
 }
 
 // Format helpers
@@ -3622,7 +3662,7 @@ function triggerSheetsSync(){
   const token=_sheetsToken||localStorage.getItem('mg_sheets_token');
   if(!token||!S.sheetsId)return;
   clearTimeout(_sheetsSyncTimer);
-  _sheetsSyncTimer=setTimeout(()=>syncToSheets(),3000);
+  _sheetsSyncTimer=setTimeout(()=>syncToSheets(),30000);
 }
 
 window.addEventListener('load',()=>{
