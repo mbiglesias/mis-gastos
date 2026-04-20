@@ -4,6 +4,11 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0">
 <title>Mis Gastos</title>
+<link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><rect width='100' height='100' rx='22' fill='%234772fa'/><text y='.9em' font-size='72' x='50%' text-anchor='middle' dominant-baseline='hanging'>💰</text></svg>">
+<link rel="apple-touch-icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><rect width='100' height='100' rx='22' fill='%234772fa'/><text y='.9em' font-size='72' x='50%' text-anchor='middle' dominant-baseline='hanging'>💰</text></svg>">
+<meta name="apple-mobile-web-app-title" content="Mis Gastos">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="theme-color" content="#4772fa">
 <!-- Firebase SDKs -->
 <script type="module">
 import { initializeApp } from 'https://www.gstatic.com/firebasejs/10.12.0/firebase-app.js';
@@ -827,8 +832,34 @@ onAuthStateChanged(auth, (user) => {
       <div style="font-size:11px;color:var(--text-muted);margin-top:5px;text-align:center" id="pasteInputDesc">Seleccioná el modo abajo y pegá la captura acá</div>
     </div>
 
+    <!-- ANALYSIS RESULT — appears right after paste, before mode toggle -->
+    <div class="proc" id="proc"><div class="sp"></div><div class="pm" id="pm">Analizando...</div></div>
+    <div class="prev" id="prev">
+      <div class="prevh"><span style="font-size:15px">✨</span><div class="prevht">Revisá y confirmá</div></div>
+      <div class="prevb">
+        <div class="fr f1" style="margin-bottom:0">
+          <div class="fld"><div class="fl">Descripción</div><input type="text" class="fi" id="pd" placeholder="¿Qué fue?"></div>
+        </div>
+        <div class="fr">
+          <div class="fld">
+            <div class="fl-row"><div class="fl">Monto</div><div class="mini-cur" id="cur-scan"><button class="mini-cur-btn on" onclick="selTxCur('scan','USD',this)">USD</button><button class="mini-cur-btn" onclick="selTxCur('scan','UYU',this)">UYU</button></div></div>
+            <input type="number" class="fi" id="pa" placeholder="0">
+          </div>
+          <div class="fld"><div class="fl">Fecha</div><div class="date-wrap"><input type="date" class="fi" id="pf" onchange="updDateDisplay('pf','pfDisp')"><div class="date-display" id="pfDisp"><span>DD/MM/AAAA</span><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="4" width="18" height="18" rx="2"/><line x1="16" y1="2" x2="16" y2="6"/><line x1="8" y1="2" x2="8" y2="6"/><line x1="3" y1="10" x2="21" y2="10"/></svg></div></div></div>
+        </div>
+        <div class="fr">
+          <div class="fld"><div class="fl">Categoría</div><select class="fi" id="pc" onchange="handleCatSelect('pc')"></select></div>
+          <div class="fld"><div class="fl">Nota</div><input type="text" class="fi" id="pn" placeholder="Opcional..."></div>
+        </div>
+      </div>
+      <div class="preva">
+        <button class="btn bp" onclick="goConfirm('scan')">Confirmar</button>
+        <button class="btn bg" onclick="cancelPrev()">Cancelar</button>
+      </div>
+    </div>
+
     <!-- MODE TOGGLE -->
-    <div style="display:flex;gap:8px;margin-bottom:14px">
+    <div style="display:flex;gap:8px;margin-bottom:14px" id="modeToggle">
       <button class="btn" id="modeRecibo" onclick="setMode('recibo')" style="flex:1;background:var(--accent);color:#fff;font-size:12px">📸 Foto de ticket</button>
       <button class="btn bg" id="modeEstado" onclick="setMode('estado')" style="flex:1;font-size:12px">🏦 Estado bancario</button>
     </div>
@@ -849,30 +880,6 @@ onAuthStateChanged(auth, (user) => {
           <div class="scan-emoji">📸</div>
           <div class="scan-lbl">Fotografiá o subí un recibo / captura</div>
           <div class="scan-sub">En iOS: <strong>mantené presionado → Pegar</strong><br>En desktop: <strong>⌘V</strong> o arrastrá la imagen</div>
-        </div>
-      </div>
-      <div class="proc" id="proc"><div class="sp"></div><div class="pm" id="pm">Analizando...</div></div>
-      <div class="prev" id="prev">
-        <div class="prevh"><span style="font-size:15px">✨</span><div class="prevht">Revisá y confirmá</div></div>
-        <div class="prevb">
-          <div class="fr f1" style="margin-bottom:0">
-            <div class="fld"><div class="fl">Descripción</div><input type="text" class="fi" id="pd" placeholder="¿Qué fue?"></div>
-          </div>
-          <div class="fr">
-            <div class="fld">
-              <div class="fl-row"><div class="fl">Monto</div><div class="mini-cur" id="cur-scan"><button class="mini-cur-btn on" onclick="selTxCur('scan','USD',this)">USD</button><button class="mini-cur-btn" onclick="selTxCur('scan','UYU',this)">UYU</button></div></div>
-              <input type="number" class="fi" id="pa" placeholder="0">
-            </div>
-            <div class="fld"><div class="fl">Fecha</div><div class="date-wrap"><input type="date" class="fi" id="pf" onchange="updDateDisplay('pf','pfDisp')"><div class="date-display" id="pfDisp"><span>DD/MM/AAAA</span><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="4" width="18" height="18" rx="2"/><line x1="16" y1="2" x2="16" y2="6"/><line x1="8" y1="2" x2="8" y2="6"/><line x1="3" y1="10" x2="21" y2="10"/></svg></div></div></div>
-          </div>
-          <div class="fr">
-            <div class="fld"><div class="fl">Categoría</div><select class="fi" id="pc" onchange="handleCatSelect('pc')"></select></div>
-            <div class="fld"><div class="fl">Nota</div><input type="text" class="fi" id="pn" placeholder="Opcional..."></div>
-          </div>
-        </div>
-        <div class="preva">
-          <button class="btn bp" onclick="goConfirm('scan')">Confirmar</button>
-          <button class="btn bg" onclick="cancelPrev()">Cancelar</button>
         </div>
       </div>
       <div class="fc">
@@ -2884,6 +2891,7 @@ function handleFile(file){
 }
 async function scanReceipt(file){
   const proc=document.getElementById('proc');proc.classList.add('sh');
+  proc.scrollIntoView({behavior:'smooth',block:'start'});
   document.getElementById('pm').textContent='Analizando recibo con IA...';
   const b64=await toB64(file);
   const catList=S.categories.map(c=>c.name).join(', ');
