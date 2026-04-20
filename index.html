@@ -78,6 +78,7 @@ onAuthStateChanged(auth, (user) => {
 });
 </script>
 <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+<script src="https://accounts.google.com/gsi/client" async defer></script>
 <style>
   :root {
     --bg:#f5f5f5;--white:#fff;--border:#ebebeb;
@@ -681,10 +682,31 @@ onAuthStateChanged(auth, (user) => {
       <button class="mas-item" onclick="closeMas();tab('ahorros')">🎯 <span>Ahorros</span></button>
       <button class="mas-item" onclick="closeMas();tab('anual')">📊 <span>Vista anual</span></button>
       <button class="mas-item" onclick="closeMas();tab('presupuestos')">⚙️ <span>Presupuestos y categorías</span></button>
+      <button class="mas-item" onclick="closeMas();openM('mSheets')">📊 <span id="sheetsBtnLbl">Conectar Google Sheets</span></button>
     </div>
     <div style="margin-top:16px;padding-top:14px;border-top:1px solid var(--border);display:flex;justify-content:space-between;align-items:center">
       <button class="btn bg" style="font-size:12px" onclick="openM('mApiKey');closeMas()">🔑 API Key</button>
       <button class="btn bg" style="font-size:12px;color:var(--red)" onclick="window._fbSignOut();closeMas()">↩ Cerrar sesión</button>
+    </div>
+  </div>
+</div>
+
+<!-- GOOGLE SHEETS MODAL -->
+<div class="mo hid" id="mSheets" onclick="overlayClose(event,'mSheets')">
+  <div class="modal"><div class="mh"></div>
+    <div class="mt">📊 Google Sheets</div>
+    <div id="sheetsContent">
+      <p style="font-size:13px;color:var(--text-mid);margin-bottom:16px;line-height:1.6">Sincronizá tus gastos automáticamente con un Google Sheet. Cada vez que guardás un gasto, se actualiza en tiempo real.</p>
+      <div id="sheetsStatus" style="background:var(--bg);border-radius:var(--r);padding:12px;margin-bottom:14px;font-size:12px;color:var(--text-muted);text-align:center">No conectado</div>
+      <button id="sheetConnectBtn" class="btn bp" style="width:100%;margin-bottom:8px" onclick="connectSheets()">
+        <span>Conectar con Google</span>
+      </button>
+      <div id="sheetsIdRow" style="display:none;margin-bottom:8px">
+        <div class="fl" style="margin-bottom:4px">ID del Sheet (opcional — dejá vacío para crear uno nuevo)</div>
+        <input type="text" class="fi" id="sheetsIdInput" placeholder="1BxiMVs0XRA5nFMdKvBdBZjgmUUqptlbs74OgVE2upms">
+      </div>
+      <button id="sheetSyncBtn" class="btn bg" style="width:100%;margin-bottom:8px;display:none" onclick="syncToSheets()">🔄 Sincronizar ahora</button>
+      <button id="sheetDisconnectBtn" class="btn bg" style="width:100%;color:var(--red);display:none" onclick="disconnectSheets()">Desconectar</button>
     </div>
   </div>
 </div>
@@ -1100,6 +1122,8 @@ function save() {
       catch(e) { console.error('Cloud save error:', e); }
     }
   }, 1200);
+  // Sync to Google Sheets if connected
+  triggerSheetsSync();
 }
 
 function ensureDefaults() {
@@ -3138,6 +3162,197 @@ function tab(name){
 // TOAST
 // ============================================================
 function toast(msg){const e=document.getElementById('toast');e.textContent=msg;e.classList.add('sh');setTimeout(()=>e.classList.remove('sh'),2500);}
+
+// ============================================================
+// GOOGLE SHEETS SYNC
+// ============================================================
+const SHEETS_CLIENT_ID='1017573151990-ve0pi03vl2pha4kbj439je6489k9dju3.apps.googleusercontent.com';
+const SHEETS_SCOPES='https://www.googleapis.com/auth/spreadsheets https://www.googleapis.com/auth/drive.file';
+let _sheetsToken=null;
+let _sheetsTokenClient=null;
+
+function initSheetsClient(){
+  if(!window.google||!window.google.accounts)return;
+  _sheetsTokenClient=google.accounts.oauth2.initTokenClient({
+    client_id:SHEETS_CLIENT_ID,
+    scope:SHEETS_SCOPES,
+    callback:(resp)=>{
+      if(resp.error){setSheetsStatus('Error: '+resp.error,'error');return;}
+      _sheetsToken=resp.access_token;
+      localStorage.setItem('mg_sheets_token',resp.access_token);
+      setSheetsStatus('✅ Conectado','ok');
+      updateSheetsBtns(true);
+      syncToSheets();
+    }
+  });
+}
+
+function connectSheets(){
+  if(!window.google||!window.google.accounts){
+    setSheetsStatus('Cargando Google... intentá de nuevo','error');
+    setTimeout(initSheetsClient,1000);
+    return;
+  }
+  if(!_sheetsTokenClient)initSheetsClient();
+  _sheetsTokenClient.requestAccessToken();
+}
+
+function disconnectSheets(){
+  _sheetsToken=null;
+  S.sheetsId=null;
+  localStorage.removeItem('mg_sheets_token');
+  localStorage.removeItem('mg_sheets_id');
+  save();
+  setSheetsStatus('Desconectado','');
+  updateSheetsBtns(false);
+  const lbl=document.getElementById('sheetsBtnLbl');
+  if(lbl)lbl.textContent='Conectar Google Sheets';
+  toast('Google Sheets desconectado');
+}
+
+function setSheetsStatus(msg,type){
+  const el=document.getElementById('sheetsStatus');
+  if(!el)return;
+  el.textContent=msg;
+  el.style.color=type==='ok'?'var(--green)':type==='error'?'var(--red)':'var(--text-muted)';
+}
+
+function updateSheetsBtns(connected){
+  const row=document.getElementById('sheetsIdRow');
+  const syncBtn=document.getElementById('sheetSyncBtn');
+  const disconnBtn=document.getElementById('sheetDisconnectBtn');
+  const connectBtn=document.getElementById('sheetConnectBtn');
+  if(row)row.style.display=connected?'block':'none';
+  if(syncBtn)syncBtn.style.display=connected?'block':'none';
+  if(disconnBtn)disconnBtn.style.display=connected?'block':'none';
+  if(connectBtn)connectBtn.style.display=connected?'none':'block';
+  if(connected&&S.sheetsId){
+    const el=document.getElementById('sheetsIdInput');
+    if(el)el.value=S.sheetsId;
+    const lbl=document.getElementById('sheetsBtnLbl');
+    if(lbl)lbl.textContent='Google Sheets ✅';
+  }
+}
+
+async function sheetsReq(method,url,body){
+  const token=_sheetsToken||localStorage.getItem('mg_sheets_token');
+  if(!token)throw new Error('No token');
+  const res=await fetch(url,{
+    method,
+    headers:{'Authorization':'Bearer '+token,'Content-Type':'application/json'},
+    body:body?JSON.stringify(body):undefined
+  });
+  if(res.status===401){
+    _sheetsToken=null;
+    setSheetsStatus('Sesión expirada — reconectá','error');
+    updateSheetsBtns(false);
+    throw new Error('Token expired');
+  }
+  return res.json();
+}
+
+async function getOrCreateSheet(){
+  let sheetId=document.getElementById('sheetsIdInput')?.value.trim()||S.sheetsId||localStorage.getItem('mg_sheets_id');
+  if(sheetId){
+    S.sheetsId=sheetId;
+    localStorage.setItem('mg_sheets_id',sheetId);
+    save();
+    return sheetId;
+  }
+  setSheetsStatus('Creando Google Sheet...','');
+  const data=await sheetsReq('POST','https://sheets.googleapis.com/v4/spreadsheets',{
+    properties:{title:`Mis Gastos ${new Date().getFullYear()}`},
+    sheets:[{properties:{title:'Gastos'}},{properties:{title:'Ingresos'}},{properties:{title:'Ahorros'}},{properties:{title:'Resumen mensual'}}]
+  });
+  sheetId=data.spreadsheetId;
+  S.sheetsId=sheetId;
+  localStorage.setItem('mg_sheets_id',sheetId);
+  const el=document.getElementById('sheetsIdInput');
+  if(el)el.value=sheetId;
+  save();
+  return sheetId;
+}
+
+async function clearAndWrite(sheetId,tab,values){
+  const range=`${tab}!A1:Z10000`;
+  await sheetsReq('DELETE',`https://sheets.googleapis.com/v4/spreadsheets/${sheetId}/values/${encodeURIComponent(range)}:clear`,{});
+  await sheetsReq('PUT',`https://sheets.googleapis.com/v4/spreadsheets/${sheetId}/values/${encodeURIComponent(range)}?valueInputOption=USER_ENTERED`,{values});
+}
+
+async function syncToSheets(){
+  const token=_sheetsToken||localStorage.getItem('mg_sheets_token');
+  if(!token){setSheetsStatus('Conectate primero','error');return;}
+  _sheetsToken=token;
+  setSheetsStatus('Sincronizando...','');
+  try{
+    const sid=await getOrCreateSheet();
+    // GASTOS
+    const gh=['Fecha','Descripción','Categoría','Monto USD','Moneda orig.','Monto orig.','Pago','Cuotas','Nota','Recurrente'];
+    const gr=S.gastos.slice().sort((a,b)=>new Date(b.date)-new Date(a.date)).map(g=>[g.date,g.desc,g.category,+(+g.amount).toFixed(2),g.origCur||'USD',g.origAmount||+g.amount,g.payType==='credit'?'Crédito':'Débito',+g.installments||1,g.note||'',g.recurring?'Sí':'No']);
+    await clearAndWrite(sid,'Gastos',[gh,...gr]);
+    // INGRESOS
+    const ih=['Fecha','Descripción','Monto USD','Moneda orig.','Monto orig.','Nota'];
+    const ir=S.ingresos.slice().sort((a,b)=>new Date(b.date)-new Date(a.date)).map(i=>[i.date,i.desc,+(+i.amount).toFixed(2),i.origCur||'USD',i.origAmount||+i.amount,i.note||'']);
+    await clearAndWrite(sid,'Ingresos',[['Salario base mensual',S.salary],[],ih,...ir]);
+    // AHORROS
+    const ah=['Bolsillo','Total','Meta','Fecha límite','Fecha','Monto','Tipo','Nota'];
+    const ar=[];
+    S.goals.forEach(g=>(g.entries||[]).forEach(e=>ar.push([g.name,+(+g.saved).toFixed(2),+(+g.target||0).toFixed(2),g.deadline||'',e.date,+(+e.amount).toFixed(2),e.amount<0?'Retiro':'Depósito',e.note||''])));
+    await clearAndWrite(sid,'Ahorros',[ah,...ar]);
+    // RESUMEN MENSUAL — category x month matrix
+    const years=[...new Set(S.gastos.map(g=>new Date(g.date+'T12:00:00').getFullYear()))].sort();
+    const allRows=[];
+    years.forEach(y=>{
+      const ms=[...new Set(S.gastos.filter(g=>new Date(g.date+'T12:00:00').getFullYear()===y).map(g=>new Date(g.date+'T12:00:00').getMonth()))].sort((a,b)=>a-b);
+      if(!ms.length)return;
+      allRows.push([`=== ${y} ===`]);
+      allRows.push([`Categoría`,...ms.map(m=>MOS[m]),'Promedio','Total']);
+      S.categories.forEach(cat=>{
+        const md=ms.map(m=>S.gastos.filter(g=>{const d=new Date(g.date+'T12:00:00');return d.getMonth()===m&&d.getFullYear()===y&&g.category===cat.name;}).reduce((s,g)=>s+(+g.amount),0));
+        const tot=md.reduce((s,v)=>s+v,0);
+        if(!tot)return;
+        const nz=md.filter(v=>v>0).length;
+        allRows.push([`${cat.emoji} ${cat.name}`,...md.map(v=>v?+v.toFixed(2):''),+(tot/Math.max(1,nz)).toFixed(2),+tot.toFixed(2)]);
+      });
+      const tots=ms.map(m=>S.gastos.filter(g=>{const d=new Date(g.date+'T12:00:00');return d.getMonth()===m&&d.getFullYear()===y;}).reduce((s,g)=>s+(+g.amount),0));
+      const gt=tots.reduce((s,v)=>s+v,0);
+      const incs=ms.map(m=>(+S.salary||0)+S.ingresos.filter(i=>{const d=new Date(i.date+'T12:00:00');return d.getMonth()===m&&d.getFullYear()===y;}).reduce((s,i)=>s+(+i.amount),0));
+      const savs=ms.map(m=>S.goals.reduce((s,g)=>s+(g.entries||[]).filter(e=>{const d=new Date(e.date+'T12:00:00');return d.getMonth()===m&&d.getFullYear()===y;}).reduce((a,e)=>a+(+e.amount),0),0));
+      allRows.push(['TOTAL GASTOS',...tots.map(v=>+v.toFixed(2)),+(gt/Math.max(1,ms.length)).toFixed(2),+gt.toFixed(2)]);
+      allRows.push(['INGRESOS',...incs.map(v=>+v.toFixed(2)),'','']);
+      allRows.push(['AHORROS',...savs.map(v=>+v.toFixed(2)),'','']);
+      allRows.push(['DISPONIBLE',...ms.map((_,i)=>+((incs[i]-tots[i]-savs[i]).toFixed(2))),'','']);
+      allRows.push([]);
+    });
+    await clearAndWrite(sid,'Resumen mensual',allRows);
+    const now=new Date().toLocaleTimeString('es-UY',{hour:'2-digit',minute:'2-digit'});
+    setSheetsStatus(`✅ Sincronizado a las ${now}`,'ok');
+    S.sheetsLastSync=Date.now();
+    save();
+    toast('✅ Google Sheets actualizado');
+    const lbl=document.getElementById('sheetsBtnLbl');
+    if(lbl)lbl.textContent='Google Sheets ✅';
+  }catch(e){
+    console.error('Sheets error:',e);
+    setSheetsStatus('Error: '+e.message,'error');
+    toast('Error al sincronizar');
+  }
+}
+
+// Auto-sync after every save (3s debounce)
+let _sheetsSyncTimer=null;
+function triggerSheetsSync(){
+  const token=_sheetsToken||localStorage.getItem('mg_sheets_token');
+  if(!token||!S.sheetsId)return;
+  clearTimeout(_sheetsSyncTimer);
+  _sheetsSyncTimer=setTimeout(()=>syncToSheets(),3000);
+}
+
+window.addEventListener('load',()=>{
+  setTimeout(initSheetsClient,2000);
+  const t=localStorage.getItem('mg_sheets_token');
+  if(t){_sheetsToken=t;setTimeout(()=>{updateSheetsBtns(true);setSheetsStatus('✅ Conectado','ok');},800);}
+});
 
 // ============================================================
 // GO
