@@ -3243,10 +3243,30 @@ async function sheetsReq(method,url,body){
     body:body?JSON.stringify(body):undefined
   });
   if(res.status===401){
+    // Token expired — request new one silently
     _sheetsToken=null;
+    localStorage.removeItem('mg_sheets_token');
+    if(_sheetsTokenClient){
+      return new Promise((resolve,reject)=>{
+        const origCallback=_sheetsTokenClient.callback;
+        _sheetsTokenClient.callback=(resp)=>{
+          if(resp.error){reject(new Error('Token refresh failed: '+resp.error));return;}
+          _sheetsToken=resp.access_token;
+          localStorage.setItem('mg_sheets_token',resp.access_token);
+          // Retry original request
+          fetch(url,{method,headers:{'Authorization':'Bearer '+resp.access_token,'Content-Type':'application/json'},body:body?JSON.stringify(body):undefined})
+            .then(r=>r.json()).then(resolve).catch(reject);
+        };
+        _sheetsTokenClient.requestAccessToken({prompt:''});
+      });
+    }
     setSheetsStatus('Sesión expirada — reconectá','error');
     updateSheetsBtns(false);
     throw new Error('Token expired');
+  }
+  if(!res.ok){
+    const err=await res.json().catch(()=>({error:{message:res.statusText}}));
+    throw new Error(err?.error?.message||`HTTP ${res.status}`);
   }
   return res.json();
 }
@@ -3286,7 +3306,6 @@ async function syncToSheets(){
   setSheetsStatus('Sincronizando...','');
   try{
     const sid=await getOrCreateSheet();
-    // GASTOS
     const gh=['Fecha','Descripción','Categoría','Monto USD','Moneda orig.','Monto orig.','Pago','Cuotas','Nota','Recurrente'];
     const gr=S.gastos.slice().sort((a,b)=>new Date(b.date)-new Date(a.date)).map(g=>[g.date,g.desc,g.category,+(+g.amount).toFixed(2),g.origCur||'USD',g.origAmount||+g.amount,g.payType==='credit'?'Crédito':'Débito',+g.installments||1,g.note||'',g.recurring?'Sí':'No']);
     await clearAndWrite(sid,'Gastos',[gh,...gr]);
