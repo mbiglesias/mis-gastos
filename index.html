@@ -1946,7 +1946,9 @@ function rBudget(){
     const key=getCatId(cat);
 
     if(hasChildren){
-      const totalSp=children.reduce((s,c)=>s+catSpend(c.name,debitGs,creditInstGs),0);
+      const childrenSp=children.reduce((s,c)=>s+catSpend(c.name,debitGs,creditInstGs),0);
+      const directSp=catSpend(cat.name,debitGs,creditInstGs);
+      const totalSp=childrenSp+directSp;
       const totalBu=children.reduce((s,c)=>s+(+c.budget||0),0);
       const pct=totalBu>0?Math.min((totalSp/totalBu)*100,100):0;
       const ov=totalSp>totalBu&&totalBu>0;
@@ -1957,6 +1959,7 @@ function rBudget(){
           <div class="bir"><div class="biam" style="color:${ov?'var(--red)':'inherit'}">${fmt(totalSp)}</div><div class="bilm">${totalBu>0?'de '+fmt(totalBu):'grupo'}</div></div>
           <div class="bias"><button class="bab" onclick="openEB(${i})">✏️</button><button class="bab dng" onclick="delCat(${i})">✕</button></div>
         </div>
+        ${expandBtn(cat.name,key,catSpend(cat.name,debitGs,creditInstGs))}
       </div>`;
       children.forEach((child,ci)=>{
         const ci2=S.categories.indexOf(child);
@@ -3532,11 +3535,25 @@ async function buildResumenSheet(sid, sheetGid){
     // ── Category rows — USD amounts matching app ──
     S.categories.forEach(cat=>{
       const monthDataUSD=ALL_MONTHS.map((_,m)=>{
-        const gs=S.gastos.filter(g=>{
+        const crMode=S.crMode||'consumo';
+        // Debito gastos always included
+        const debits=S.gastos.filter(g=>{
           const d=new Date(g.date+'T12:00:00');
           return d.getMonth()===m&&d.getFullYear()===y&&g.category===cat.name&&g.payType!=='credit';
         });
-        return gs.reduce((s,g)=>s+gastoUSD(g),0);
+        let crAmt=0;
+        if(crMode==='consumo'){
+          // Credit: show full amount in month of purchase
+          const crGs=S.gastos.filter(g=>{
+            const d=new Date(g.date+'T12:00:00');
+            return d.getMonth()===m&&d.getFullYear()===y&&g.category===cat.name&&g.payType==='credit';
+          });
+          crAmt=crGs.reduce((s,g)=>s+gastoUSD(g),0);
+        } else {
+          // Credit: show cuota amount in month it's due
+          crAmt=crDueForMonth(m,y).filter(g=>g.category===cat.name).reduce((s,g)=>s+(g.amount/(+g.installments||1)),0);
+        }
+        return debits.reduce((s,g)=>s+gastoUSD(g),0)+crAmt;
       });
       const tot=monthDataUSD.reduce((s,v)=>s+v,0);
       const nz=monthDataUSD.filter(v=>v>0).length;
@@ -3554,12 +3571,20 @@ async function buildResumenSheet(sid, sheetGid){
       row++;
     });
 
-    // ── Total Gastos débito (USD) — mirrors "spent" in app ──
+    // ── Total Gastos (USD) — respects crMode like the app ──
+    const crMode=S.crMode||'consumo';
     const debitByMonth=ALL_MONTHS.map((_,m)=>{
-      return S.gastos.filter(g=>{
+      const debits=S.gastos.filter(g=>{
         const d=new Date(g.date+'T12:00:00');
         return d.getMonth()===m&&d.getFullYear()===y&&g.payType!=='credit';
       }).reduce((s,g)=>s+gastoUSD(g),0);
+      let crAmt=0;
+      if(crMode==='consumo'){
+        crAmt=S.gastos.filter(g=>{const d=new Date(g.date+'T12:00:00');return d.getMonth()===m&&d.getFullYear()===y&&g.payType==='credit';}).reduce((s,g)=>s+gastoUSD(g),0);
+      } else {
+        crAmt=crDueForMonth(m,y).reduce((s,g)=>s+(g.amount/(+g.installments||1)),0);
+      }
+      return debits+crAmt;
     });
     const debitTot=debitByMonth.reduce((s,v)=>s+v,0);
     const debitNz=debitByMonth.filter(v=>v>0).length;
