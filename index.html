@@ -3299,14 +3299,14 @@ async function getOrCreateSheet(){
 }
 
 async function clearAndWrite(sheetId,tab,values){
-  // Use batchClear (POST) instead of DELETE — avoids CORS issues
-  const range=`${tab}!A1:Z10000`;
+  // batchClear then write
   await sheetsReq('POST',
     `https://sheets.googleapis.com/v4/spreadsheets/${sheetId}/values:batchClear`,
-    {ranges:[range]}
+    {ranges:[`${tab}!A1:Z10000`]}
   );
+  const range=encodeURIComponent(`${tab}!A1`);
   await sheetsReq('PUT',
-    `https://sheets.googleapis.com/v4/spreadsheets/${sheetId}/values/${encodeURIComponent(range)}?valueInputOption=USER_ENTERED`,
+    `https://sheets.googleapis.com/v4/spreadsheets/${sheetId}/values/${range}?valueInputOption=USER_ENTERED`,
     {values}
   );
 }
