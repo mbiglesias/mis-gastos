@@ -1868,7 +1868,7 @@ function delGoalEntry(goalIdx,entryIdx){
   if(!confirm(`¿Eliminar este ahorro de ${fmt(entry.amount)}?`))return;
   goal.entries.splice(entryIdx,1);
   goal.saved=goal.entries.reduce((s,e)=>s+(+e.amount),0);
-  save();rSavings();toast('Entrada eliminada');
+  save();rSavings();rCasa();toast('Entrada eliminada');
 }
 
 // ============================================================
@@ -2473,7 +2473,7 @@ function saveGoal(){
   if(!name){toast('Ingresá un nombre');return;}
   if(eGoalIdx!==null)S.goals[eGoalIdx]={...S.goals[eGoalIdx],name,emoji,target,saved,deadline};
   else S.goals.push({id:Date.now().toString(),name,emoji,target,saved,deadline,entries:[]});
-  save();rSavings();closeM('mNewGoal');toast('Objetivo guardado');
+  save();rSavings();rCasa();closeM('mNewGoal');toast('Objetivo guardado');
 }
 let _editEntryGoalIdx=null, _editEntryIdx=null, _isWithdrawal=false;
 
@@ -2500,7 +2500,7 @@ function confirmAddGoal(){
   const amtUSD=toUSD(v,txCur.addgoal)*(_isWithdrawal?-1:1);
   goal.entries.push({id:Date.now().toString(),amount:amtUSD,date,note,currency:txCur.addgoal,origAmount:v,tcAtSave:txCur.addgoal==='UYU'?XR:null});
   goal.saved=goal.entries.reduce((s,e)=>s+(+e.amount),0);
-  save();rSavings();closeM('mAddGoal');
+  save();rSavings();rCasa();closeM('mAddGoal');
   toast(_isWithdrawal?'Retiro registrado ✓':'Ahorro registrado ✓');
 }
 
@@ -2540,9 +2540,9 @@ function saveEditGoalEntry(){
   entry.currency=txCur.editentry;
   entry.tcAtSave=txCur.editentry==='UYU'?XR:null;
   goal.saved=goal.entries.reduce((s,e)=>s+(+e.amount),0);
-  save();rSavings();closeM('mEditGoalEntry');toast('Entrada actualizada ✓');
+  save();rSavings();rCasa();closeM('mEditGoalEntry');toast('Entrada actualizada ✓');
 }
-function delGoal(i){if(!confirm(`¿Eliminar "${S.goals[i].name}"?`))return;S.goals.splice(i,1);save();rSavings();toast('Objetivo eliminado');}
+function delGoal(i){if(!confirm(`¿Eliminar "${S.goals[i].name}"?`))return;S.goals.splice(i,1);save();rSavings();rCasa();toast('Objetivo eliminado');}
 
 // ============================================================
 // EDIT GASTO
