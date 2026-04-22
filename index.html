@@ -2013,6 +2013,7 @@ function rBudget(){
       </div>`;
       children.forEach((child,ci)=>{
         const ci2=S.categories.indexOf(child);
+        const ck=getCatId(child);
         const localChildMode=window._budMode[ck]||window._budMode[key]||(S.crMode||'consumo');
         const sp=catSpend(child.name,debitGs,creditInstGs,localChildMode);
         const bu=+child.budget||0;
@@ -2020,7 +2021,6 @@ function rBudget(){
         const ov2=sp>bu&&bu>0;
         const col=ov2?'var(--red)':(pct2>=100?'var(--accent)':child.color);
         const isLast=ci===children.length-1;
-        const ck=getCatId(child);
         html+=`<div class="bi" style="padding-left:32px;background:var(--white);${isLast?'border-radius:0 0 var(--r) var(--r);margin-bottom:10px':'border-radius:0'};flex-direction:column;align-items:stretch;gap:0">
           <div style="display:flex;align-items:center;gap:8px">
             <div class="biico" style="background:${child.color}22;width:28px;height:28px;font-size:14px">${child.emoji}</div>
