@@ -35,12 +35,34 @@ const db = getFirestore(app);
 const provider = new GoogleAuthProvider();
 
 window._fbSignIn = async () => {
-  // Safari (all modes) and Chrome on iOS block popups — use redirect
-  const needsRedirect = /iPhone|iPad/i.test(navigator.userAgent) || 
-    (navigator.userAgent.includes('Safari') && !navigator.userAgent.includes('Chrome')) ||
-    window.navigator.standalone === true; // PWA mode
+  const isIOS = /iPhone|iPad/i.test(navigator.userAgent);
+  const isStandalone = window.navigator.standalone === true;
+  const isSafari = navigator.userAgent.includes('Safari') && !navigator.userAgent.includes('Chrome');
+
+  // In standalone mode on iOS, redirect auth breaks — open in browser instead
+  if (isStandalone) {
+    // Show instructions to login via browser
+    const overlay = document.getElementById('authOverlay');
+    if (overlay) {
+      const existing = document.getElementById('standaloneMsg');
+      if (!existing) {
+        const msg = document.createElement('div');
+        msg.id = 'standaloneMsg';
+        msg.style.cssText = 'margin-top:16px;background:rgba(255,255,255,.15);border-radius:12px;padding:14px;font-size:13px;line-height:1.6;text-align:center;color:#fff';
+        msg.innerHTML = `Para iniciar sesión desde la app guardada:<br><br>
+          <strong>1.</strong> Tocá el botón de compartir (□↑) abajo<br>
+          <strong>2.</strong> Elegí "Abrir en Chrome" o "Abrir en Safari"<br>
+          <strong>3.</strong> Iniciá sesión ahí<br>
+          <strong>4.</strong> La próxima vez que abras la app ya estarás conectada`;
+        const btn = overlay.querySelector('.auth-btn');
+        if (btn) btn.parentNode.insertBefore(msg, btn.nextSibling);
+      }
+    }
+    return;
+  }
+
   try {
-    if (needsRedirect) {
+    if (isIOS || isSafari) {
       await signInWithRedirect(auth, provider);
     } else {
       await signInWithPopup(auth, provider);
@@ -54,6 +76,30 @@ window._fbSignIn = async () => {
 getRedirectResult(auth)
   .then(result => { if(result?.user) console.log('Redirect login OK:', result.user.email); })
   .catch(e => { if(e.code !== 'auth/null-user') console.error('Redirect result:', e.code); });
+
+// If running as standalone PWA and not logged in, show helpful message after a delay
+window.addEventListener('load', () => {
+  if (window.navigator.standalone) {
+    setTimeout(() => {
+      if (!window._fbUser) {
+        const overlay = document.getElementById('authOverlay');
+        if (overlay && overlay.style.display !== 'none') {
+          const existing = document.getElementById('standaloneMsg');
+          if (!existing) {
+            const msg = document.createElement('div');
+            msg.id = 'standaloneMsg';
+            msg.style.cssText = 'margin-top:16px;background:rgba(255,255,255,.12);border-radius:12px;padding:14px 16px;font-size:13px;line-height:1.7;color:rgba(255,255,255,.9)';
+            msg.innerHTML = `<strong>💡 Para iniciar sesión:</strong><br>
+              Abrí <strong>mbiglesias.github.io/mis-gastos</strong> en Chrome o Safari, iniciá sesión ahí, y la próxima vez que abras la app desde tu pantalla de inicio ya estarás conectada.`;
+            const btn = overlay.querySelector('.auth-btn');
+            if (btn) btn.insertAdjacentElement('afterend', msg);
+          }
+        }
+      }
+    }, 1500);
+  }
+});
+
 window._fbSignOut = () => signOut(auth);
 
 window._fbSave = async (stateJson) => {
@@ -908,25 +954,8 @@ onAuthStateChanged(auth, (user) => {
 
     <!-- ESTADO DE CUENTA MODE -->
     <div id="modeEstado-content" style="display:none">
-      <div style="position:relative;margin-bottom:14px">
-        <textarea id="pasteZoneEstado"
-          class="scan-area"
-          style="resize:none;min-height:130px;font-size:13px;color:transparent;caret-color:transparent;background:transparent;position:absolute;inset:0;width:100%;height:100%;z-index:2;cursor:pointer"
-          placeholder=""
-          onpaste="handlePasteEvent(event,'estado')"
-          onclick="if(!this.value){document.getElementById('fiEstado').click()}"
-          readonly></textarea>
-        <div class="scan-area" style="pointer-events:none;min-height:130px">
-          <input type="file" id="fiEstado" accept="image/*,application/pdf" onchange="handleEstado(this.files[0])" style="display:none">
-          <div class="scan-emoji">🏦</div>
-          <div class="scan-lbl">Subí tu estado de cuenta</div>
-          <div class="scan-sub">En iOS: <strong>mantené presionado → Pegar</strong><br>En desktop: <strong>⌘V</strong> o arrastrá la imagen</div>
-        </div>
-      </div>
-
+      <!-- Results appear FIRST, above the scan area -->
       <div class="proc" id="procEstado"><div class="sp"></div><div class="pm" id="pmEstado">Analizando estado de cuenta...</div></div>
-
-      <!-- BULK REVIEW -->
       <div id="bulkReview" style="display:none">
         <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:10px">
           <div style="font-size:13px;font-weight:700" id="bulkTitle">Transacciones encontradas</div>
@@ -936,6 +965,23 @@ onAuthStateChanged(auth, (user) => {
         <div style="display:flex;gap:8px;margin-top:12px">
           <button class="btn bp" onclick="confirmBulk()" style="flex:1" id="bulkConfirmBtn">Agregar todas</button>
           <button class="btn bg" onclick="cancelBulk()">Cancelar</button>
+        </div>
+      </div>
+
+      <!-- Scan area below results -->
+      <div style="position:relative;margin-top:12px">
+        <textarea id="pasteZoneEstado"
+          class="scan-area"
+          style="resize:none;min-height:110px;font-size:13px;color:transparent;caret-color:transparent;background:transparent;position:absolute;inset:0;width:100%;height:100%;z-index:2;cursor:pointer"
+          placeholder=""
+          onpaste="handlePasteEvent(event,'estado')"
+          onclick="if(!this.value){document.getElementById('fiEstado').click()}"
+          readonly></textarea>
+        <div class="scan-area" style="pointer-events:none;min-height:110px">
+          <input type="file" id="fiEstado" accept="image/*,application/pdf" onchange="handleEstado(this.files[0])" style="display:none">
+          <div class="scan-emoji">🏦</div>
+          <div class="scan-lbl">Subí tu estado de cuenta</div>
+          <div class="scan-sub">En iOS: <strong>mantené presionado → Pegar</strong><br>En desktop: <strong>⌘V</strong> arrastrá la imagen</div>
         </div>
       </div>
     </div>
@@ -2671,6 +2717,7 @@ async function handleEstado(file){
 
   const proc=document.getElementById('procEstado');
   proc.classList.add('sh');
+  proc.scrollIntoView({behavior:'smooth',block:'start'});
   document.getElementById('pmEstado').textContent='Analizando estado de cuenta...';
 
   let base64, mediaType;
@@ -2787,7 +2834,23 @@ function renderBulk(){
         <div class="fld">
           <div class="fl">Categoría</div>
           <select class="fi" style="font-size:11px;padding:5px 8px" onchange="bulkCatChange(${i},this.value)">
-            ${S.categories.map(c=>`<option value="${c.name}"${c.name===tx.category?' selected':''}>${c.emoji} ${c.name}</option>`).join('')}
+            ${(()=>{
+              const parents=getParents();
+              let opts='';
+              parents.forEach(p=>{
+                const children=getChildren(getCatId(p));
+                if(children.length>0){
+                  opts+=`<optgroup label="${p.emoji} ${p.name}">`;
+                  if(tx.category===p.name)opts+=`<option value="${p.name}" selected>${p.emoji} ${p.name} (todos)</option>`;
+                  else opts+=`<option value="${p.name}">${p.emoji} ${p.name} (todos)</option>`;
+                  children.forEach(c=>opts+=`<option value="${c.name}"${c.name===tx.category?' selected':''}>${c.emoji} ${c.name}</option>`);
+                  opts+=`</optgroup>`;
+                } else {
+                  opts+=`<option value="${p.name}"${p.name===tx.category?' selected':''}>${p.emoji} ${p.name}</option>`;
+                }
+              });
+              return opts;
+            })()}
             <option value="__new__">+ Nueva categoría...</option>
           </select>
         </div>
