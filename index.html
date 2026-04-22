@@ -1904,19 +1904,17 @@ function updCrModeUI(){
     :'Las cuotas aparecen en el presupuesto del mes en que se cobran. Igual al comportamiento anterior.';
 }
 
-function catSpend(catName,debitGs,creditInstGs){
+function catSpend(catName,debitGs,creditInstGs,modeOverride){
   const d=debitGs.filter(g=>g.category===catName).reduce((s,g)=>s+(+g.amount),0);
-  const mode=S.crMode||'consumo';
+  const mode=modeOverride||(S.crMode||'consumo');
   let c=0;
   if(mode==='consumo'){
-    // Count full credit purchase amount if purchased this month
     const crGs=S.gastos.filter(g=>g.payType==='credit'&&g.category===catName);
     crGs.forEach(g=>{
       const date=new Date(g.date+'T12:00:00');
       if(date.getMonth()===CM&&date.getFullYear()===CY) c+=+g.amount;
     });
   } else {
-    // Count only cuota amount due this month
     c=creditInstGs.filter(g=>g.category===catName).reduce((s,g)=>s+(g._cuota||g.amount/(+g.installments||1)),0);
   }
   return d+c;
@@ -1976,9 +1974,14 @@ function rBudget(){
     const mode=window._budMode[key]||(S.crMode||'consumo');
     const detail=isExp?`
       <div style="padding:8px 0 4px">
-        <div style="display:flex;gap:4px;margin-bottom:8px">
+        <div style="display:flex;gap:4px;margin-bottom:4px">
           <button onclick="setBudMode('${key}','consumo');rBudget()" style="flex:1;padding:4px 6px;border-radius:6px;border:none;font-family:inherit;font-size:10px;font-weight:700;cursor:pointer;background:${mode==='consumo'?'var(--accent)':'var(--bg)'};color:${mode==='consumo'?'#fff':'var(--text-muted)'}">📅 Consumí</button>
           <button onclick="setBudMode('${key}','pago');rBudget()" style="flex:1;padding:4px 6px;border-radius:6px;border:none;font-family:inherit;font-size:10px;font-weight:700;cursor:pointer;background:${mode==='pago'?'var(--purple)':'var(--bg)'};color:${mode==='pago'?'#fff':'var(--text-muted)'}">💳 Pago</button>
+        </div>
+        <div style="font-size:10px;color:var(--text-muted);margin-bottom:8px;text-align:center">
+          ${mode==='consumo'
+            ? 'Gastos realizados en <strong>este mes</strong>, aunque se paguen después'
+            : 'Lo que <strong>sale de tu cuenta este mes</strong> (débito + cuotas que vencen)'}
         </div>
         ${catDetailHTML(catName,key)}
       </div>`:'';
@@ -1993,7 +1996,8 @@ function rBudget(){
 
     if(hasChildren){
       const childrenSp=children.reduce((s,c)=>s+catSpend(c.name,debitGs,creditInstGs),0);
-      const directSp=catSpend(cat.name,debitGs,creditInstGs);
+      const localParentMode=window._budMode[key]||(S.crMode||'consumo');
+      const directSp=catSpend(cat.name,debitGs,creditInstGs,localParentMode);
       const totalSp=childrenSp+directSp;
       const totalBu=children.reduce((s,c)=>s+(+c.budget||0),0);
       const pct=totalBu>0?Math.min((totalSp/totalBu)*100,100):0;
@@ -2005,11 +2009,12 @@ function rBudget(){
           <div class="bir"><div class="biam" style="color:${ov?'var(--red)':'inherit'}">${fmt(totalSp)}</div><div class="bilm">${totalBu>0?'de '+fmt(totalBu):'grupo'}</div></div>
           <div class="bias"><button class="bab" onclick="openEB(${i})">✏️</button><button class="bab dng" onclick="delCat(${i})">✕</button></div>
         </div>
-        ${expandBtn(cat.name,key,catSpend(cat.name,debitGs,creditInstGs))}
+        ${expandBtn(cat.name,key,catSpend(cat.name,debitGs,creditInstGs,localParentMode))}
       </div>`;
       children.forEach((child,ci)=>{
         const ci2=S.categories.indexOf(child);
-        const sp=catSpend(child.name,debitGs,creditInstGs);
+        const localChildMode=window._budMode[ck]||window._budMode[key]||(S.crMode||'consumo');
+        const sp=catSpend(child.name,debitGs,creditInstGs,localChildMode);
         const bu=+child.budget||0;
         const pct2=bu>0?Math.min((sp/bu)*100,100):0;
         const ov2=sp>bu&&bu>0;
@@ -2027,7 +2032,8 @@ function rBudget(){
         </div>`;
       });
     } else {
-      const sp=catSpend(cat.name,debitGs,creditInstGs);
+      const localMode=window._budMode[key]||(S.crMode||'consumo');
+      const sp=catSpend(cat.name,debitGs,creditInstGs,localMode);
       const bu=+cat.budget||0;
       const pct=bu>0?Math.min((sp/bu)*100,100):0;
       const ov=sp>bu&&bu>0;
@@ -2110,11 +2116,28 @@ function handleCatSelect(selId){
 // Per-transaction currency state
 const txCur={scan:'USD',manual:'USD',ingreso:'USD',gtarget:'USD',gsaved:'USD',addgoal:'USD',edit:'USD',ncbudget:'USD',ebinput:'USD',editentry:'USD'};
 function selTxCur(key,cur,btn){
+  const prevCur=txCur[key]||'USD';
   txCur[key]=cur;
   const container=btn.closest('.mini-cur');
   container.querySelectorAll('.mini-cur-btn').forEach(b=>{
     b.className='mini-cur-btn'+(b.textContent===cur?(cur==='UYU'?' on-uyu':' on'):'');
   });
+  // For budget inputs: convert the displayed value when switching currency
+  const budgetInputs={ebinput:'ebInput',ncbudget:'ncBudget'};
+  const inputId=budgetInputs[key];
+  if(inputId&&prevCur!==cur){
+    const inp=document.getElementById(inputId);
+    if(inp&&inp.value){
+      const v=parseFloat(inp.value)||0;
+      if(v>0&&XR){
+        if(cur==='UYU'&&prevCur==='USD'){
+          inp.value=Math.round(v*XR);
+        } else if(cur==='USD'&&prevCur==='UYU'){
+          inp.value=Math.round(v/XR*100)/100;
+        }
+      }
+    }
+  }
 }
 
 // ============================================================
@@ -2520,9 +2543,16 @@ function openEB(i){
   const cat=S.categories[i];
   document.getElementById('ebTitle').textContent=`Editar — ${cat.name}`;
   document.getElementById('ebName').value=cat.name;
-  document.getElementById('ebInput').value=cat.budget||0;
+  // Show budget in USD rounded to 2 decimals
+  const budgetUSD=+(cat.budget||0);
+  document.getElementById('ebInput').value=budgetUSD>0?Math.round(budgetUSD*100)/100:0;
+  // Reset toggle to USD
+  txCur.ebinput='USD';
+  const curEl=document.getElementById('cur-ebinput');
+  if(curEl)curEl.querySelectorAll('.mini-cur-btn').forEach(b=>{
+    b.className='mini-cur-btn'+(b.textContent.trim()==='USD'?' on':'');
+  });
   setEmojiDisplay('eb',cat.emoji||'📦');
-  // Populate parent selector excluding self and own children
   const selfId=getCatId(cat);
   const childIds=new Set(getChildren(selfId).map(c=>getCatId(c)));
   const validParents=S.categories.filter(c=>getCatId(c)!==selfId&&!childIds.has(getCatId(c))&&!c.parentId);
