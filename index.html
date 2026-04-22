@@ -1130,7 +1130,7 @@ onAuthStateChanged(auth, (user) => {
         <div style="background:rgba(74,222,128,.2);border-radius:10px;padding:10px;border:1px solid rgba(74,222,128,.3)">
           <div style="font-size:9px;opacity:.7;margin-bottom:3px;text-transform:uppercase">Te sobra</div>
           <div style="font-size:15px;font-weight:700" id="casaRemanente">—</div>
-          <div style="font-size:9px;opacity:.6">del aporte padres</div>
+          <div style="font-size:9px;opacity:.6">colchón</div>
         </div>
       </div>
     </div>
@@ -3948,47 +3948,34 @@ function rCasa(){
   // Tengo = boleto pagado + en la cuenta
   const tengo=boletoPagado+enCuenta;
 
-  // Prenda nominal (75% of 295000 = 221250, but using 213507 from CSV)
-  const prenda=213507;
+  // ── FIXED values from spreadsheet ──
+  const extraMio=12462;   // fixed from CSV — Extra mío
+  const nominalVal=-4719; // fixed from CSV — Nominal que come la prenda
 
-  // Extra mío = en la cuenta - promesa propia (29500)
-  // This is what goes beyond the boleto — their share in the prenda calculation
-  const extraMio=Math.max(0,enCuenta-29500);
-
-  // Nominal que come la prenda = prenda - (295000 * 0.75 approx)
-  // From CSV: it's negative, representing what the bank gives you back essentially
-  // Using the formula from CSV: it's calculated as -(prenda - some base)
-  // Simplified: nominal = -(4719) from CSV — but let's make it dynamic
-  // Actually from CSV row 9: "-$4,719" which is the difference that gets eaten
-  const nominalComePrenda=-(prenda - 221250 + extraMio*0.03); // approximate
-
-  // Conceptos de padres
-  const padresConceptos=cs.filter(c=>c.quien==='Padres');
-  const padresFijo=padresConceptos.filter(c=>c.monto&&!c.esNominal).reduce((s,c)=>s+(c.monto||0),0);
-  const padresNecesario=padresFijo; // 9726+14750+5900 = 30376... but CSV shows 25657
-  // From CSV: padres need = 9726 + 14750 + 5900 + nominal(-4719) = 25657
-  const nominalVal=-4719; // fixed from CSV
-  const pedirPadres=padresFijo+nominalVal;
-  const remanente=aportePadres-pedirPadres;
-
-  // Total gasto
+  // Total gasto is fixed
   const totalGasto=cs.reduce((s,c)=>{
     if(c.esExtra) return s+extraMio;
     if(c.esNominal) return s+nominalVal;
     return s+(c.monto||0);
   },0);
 
-  // Progress = tengo+aportePadres vs totalGasto
-  const covered=tengo+aportePadres;
-  const pct=Math.min(100,(covered/totalGasto)*100);
+  // Lo que mínimo necesitás de padres = comision + saldo5 + conexiones + nominal
+  const minimoNecesarioPadres=9726+14750+5900+nominalVal; // = 25657
+
+  // Les pedís siempre el aporte completo (30000)
+  // El colchón = aportePadres - mínimo necesario + (si tus ahorros cubren más, sube)
+  const remanente=aportePadres-minimoNecesarioPadres;
+
+  // Progress = (tengo + aportePadres) vs totalGasto
+  const pct=Math.min(100,((tengo+aportePadres)/totalGasto)*100);
 
   // Update DOM
   const fmtUSD=v=>`USD ${Math.round(v).toLocaleString('en-US')}`;
   document.getElementById('casaTotal').textContent=fmtUSD(totalGasto);
   document.getElementById('casaEnCuenta').textContent=fmtUSD(enCuenta);
   document.getElementById('casaTengo').textContent=fmtUSD(tengo);
-  document.getElementById('casaPadresNecesario').textContent=fmtUSD(pedirPadres);
-  document.getElementById('casaPadresLbl').textContent=`de ${fmtUSD(aportePadres)}`;
+  document.getElementById('casaPadresNecesario').textContent=fmtUSD(aportePadres);
+  document.getElementById('casaPadresLbl').textContent=`mínimo necesario: ${fmtUSD(minimoNecesarioPadres)}`;
   document.getElementById('casaRemanente').textContent=fmtUSD(remanente);
   document.getElementById('casaProgressBar').style.width=pct+'%';
 
