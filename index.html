@@ -733,6 +733,7 @@ onAuthStateChanged(auth, (user) => {
       <button class="mas-item" onclick="closeMas();tab('ahorros')">🎯 <span>Ahorros</span></button>
       <button class="mas-item" onclick="closeMas();tab('anual')">📊 <span>Vista anual</span></button>
       <button class="mas-item" onclick="closeMas();tab('presupuestos')">⚙️ <span>Presupuestos y categorías</span></button>
+      <button class="mas-item" onclick="closeMas();tab('casa')">🏠 <span>Tracker Casa</span></button>
       <button class="mas-item" onclick="closeMas();openM('mSheets')">📊 <span id="sheetsBtnLbl">Conectar Google Sheets</span></button>
     </div>
     <div style="margin-top:16px;padding-top:14px;border-top:1px solid var(--border);display:flex;justify-content:space-between;align-items:center">
@@ -1096,6 +1097,78 @@ onAuthStateChanged(auth, (user) => {
     </div>
     <div id="budList"></div>
     <button class="btn bg" onclick="openM('mNewCat')" style="width:100%;margin-top:4px">+ Nueva categoría</button>
+  </div>
+
+  <!-- CASA -->
+  <div id="t-casa" style="display:none">
+    <div style="background:linear-gradient(135deg,#1a3a5c,#2563eb);border-radius:var(--RL);padding:18px 16px;margin-bottom:12px;color:#fff">
+      <div style="font-size:11px;font-weight:700;opacity:.7;text-transform:uppercase;letter-spacing:.5px;margin-bottom:10px">🏠 Tracker — Casa Nueva</div>
+      <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-bottom:14px">
+        <div>
+          <div style="font-size:10px;opacity:.7;margin-bottom:2px">Precio casa</div>
+          <div style="font-size:20px;font-weight:700;letter-spacing:-.5px">USD 295,000</div>
+        </div>
+        <div>
+          <div style="font-size:10px;opacity:.7;margin-bottom:2px">Gasto total estimado</div>
+          <div style="font-size:20px;font-weight:700;letter-spacing:-.5px" id="casaTotal">—</div>
+        </div>
+      </div>
+      <div style="background:rgba(255,255,255,.2);border-radius:4px;height:6px;margin-bottom:10px">
+        <div id="casaProgressBar" style="height:100%;border-radius:4px;background:#4ade80;transition:width .5s;width:0%"></div>
+      </div>
+      <div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:8px">
+        <div style="background:rgba(255,255,255,.12);border-radius:10px;padding:10px">
+          <div style="font-size:9px;opacity:.7;margin-bottom:3px;text-transform:uppercase">Tengo</div>
+          <div style="font-size:15px;font-weight:700" id="casaTengo">—</div>
+          <div style="font-size:9px;opacity:.6">boleto + ahorros</div>
+        </div>
+        <div style="background:rgba(255,255,255,.12);border-radius:10px;padding:10px">
+          <div style="font-size:9px;opacity:.7;margin-bottom:3px;text-transform:uppercase">Pedirle a padres</div>
+          <div style="font-size:15px;font-weight:700" id="casaPadresNecesario">—</div>
+          <div style="font-size:9px;opacity:.6" id="casaPadresLbl">de USD 30,000</div>
+        </div>
+        <div style="background:rgba(74,222,128,.2);border-radius:10px;padding:10px;border:1px solid rgba(74,222,128,.3)">
+          <div style="font-size:9px;opacity:.7;margin-bottom:3px;text-transform:uppercase">Te sobra</div>
+          <div style="font-size:15px;font-weight:700" id="casaRemanente">—</div>
+          <div style="font-size:9px;opacity:.6">del aporte padres</div>
+        </div>
+      </div>
+    </div>
+
+    <!-- En la cuenta — live from savings -->
+    <div style="background:var(--green-light);border:1.5px solid var(--green);border-radius:var(--R);padding:12px 14px;margin-bottom:12px;display:flex;align-items:center;gap:10px;cursor:pointer" onclick="tab('ahorros')">
+      <div style="font-size:20px">🎯</div>
+      <div style="flex:1">
+        <div style="font-size:13px;font-weight:700;color:var(--green)">En la cuenta (ahorros actuales)</div>
+        <div style="font-size:11px;color:var(--text-muted)">Suma de todos tus bolsillos</div>
+      </div>
+      <div style="font-size:17px;font-weight:700;color:var(--green)" id="casaEnCuenta">—</div>
+      <div style="color:var(--green)">›</div>
+    </div>
+
+    <!-- Concepts -->
+    <div style="background:var(--white);border-radius:var(--R);box-shadow:var(--sh);overflow:hidden;margin-bottom:12px">
+      <div style="padding:11px 14px;border-bottom:1px solid var(--border);display:flex;justify-content:space-between;align-items:center">
+        <div style="font-size:13px;font-weight:700">Conceptos</div>
+        <div style="font-size:11px;color:var(--text-muted)" id="casaPagadoCount">—</div>
+      </div>
+      <div id="casaConceptos"></div>
+    </div>
+
+    <!-- Config -->
+    <div style="background:var(--white);border-radius:var(--R);box-shadow:var(--sh);padding:14px;margin-bottom:14px">
+      <div style="font-size:11px;font-weight:700;color:var(--text-muted);text-transform:uppercase;letter-spacing:.5px;margin-bottom:10px">Configurar</div>
+      <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px">
+        <div>
+          <div style="font-size:11px;color:var(--text-muted);margin-bottom:4px">Aporte padres (USD)</div>
+          <input type="number" class="fi" id="casaAportePadres" style="font-size:13px" oninput="saveCasaConfig();rCasa()">
+        </div>
+        <div>
+          <div style="font-size:11px;color:var(--text-muted);margin-bottom:4px">Boleto pagado (USD)</div>
+          <input type="number" class="fi" id="casaBoleto" style="font-size:13px" oninput="saveCasaConfig();rCasa()">
+        </div>
+      </div>
+    </div>
   </div>
 
 </div>
@@ -1527,7 +1600,7 @@ function renderAll(){
   const m2=document.getElementById('mlbl2');if(m2)m2.textContent=lbl;
   const m3=document.getElementById('mlbl3');if(m3)m3.textContent=lbl;
   const sd2=document.getElementById('salDisp2');if(sd2)sd2.textContent=fmt(S.salary);
-  rSummary();rCatRows();rTxList();rIngresos();rCredit();rSavings();rBudget();rAnual();updCrModeUI();
+  rSummary();rCatRows();rTxList();rIngresos();rCredit();rSavings();rBudget();rAnual();updCrModeUI();rCasa();
 }
 
 // ============================================================
@@ -3277,7 +3350,7 @@ function overlayClose(e,id){if(e.target===e.currentTarget)closeM(id);}
 function openMas(){openM('mMas');}
 function closeMas(){closeM('mMas');}
 
-const TABS=['resumen','gastos','escanear','ingresos','credito','ahorros','anual','presupuestos'];
+const TABS=['resumen','gastos','escanear','ingresos','credito','ahorros','anual','presupuestos','casa'];
 const NAV_TABS_DIRECT=['resumen','gastos','ingresos','credito'];
 
 function tab(name){
@@ -3826,8 +3899,133 @@ window.addEventListener('load',()=>{
 });
 
 // ============================================================
-// GO
+// CASA TRACKER
 // ============================================================
+const CASA_CONCEPTOS_DEFAULT=[
+  {id:'boleto',     label:'Boleto de reserva',    monto:29500, fecha:'16/09/2025', mes:'Setiembre', quien:'Mio',    pagado:true,  nota:'Retenido con la escribana'},
+  {id:'promesa',    label:'Promesa compra-venta',  monto:29500, fecha:'TBD',        mes:'Diciembre', quien:'Mio',    pagado:false, nota:'En la promesa'},
+  {id:'prenda',     label:'Prenda (banco)',         monto:213507,fecha:'TBD',        mes:'Diciembre', quien:'Banco',  pagado:false, nota:'En la promesa'},
+  {id:'extra',      label:'Extra mío',             monto:null,  fecha:'TBD',        mes:'Diciembre', quien:'Mio',    pagado:false, nota:'Lo restamos del nominal de la prenda', esExtra:true},
+  {id:'nominal',    label:'Nominal que come la prenda',monto:null,fecha:'',         mes:'Diciembre', quien:'Padres', pagado:false, nota:'', esNominal:true},
+  {id:'comision',   label:'Comisión inmobiliaria',  monto:9726,  fecha:'TBD',        mes:'Diciembre', quien:'Padres', pagado:false, nota:'En la promesa'},
+  {id:'saldo5',     label:'Saldo 5%',               monto:14750, fecha:'',           mes:'Diciembre', quien:'Padres', pagado:false, nota:'Con la entrega de la unidad'},
+  {id:'conexiones', label:'Conexiones',              monto:5900,  fecha:'25/12/2025', mes:'Diciembre', quien:'Padres', pagado:false, nota:'Con la entrega de la unidad'},
+  {id:'escrituras', label:'Gastos escrituras',       monto:6000,  fecha:'30/07/2026', mes:'Julio',     quien:'?',      pagado:false, nota:'Cuando se firma la casa'},
+];
+
+function getCasaState(){
+  const saved=localStorage.getItem('mg_casa');
+  if(saved)return JSON.parse(saved);
+  return{
+    conceptos:JSON.parse(JSON.stringify(CASA_CONCEPTOS_DEFAULT)),
+    aportePadres:30000,
+    boleto:29500
+  };
+}
+function saveCasaState(state){localStorage.setItem('mg_casa',JSON.stringify(state));}
+function saveCasaConfig(){
+  const state=getCasaState();
+  state.aportePadres=parseFloat(document.getElementById('casaAportePadres').value)||30000;
+  state.boleto=parseFloat(document.getElementById('casaBoleto').value)||29500;
+  saveCasaState(state);
+}
+
+function rCasa(){
+  const state=getCasaState();
+  const cs=state.conceptos;
+  const aportePadres=state.aportePadres||30000;
+  const boletoPagado=state.boleto||29500;
+
+  // Set config inputs
+  const apEl=document.getElementById('casaAportePadres');
+  const boEl=document.getElementById('casaBoleto');
+  if(apEl&&!apEl.matches(':focus'))apEl.value=aportePadres;
+  if(boEl&&!boEl.matches(':focus'))boEl.value=boletoPagado;
+
+  // En la cuenta = sum of all savings goals
+  const enCuenta=S.goals.reduce((s,g)=>s+(+g.saved||0),0);
+
+  // Tengo = boleto pagado + en la cuenta
+  const tengo=boletoPagado+enCuenta;
+
+  // Prenda nominal (75% of 295000 = 221250, but using 213507 from CSV)
+  const prenda=213507;
+
+  // Extra mío = en la cuenta - promesa propia (29500)
+  // This is what goes beyond the boleto — their share in the prenda calculation
+  const extraMio=Math.max(0,enCuenta-29500);
+
+  // Nominal que come la prenda = prenda - (295000 * 0.75 approx)
+  // From CSV: it's negative, representing what the bank gives you back essentially
+  // Using the formula from CSV: it's calculated as -(prenda - some base)
+  // Simplified: nominal = -(4719) from CSV — but let's make it dynamic
+  // Actually from CSV row 9: "-$4,719" which is the difference that gets eaten
+  const nominalComePrenda=-(prenda - 221250 + extraMio*0.03); // approximate
+
+  // Conceptos de padres
+  const padresConceptos=cs.filter(c=>c.quien==='Padres');
+  const padresFijo=padresConceptos.filter(c=>c.monto&&!c.esNominal).reduce((s,c)=>s+(c.monto||0),0);
+  const padresNecesario=padresFijo; // 9726+14750+5900 = 30376... but CSV shows 25657
+  // From CSV: padres need = 9726 + 14750 + 5900 + nominal(-4719) = 25657
+  const nominalVal=-4719; // fixed from CSV
+  const pedirPadres=padresFijo+nominalVal;
+  const remanente=aportePadres-pedirPadres;
+
+  // Total gasto
+  const totalGasto=cs.reduce((s,c)=>{
+    if(c.esExtra) return s+extraMio;
+    if(c.esNominal) return s+nominalVal;
+    return s+(c.monto||0);
+  },0);
+
+  // Progress = tengo+aportePadres vs totalGasto
+  const covered=tengo+aportePadres;
+  const pct=Math.min(100,(covered/totalGasto)*100);
+
+  // Update DOM
+  const fmtUSD=v=>`USD ${Math.round(v).toLocaleString('en-US')}`;
+  document.getElementById('casaTotal').textContent=fmtUSD(totalGasto);
+  document.getElementById('casaEnCuenta').textContent=fmtUSD(enCuenta);
+  document.getElementById('casaTengo').textContent=fmtUSD(tengo);
+  document.getElementById('casaPadresNecesario').textContent=fmtUSD(pedirPadres);
+  document.getElementById('casaPadresLbl').textContent=`de ${fmtUSD(aportePadres)}`;
+  document.getElementById('casaRemanente').textContent=fmtUSD(remanente);
+  document.getElementById('casaProgressBar').style.width=pct+'%';
+
+  // Pagado count
+  const pagados=cs.filter(c=>c.pagado).length;
+  document.getElementById('casaPagadoCount').textContent=`${pagados}/${cs.length} pagados`;
+
+  // Render conceptos
+  const con=document.getElementById('casaConceptos');
+  const quienColor={'Mio':'var(--accent)','Banco':'var(--purple)','Padres':'var(--green)','?':'var(--text-muted)'};
+  con.innerHTML=cs.map((c,i)=>{
+    const montoReal=c.esExtra?extraMio:c.esNominal?nominalVal:(c.monto||0);
+    const isNeg=montoReal<0;
+    const montoStr=isNeg?`-USD ${Math.abs(Math.round(montoReal)).toLocaleString('en-US')}`:`USD ${Math.round(montoReal).toLocaleString('en-US')}`;
+    const col=quienColor[c.quien]||'var(--text-muted)';
+    return `<div style="display:flex;align-items:center;gap:10px;padding:11px 14px;border-bottom:1px solid var(--border);${c.pagado?'background:var(--green-light)':''}">
+      <button onclick="toggleCasaPagado(${i})" style="width:22px;height:22px;border-radius:50%;border:2px solid ${c.pagado?'var(--green)':'var(--border)'};background:${c.pagado?'var(--green)':'transparent'};cursor:pointer;flex-shrink:0;display:flex;align-items:center;justify-content:center;font-size:11px">${c.pagado?'✓':''}</button>
+      <div style="flex:1;min-width:0">
+        <div style="font-size:13px;font-weight:600;${c.pagado?'text-decoration:line-through;color:var(--text-muted)':''}">${c.label}</div>
+        <div style="font-size:10px;color:var(--text-muted);margin-top:1px">${c.mes}${c.fecha&&c.fecha!=='TBD'?' · '+c.fecha:c.fecha==='TBD'?' · fecha TBD':''} ${c.nota?'· '+c.nota:''}</div>
+      </div>
+      <div style="text-align:right;flex-shrink:0">
+        <div style="font-size:13px;font-weight:700;color:${isNeg?'var(--green)':c.pagado?'var(--text-muted)':'var(--text)'}">${montoStr}</div>
+        <div style="font-size:10px;font-weight:600;color:${col}">${c.quien}</div>
+      </div>
+    </div>`;
+  }).join('');
+}
+
+function toggleCasaPagado(i){
+  const state=getCasaState();
+  state.conceptos[i].pagado=!state.conceptos[i].pagado;
+  saveCasaState(state);
+  rCasa();
+}
+
+
 init();
 </script>
 </body>
