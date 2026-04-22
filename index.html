@@ -3959,12 +3959,14 @@ function rCasa(){
     return s+(c.monto||0);
   },0);
 
-  // Lo que mínimo necesitás de padres = comision + saldo5 + conexiones + nominal
-  const minimoNecesarioPadres=9726+14750+5900+nominalVal; // = 25657
+  // Total que cubrís vos = tengo (boleto + ahorros)
+  // Total que cubre el banco = 213507 (fijo)
+  // Lo que necesitás de padres = totalGasto - tengo - banco
+  const banco=213507;
+  const minimoNecesarioPadres=Math.max(0, totalGasto - tengo - banco);
 
-  // Les pedís siempre el aporte completo (30000)
-  // El colchón = aportePadres - mínimo necesario + (si tus ahorros cubren más, sube)
-  const remanente=aportePadres-minimoNecesarioPadres;
+  // Les pedís siempre 30000, el colchón = lo que sobra después de cubrir lo necesario
+  const remanente=aportePadres - minimoNecesarioPadres;
 
   // Progress = (tengo + aportePadres) vs totalGasto
   const pct=Math.min(100,((tengo+aportePadres)/totalGasto)*100);
