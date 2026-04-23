@@ -3948,24 +3948,27 @@ function rCasa(){
   // Tengo = boleto pagado + en la cuenta
   const tengo=boletoPagado+enCuenta;
 
-  // ── FIXED values from spreadsheet ──
-  const extraMio=12462;   // fixed from CSV — Extra mío
-  const nominalVal=-4719; // fixed from CSV — Nominal que come la prenda
+  // ── DYNAMIC formulas matching spreadsheet ──
+  const PRENDA=213507;
+  const PRECIO_75=295000*0.75; // 221250
 
-  // Total gasto is fixed
+  // Extra mío = en cuenta - promesa (dinámico, crece con los ahorros)
+  const extraMio=Math.max(0, enCuenta - 29500);
+
+  // Nominal que come la prenda = (221250 - 213507) - extra mío (dinámico)
+  const nominalVal=(PRECIO_75 - PRENDA) - extraMio; // baja cuando extra mío sube
+
+  // Total gasto (dinámico porque extra mío y nominal cambian)
   const totalGasto=cs.reduce((s,c)=>{
     if(c.esExtra) return s+extraMio;
     if(c.esNominal) return s+nominalVal;
     return s+(c.monto||0);
   },0);
 
-  // Total que cubrís vos = tengo (boleto + ahorros)
-  // Total que cubre el banco = 213507 (fijo)
-  // Lo que necesitás de padres = totalGasto - tengo - banco
-  const banco=213507;
-  const minimoNecesarioPadres=Math.max(0, totalGasto - tengo - banco);
+  // Mínimo necesario a padres = comision + saldo5 + conexiones + nominal
+  const minimoNecesarioPadres=9726+14750+5900+nominalVal;
 
-  // Les pedís siempre 30000, el colchón = lo que sobra después de cubrir lo necesario
+  // Les pedís siempre 30000, el colchón = lo que sobra
   const remanente=aportePadres - minimoNecesarioPadres;
 
   // Progress = (tengo + aportePadres) vs totalGasto
