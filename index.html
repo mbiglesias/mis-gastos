@@ -724,7 +724,27 @@ onAuthStateChanged(auth, (user) => {
   </div>
 </div>
 
-<!-- MÁS MODAL -->
+<!-- GLOBAL SEARCH MODAL -->
+<div class="mo hid" id="mSearch" onclick="overlayClose(event,'mSearch')">
+  <div class="modal" style="max-height:85vh;display:flex;flex-direction:column">
+    <div class="mh"></div>
+    <div style="padding:0 0 12px">
+      <div style="display:flex;align-items:center;gap:8px;background:var(--bg);border-radius:var(--R);padding:10px 12px">
+        <span style="font-size:16px;color:var(--text-muted)">🔍</span>
+        <input type="text" id="searchInput" class="fi" placeholder="Buscar gastos, categorías, ingresos..."
+          style="border:none;background:transparent;padding:0;font-size:15px;flex:1;outline:none"
+          oninput="runSearch(this.value)"
+          autofocus>
+        <button onclick="document.getElementById('searchInput').value='';runSearch('')" style="background:none;border:none;color:var(--text-muted);cursor:pointer;font-size:18px;padding:0;line-height:1">✕</button>
+      </div>
+    </div>
+    <div id="searchResults" style="overflow-y:auto;flex:1;padding-bottom:8px">
+      <div style="text-align:center;color:var(--text-muted);font-size:13px;padding:24px">Escribí para buscar</div>
+    </div>
+  </div>
+</div>
+
+
 <div class="mo hid" id="mMas" onclick="overlayClose(event,'mMas')">
   <div class="modal"><div class="mh"></div>
     <div class="mt" style="margin-bottom:16px">Más secciones</div>
@@ -780,6 +800,7 @@ onAuthStateChanged(auth, (user) => {
   <div class="hdr-top">
     <div class="app-title" onclick="tab('resumen')" style="cursor:pointer">💰 Mis Gastos</div>
     <div class="hdr-right">
+      <button onclick="openSearch()" style="background:none;border:none;cursor:pointer;padding:4px 6px;color:var(--text-mid);font-size:18px;line-height:1" title="Buscar">🔍</button>
       <div class="cur-toggle">
         <button class="cur-btn on" id="btnUSD" onclick="setCur('USD')">USD</button>
         <button class="cur-btn" id="btnUYU" onclick="setCur('UYU')">UYU</button>
@@ -3909,8 +3930,118 @@ window.addEventListener('load',()=>{
 });
 
 // ============================================================
-// CASA TRACKER
+// GLOBAL SEARCH
 // ============================================================
+function openSearch(){
+  openM('mSearch');
+  setTimeout(()=>{
+    const inp=document.getElementById('searchInput');
+    if(inp){inp.value='';inp.focus();}
+    document.getElementById('searchResults').innerHTML='<div style="text-align:center;color:var(--text-muted);font-size:13px;padding:24px">Escribí para buscar</div>';
+  },100);
+}
+
+function runSearch(q){
+  const res=document.getElementById('searchResults');
+  if(!q||q.trim().length<2){
+    res.innerHTML='<div style="text-align:center;color:var(--text-muted);font-size:13px;padding:24px">Escribí para buscar</div>';
+    return;
+  }
+  const term=q.toLowerCase().trim();
+  let html='';
+
+  // ── GASTOS (all months) ──
+  const gastos=S.gastos.filter(g=>
+    g.desc?.toLowerCase().includes(term)||
+    g.category?.toLowerCase().includes(term)||
+    g.note?.toLowerCase().includes(term)
+  ).sort((a,b)=>new Date(b.date)-new Date(a.date));
+
+  if(gastos.length){
+    html+=`<div style="font-size:10px;font-weight:700;color:var(--text-muted);text-transform:uppercase;letter-spacing:.5px;padding:8px 14px 4px">Gastos (${gastos.length})</div>`;
+    html+=gastos.slice(0,30).map(g=>{
+      const cat=S.categories.find(c=>c.name===g.category);
+      const em=cat?cat.emoji:'📦';
+      const col=cat?cat.color:'#6b7280';
+      const d=new Date(g.date+'T12:00:00');
+      const dateStr=d.toLocaleDateString('es-UY',{day:'numeric',month:'short',year:'numeric'});
+      const isCr=g.payType==='credit';
+      return `<div style="display:flex;align-items:center;gap:10px;padding:10px 14px;border-bottom:1px solid var(--border);cursor:pointer" onclick="closeM('mSearch');openGastoDetail('${g.id}',false,1,${+g.installments||1})">
+        <div style="width:36px;height:36px;border-radius:10px;background:${col}22;display:flex;align-items:center;justify-content:center;font-size:18px;flex-shrink:0">${em}</div>
+        <div style="flex:1;min-width:0">
+          <div style="font-size:13px;font-weight:600;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">${highlight(g.desc,term)}</div>
+          <div style="font-size:11px;color:var(--text-muted)">${dateStr} · ${g.category}${g.note?' · '+g.note:''}</div>
+        </div>
+        <div style="text-align:right;flex-shrink:0">
+          <div style="font-size:13px;font-weight:700;color:${isCr?'var(--purple)':'var(--text)'}">${fmt(g.amount)}</div>
+          <div style="font-size:10px;color:var(--text-muted)">${isCr?'Crédito':'Débito'}</div>
+        </div>
+      </div>`;
+    }).join('');
+    if(gastos.length>30)html+=`<div style="text-align:center;font-size:11px;color:var(--text-muted);padding:8px">+${gastos.length-30} más</div>`;
+  }
+
+  // ── INGRESOS ──
+  const ingresos=S.ingresos.filter(i=>
+    i.desc?.toLowerCase().includes(term)||
+    i.note?.toLowerCase().includes(term)
+  ).sort((a,b)=>new Date(b.date)-new Date(a.date));
+
+  if(ingresos.length){
+    html+=`<div style="font-size:10px;font-weight:700;color:var(--text-muted);text-transform:uppercase;letter-spacing:.5px;padding:8px 14px 4px">Ingresos (${ingresos.length})</div>`;
+    html+=ingresos.map(i=>{
+      const d=new Date(i.date+'T12:00:00');
+      const dateStr=d.toLocaleDateString('es-UY',{day:'numeric',month:'short',year:'numeric'});
+      return `<div style="display:flex;align-items:center;gap:10px;padding:10px 14px;border-bottom:1px solid var(--border)">
+        <div style="width:36px;height:36px;border-radius:10px;background:var(--green-light);display:flex;align-items:center;justify-content:center;font-size:18px;flex-shrink:0">💵</div>
+        <div style="flex:1;min-width:0">
+          <div style="font-size:13px;font-weight:600">${highlight(i.desc,term)}</div>
+          <div style="font-size:11px;color:var(--text-muted)">${dateStr}${i.note?' · '+i.note:''}</div>
+        </div>
+        <div style="font-size:13px;font-weight:700;color:var(--green)">${fmt(i.amount)}</div>
+      </div>`;
+    }).join('');
+  }
+
+  // ── CATEGORÍAS ──
+  const cats=S.categories.filter(c=>c.name?.toLowerCase().includes(term));
+  if(cats.length){
+    html+=`<div style="font-size:10px;font-weight:700;color:var(--text-muted);text-transform:uppercase;letter-spacing:.5px;padding:8px 14px 4px">Categorías (${cats.length})</div>`;
+    html+=cats.map(c=>`<div style="display:flex;align-items:center;gap:10px;padding:10px 14px;border-bottom:1px solid var(--border);cursor:pointer" onclick="closeM('mSearch');tab('presupuestos')">
+      <div style="width:36px;height:36px;border-radius:10px;background:${c.color}22;display:flex;align-items:center;justify-content:center;font-size:18px;flex-shrink:0">${c.emoji}</div>
+      <div style="flex:1">
+        <div style="font-size:13px;font-weight:600">${highlight(c.name,term)}</div>
+        <div style="font-size:11px;color:var(--text-muted)">${getBudgetUSD(c)>0?'Presupuesto: '+fmtBudget(c):'Sin presupuesto'}</div>
+      </div>
+      <div style="color:var(--text-muted)">›</div>
+    </div>`).join('');
+  }
+
+  // ── AHORROS ──
+  const goals=S.goals.filter(g=>g.name?.toLowerCase().includes(term));
+  if(goals.length){
+    html+=`<div style="font-size:10px;font-weight:700;color:var(--text-muted);text-transform:uppercase;letter-spacing:.5px;padding:8px 14px 4px">Ahorros (${goals.length})</div>`;
+    html+=goals.map(g=>`<div style="display:flex;align-items:center;gap:10px;padding:10px 14px;border-bottom:1px solid var(--border);cursor:pointer" onclick="closeM('mSearch');tab('ahorros')">
+      <div style="width:36px;height:36px;border-radius:10px;background:var(--accent-light);display:flex;align-items:center;justify-content:center;font-size:18px;flex-shrink:0">${g.emoji||'🎯'}</div>
+      <div style="flex:1">
+        <div style="font-size:13px;font-weight:600">${highlight(g.name,term)}</div>
+        <div style="font-size:11px;color:var(--text-muted)">Ahorrado: ${fmt(g.saved||0)}${g.target?' · Meta: '+fmt(g.target):''}</div>
+      </div>
+      <div style="color:var(--text-muted)">›</div>
+    </div>`).join('');
+  }
+
+  if(!html)html='<div style="text-align:center;color:var(--text-muted);font-size:13px;padding:24px">Sin resultados para "'+q+'"</div>';
+  res.innerHTML=html;
+}
+
+function highlight(text,term){
+  if(!text||!term)return text||'';
+  const re=new RegExp(`(${term.replace(/[.*+?^${}()|[\]\\]/g,'\\$&')})`, 'gi');
+  return text.replace(re,'<mark style="background:var(--accent-light);color:var(--accent);border-radius:2px;padding:0 1px">$1</mark>');
+}
+
+
 const CASA_CONCEPTOS_DEFAULT=[
   {id:'boleto',     label:'Boleto de reserva',    monto:29500, fecha:'16/09/2025', mes:'Setiembre', quien:'Mio',    pagado:true,  nota:'Retenido con la escribana'},
   {id:'promesa',    label:'Promesa compra-venta',  monto:29500, fecha:'TBD',        mes:'Diciembre', quien:'Mio',    pagado:false, nota:'En la promesa'},
