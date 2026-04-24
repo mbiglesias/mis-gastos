@@ -2251,7 +2251,7 @@ function selTxCur(key,cur,btn){
     b.className='mini-cur-btn'+(b.textContent===cur?(cur==='UYU'?' on-uyu':' on'):'');
   });
   // For budget inputs: convert the displayed value when switching currency
-  const budgetInputs={ebinput:'ebInput',ncbudget:'ncBudget'};
+  const budgetInputs={ebinput:'ebInput',ncbudget:'ncBudget',edit:'egAmt'};
   const inputId=budgetInputs[key];
   if(inputId&&prevCur!==cur){
     const inp=document.getElementById(inputId);
@@ -2304,6 +2304,13 @@ function openGastoDetail(id, isInst, instNum, instTotal){
       </div>`;
   }
 
+  // Display amount — use origAmount if available (more accurate for UYU gastos)
+  const hasOrig=g.origAmount&&g.origCur;
+  const displayAmt=hasOrig
+    ? (g.origCur==='UYU'?`$U ${Math.round(g.origAmount).toLocaleString('es-UY')}`:fmt(g.origAmount))
+    : fmt(g.amount);
+  const secondaryAmt=hasOrig&&g.origCur==='UYU'?fmt(g.amount):null; // USD equivalent
+
   const html=`
     <div style="display:flex;align-items:center;gap:12px;margin-bottom:16px">
       <div style="width:48px;height:48px;border-radius:12px;background:${col}22;display:flex;align-items:center;justify-content:center;font-size:24px;flex-shrink:0">${em}</div>
@@ -2315,7 +2322,8 @@ function openGastoDetail(id, isInst, instNum, instTotal){
 
     <div style="background:${isCr?'var(--purple-light)':'var(--accent-light)'};border-radius:var(--R);padding:14px;text-align:center;margin-bottom:14px">
       <div style="font-size:11px;font-weight:700;color:${isCr?'var(--purple)':'var(--accent)'};text-transform:uppercase;letter-spacing:.5px;margin-bottom:4px">${isInst?`Cuota ${instNum}/${instTotal}`:(isCr?`Total en ${inst} cuota${inst>1?'s':''}`:'Monto')}</div>
-      <div style="font-size:32px;font-weight:700;color:${isCr?'var(--purple)':'var(--text)'};letter-spacing:-1px">${isInst?fmt(cuota):fmt(g.amount)}</div>
+      <div style="font-size:32px;font-weight:700;color:${isCr?'var(--purple)':'var(--text)'};letter-spacing:-1px">${isInst?fmt(cuota):displayAmt}</div>
+      ${secondaryAmt?`<div style="font-size:12px;color:var(--text-muted);margin-top:4px">≈ ${secondaryAmt}</div>`:''}
       ${isCr&&!isInst&&inst>1?`<div style="font-size:13px;color:var(--purple);margin-top:4px">${fmt(cuota)}/mes</div>`:''}
     </div>
 
@@ -2331,7 +2339,6 @@ function openGastoDetail(id, isInst, instNum, instTotal){
       ${g.recurring?`<div class="detail-row"><span class="detail-lbl">Recurrencia</span><span class="detail-val">🔁 Mensual</span></div>`:''}
       ${payInfo}
       ${g.note?`<div class="detail-row"><span class="detail-lbl">Nota</span><span class="detail-val" style="color:var(--text-mid)">${g.note}</span></div>`:''}
-      ${g.origAmount&&g.origCur==='UYU'?`<div class="detail-row"><span class="detail-lbl">Monto original</span><span class="detail-val">$U ${g.origAmount.toLocaleString('es-UY')}</span></div>`:''}
     </div>
 
     <div style="display:flex;gap:8px">
