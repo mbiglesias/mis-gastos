@@ -2040,9 +2040,20 @@ function rBudget(){
     }
   }
 
-  function catDetailHTML(catName, key){
+  function catDetailHTML(catName, key, includeChildren=false){
     const mode=window._budMode[key]||(S.crMode||'consumo');
-    const gastos=catGastos(catName,mode);
+    let gastos=catGastos(catName,mode);
+    // For parent categories, also include gastos from children
+    if(includeChildren){
+      const cat=S.categories.find(c=>c.name===catName);
+      if(cat){
+        const children=getChildren(getCatId(cat));
+        children.forEach(child=>{
+          const childGs=catGastos(child.name,mode);
+          gastos=[...gastos,...childGs];
+        });
+      }
+    }
     if(!gastos.length)return `<div style="font-size:11px;color:var(--text-muted);padding:8px 0;text-align:center">Sin gastos este mes</div>`;
     return gastos.map(g=>{
       const amt=g._displayAmt!==undefined?g._displayAmt:+g.amount;
@@ -2063,10 +2074,9 @@ function rBudget(){
     }).join('');
   }
 
-  function expandBtn(catName, key, sp){
-    // Only show expand if there are credit gastos
+  function expandBtn(catName, key, sp, includeChildren=false){
     const hasCr=S.gastos.some(g=>g.payType==='credit'&&g.category===catName);
-    if(!hasCr&&sp===0)return'';
+    if(!hasCr&&sp===0&&!includeChildren)return'';
     const isExp=window._budExpanded[key];
     const mode=window._budMode[key]||(S.crMode||'consumo');
     const detail=isExp?`
@@ -2080,7 +2090,7 @@ function rBudget(){
             ? 'Gastos realizados en <strong>este mes</strong>, aunque se paguen después'
             : 'Lo que <strong>sale de tu cuenta este mes</strong> (débito + cuotas que vencen)'}
         </div>
-        ${catDetailHTML(catName,key)}
+        ${catDetailHTML(catName,key,includeChildren)}
       </div>`:'';
     return `<button onclick="toggleBudExp('${key}');rBudget()" style="width:100%;margin-top:6px;padding:5px;background:var(--bg);border:none;border-radius:6px;font-family:inherit;font-size:10px;font-weight:700;color:var(--accent);cursor:pointer">${isExp?'▲ Ocultar':'▼ Ver gastos'}</button>${detail}`;
   }
@@ -2103,10 +2113,10 @@ function rBudget(){
         <div style="display:flex;align-items:center;gap:8px">
           <div class="biico" style="background:${cat.color}22">${cat.emoji}</div>
           <div class="bib" style="flex:1"><div class="bin" style="font-weight:700">${cat.name}</div>${totalBu>0?`<div class="bibar"><div class="bibf" style="width:${pct}%;background:${ov?'var(--red)':'var(--accent)'}"></div></div>`:''}</div>
-          <div class="bir"><div class="biam" style="color:${ov?'var(--red)':'inherit'}">${fmt(totalSp)}</div><div class="bilm">${totalBu>0?'de '+fmtBudget(cat):'grupo'}</div></div>
+          <div class="bir"><div class="biam" style="color:${ov?'var(--red)':'inherit'}">${fmt(totalSp)}</div><div class="bilm">${totalBu>0?'de '+fmt(totalBu):'grupo'}</div></div>
           <div class="bias"><button class="bab" onclick="openEB(${i})">✏️</button><button class="bab dng" onclick="delCat(${i})">✕</button></div>
         </div>
-        ${expandBtn(cat.name,key,catSpend(cat.name,debitGs,creditInstGs,localParentMode))}
+        ${expandBtn(cat.name,key,catSpend(cat.name,debitGs,creditInstGs,localParentMode),true)}
       </div>`;
       children.forEach((child,ci)=>{
         const ci2=S.categories.indexOf(child);
