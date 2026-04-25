@@ -564,7 +564,7 @@ onAuthStateChanged(auth, (user) => {
     </div>
     <div class="fr" style="margin-bottom:8px">
       <div class="fld"><div class="fl">Categoría</div><select class="fi" id="egCat" onchange="handleCatSelect('egCat')"></select></div>
-      <div class="fld"><div class="fl">Fecha</div><div class="date-wrap"><input type="date" class="fi" id="egDate" onchange="updDateDisplay('egDate','egDateDisp')"><div class="date-display" id="egDateDisp"><span>DD/MM/AAAA</span><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="4" width="18" height="18" rx="2"/><line x1="16" y1="2" x2="16" y2="6"/><line x1="8" y1="2" x2="8" y2="6"/><line x1="3" y1="10" x2="21" y2="10"/></svg></div></div></div>
+      <div class="fld"><div class="fl">Fecha</div><div class="date-wrap" onclick="this.querySelector('input[type=date]').showPicker?this.querySelector('input[type=date]').showPicker():this.querySelector('input[type=date]').click()"><input type="date" class="fi" id="egDate" onchange="updDateDisplay('egDate','egDateDisp')"><div class="date-display" style="cursor:pointer" id="egDateDisp"><span>DD/MM/AAAA</span><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="4" width="18" height="18" rx="2"/><line x1="16" y1="2" x2="16" y2="6"/><line x1="8" y1="2" x2="8" y2="6"/><line x1="3" y1="10" x2="21" y2="10"/></svg></div></div></div>
     </div>
     <div class="fr" style="margin-bottom:8px">
       <div class="fld"><div class="fl">Tipo de pago</div>
@@ -659,7 +659,7 @@ onAuthStateChanged(auth, (user) => {
       </div>
       <div class="fld">
         <div class="fl">Fecha límite (opcional)</div>
-        <div class="date-wrap"><input type="date" class="fi" id="gDeadline" onchange="updDateDisplay('gDeadline','gDeadlineDisp')"><div class="date-display" id="gDeadlineDisp"><span>DD/MM/AAAA</span><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="4" width="18" height="18" rx="2"/><line x1="16" y1="2" x2="16" y2="6"/><line x1="8" y1="2" x2="8" y2="6"/><line x1="3" y1="10" x2="21" y2="10"/></svg></div></div>
+        <div class="date-wrap" onclick="this.querySelector('input[type=date]').showPicker?this.querySelector('input[type=date]').showPicker():this.querySelector('input[type=date]').click()"><input type="date" class="fi" id="gDeadline" onchange="updDateDisplay('gDeadline','gDeadlineDisp')"><div class="date-display" style="cursor:pointer" id="gDeadlineDisp"><span>DD/MM/AAAA</span><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="4" width="18" height="18" rx="2"/><line x1="16" y1="2" x2="16" y2="6"/><line x1="8" y1="2" x2="8" y2="6"/><line x1="3" y1="10" x2="21" y2="10"/></svg></div></div>
       </div>
     </div>
     <div class="fr" style="margin-bottom:14px">
@@ -683,7 +683,7 @@ onAuthStateChanged(auth, (user) => {
         <div class="fl-row"><div class="fl">Monto</div><div class="mini-cur" id="cur-editentry"><button class="mini-cur-btn on" onclick="selTxCur('editentry','USD',this)">USD</button><button class="mini-cur-btn" onclick="selTxCur('editentry','UYU',this)">UYU</button></div></div>
         <input type="number" class="fi" id="eeAmt" placeholder="0">
       </div>
-      <div class="fld"><div class="fl">Fecha</div><div class="date-wrap"><input type="date" class="fi" id="eeDate" onchange="updDateDisplay('eeDate','eeDateDisp')"><div class="date-display" id="eeDateDisp"><span>DD/MM/AAAA</span><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="4" width="18" height="18" rx="2"/><line x1="16" y1="2" x2="16" y2="6"/><line x1="8" y1="2" x2="8" y2="6"/><line x1="3" y1="10" x2="21" y2="10"/></svg></div></div></div>
+      <div class="fld"><div class="fl">Fecha</div><div class="date-wrap" onclick="this.querySelector('input[type=date]').showPicker?this.querySelector('input[type=date]').showPicker():this.querySelector('input[type=date]').click()"><input type="date" class="fi" id="eeDate" onchange="updDateDisplay('eeDate','eeDateDisp')"><div class="date-display" style="cursor:pointer" id="eeDateDisp"><span>DD/MM/AAAA</span><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="4" width="18" height="18" rx="2"/><line x1="16" y1="2" x2="16" y2="6"/><line x1="8" y1="2" x2="8" y2="6"/><line x1="3" y1="10" x2="21" y2="10"/></svg></div></div></div>
     </div>
     <div class="fld" style="margin-bottom:14px">
       <div class="fl">Nota (opcional)</div>
@@ -705,7 +705,7 @@ onAuthStateChanged(auth, (user) => {
         <div class="fl-row"><div class="fl">Monto</div><div class="mini-cur" id="cur-addgoal"><button class="mini-cur-btn on" onclick="selTxCur('addgoal','USD',this)">USD</button><button class="mini-cur-btn" onclick="selTxCur('addgoal','UYU',this)">UYU</button></div></div>
         <input type="number" class="fi" id="agAmt" placeholder="0">
       </div>
-      <div class="fld"><div class="fl">Fecha</div><div class="date-wrap"><input type="date" class="fi" id="agDate" onchange="updDateDisplay('agDate','agDateDisp')"><div class="date-display" id="agDateDisp"><span>DD/MM/AAAA</span><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="4" width="18" height="18" rx="2"/><line x1="16" y1="2" x2="16" y2="6"/><line x1="8" y1="2" x2="8" y2="6"/><line x1="3" y1="10" x2="21" y2="10"/></svg></div></div></div>
+      <div class="fld"><div class="fl">Fecha</div><div class="date-wrap" onclick="this.querySelector('input[type=date]').showPicker?this.querySelector('input[type=date]').showPicker():this.querySelector('input[type=date]').click()"><input type="date" class="fi" id="agDate" onchange="updDateDisplay('agDate','agDateDisp')"><div class="date-display" style="cursor:pointer" id="agDateDisp"><span>DD/MM/AAAA</span><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="4" width="18" height="18" rx="2"/><line x1="16" y1="2" x2="16" y2="6"/><line x1="8" y1="2" x2="8" y2="6"/><line x1="3" y1="10" x2="21" y2="10"/></svg></div></div></div>
     </div>
     <div class="fld" style="margin-bottom:14px">
       <div class="fl">Nota (opcional)</div>
@@ -913,7 +913,7 @@ onAuthStateChanged(auth, (user) => {
             <div class="fl-row"><div class="fl">Monto</div><div class="mini-cur" id="cur-scan"><button class="mini-cur-btn on" onclick="selTxCur('scan','USD',this)">USD</button><button class="mini-cur-btn" onclick="selTxCur('scan','UYU',this)">UYU</button></div></div>
             <input type="number" class="fi" id="pa" placeholder="0">
           </div>
-          <div class="fld"><div class="fl">Fecha</div><div class="date-wrap"><input type="date" class="fi" id="pf" onchange="updDateDisplay('pf','pfDisp')"><div class="date-display" id="pfDisp"><span>DD/MM/AAAA</span><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="4" width="18" height="18" rx="2"/><line x1="16" y1="2" x2="16" y2="6"/><line x1="8" y1="2" x2="8" y2="6"/><line x1="3" y1="10" x2="21" y2="10"/></svg></div></div></div>
+          <div class="fld"><div class="fl">Fecha</div><div class="date-wrap" onclick="this.querySelector('input[type=date]').showPicker?this.querySelector('input[type=date]').showPicker():this.querySelector('input[type=date]').click()"><input type="date" class="fi" id="pf" onchange="updDateDisplay('pf','pfDisp')"><div class="date-display" style="cursor:pointer" id="pfDisp"><span>DD/MM/AAAA</span><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="4" width="18" height="18" rx="2"/><line x1="16" y1="2" x2="16" y2="6"/><line x1="8" y1="2" x2="8" y2="6"/><line x1="3" y1="10" x2="21" y2="10"/></svg></div></div></div>
         </div>
         <div class="fr">
           <div class="fld"><div class="fl">Categoría</div><select class="fi" id="pc" onchange="handleCatSelect('pc')"></select></div>
@@ -960,7 +960,7 @@ onAuthStateChanged(auth, (user) => {
             <div class="fl-row"><div class="fl">Monto</div><div class="mini-cur" id="cur-manual"><button class="mini-cur-btn on" onclick="selTxCur('manual','USD',this)">USD</button><button class="mini-cur-btn" onclick="selTxCur('manual','UYU',this)">UYU</button></div></div>
             <input type="number" class="fi" id="ma" placeholder="0">
           </div>
-          <div class="fld"><div class="fl">Fecha</div><div class="date-wrap"><input type="date" class="fi" id="mf" onchange="updDateDisplay('mf','mfDisp')"><div class="date-display" id="mfDisp"><span>DD/MM/AAAA</span><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="4" width="18" height="18" rx="2"/><line x1="16" y1="2" x2="16" y2="6"/><line x1="8" y1="2" x2="8" y2="6"/><line x1="3" y1="10" x2="21" y2="10"/></svg></div></div></div>
+          <div class="fld"><div class="fl">Fecha</div><div class="date-wrap" onclick="this.querySelector('input[type=date]').showPicker?this.querySelector('input[type=date]').showPicker():this.querySelector('input[type=date]').click()"><input type="date" class="fi" id="mf" onchange="updDateDisplay('mf','mfDisp')"><div class="date-display" style="cursor:pointer" id="mfDisp"><span>DD/MM/AAAA</span><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="4" width="18" height="18" rx="2"/><line x1="16" y1="2" x2="16" y2="6"/><line x1="8" y1="2" x2="8" y2="6"/><line x1="3" y1="10" x2="21" y2="10"/></svg></div></div></div>
         </div>
         <div class="fr" style="margin-bottom:8px">
           <div class="fld"><div class="fl">Categoría</div><select class="fi" id="mc" onchange="handleCatSelect('mc')"></select></div>
@@ -1033,7 +1033,7 @@ onAuthStateChanged(auth, (user) => {
           <div class="fl-row"><div class="fl">Monto</div><div class="mini-cur" id="cur-ingreso"><button class="mini-cur-btn on" onclick="selTxCur('ingreso','USD',this)">USD</button><button class="mini-cur-btn" onclick="selTxCur('ingreso','UYU',this)">UYU</button></div></div>
           <input type="number" class="fi" id="ia" placeholder="0">
         </div>
-        <div class="fld"><div class="fl">Fecha</div><div class="date-wrap"><input type="date" class="fi" id="if" onchange="updDateDisplay('if','ifDisp')"><div class="date-display" id="ifDisp"><span>DD/MM/AAAA</span><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="4" width="18" height="18" rx="2"/><line x1="16" y1="2" x2="16" y2="6"/><line x1="8" y1="2" x2="8" y2="6"/><line x1="3" y1="10" x2="21" y2="10"/></svg></div></div></div>
+        <div class="fld"><div class="fl">Fecha</div><div class="date-wrap" onclick="this.querySelector('input[type=date]').showPicker?this.querySelector('input[type=date]').showPicker():this.querySelector('input[type=date]').click()"><input type="date" class="fi" id="if" onchange="updDateDisplay('if','ifDisp')"><div class="date-display" style="cursor:pointer" id="ifDisp"><span>DD/MM/AAAA</span><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="4" width="18" height="18" rx="2"/><line x1="16" y1="2" x2="16" y2="6"/><line x1="8" y1="2" x2="8" y2="6"/><line x1="3" y1="10" x2="21" y2="10"/></svg></div></div></div>
       </div>
       <div class="fr f1" style="margin-bottom:10px">
         <div class="fld"><div class="fl">Nota</div><input type="text" class="fi" id="in2" placeholder="Opcional..."></div>
@@ -1079,11 +1079,17 @@ onAuthStateChanged(auth, (user) => {
     </div>
   </div>
   <div id="t-credito" style="display:none">
+    <div class="mnav">
+      <button class="marr" onclick="chM(-1)">‹</button>
+      <div class="mlbl" id="mlbl-credito"></div>
+      <button class="marr" onclick="chM(1)">›</button>
+    </div>
     <div class="sg" style="margin-bottom:10px">
       <div class="sc pb"><div class="sl li">Total pendiente</div><div class="sv li" id="crTot">$0</div><div class="ss li" id="crTotSub"></div></div>
       <div class="sc tap-card" onclick="filterCreditMonth()" style="cursor:pointer"><div class="sl">Este mes</div><div class="sv pu" id="crMon">$0</div><div class="ss" id="crMonSub">ver cuotas ›</div></div>
     </div>
     <div class="ft" style="margin-bottom:8px">Cuotas activas</div>
+    <div id="crModeSummary"></div>
     <div id="crList"></div>
   </div>
 
@@ -1501,14 +1507,14 @@ function rTxList(){
   if(q)gs=gs.filter(g=>g.desc.toLowerCase().includes(q)||g.category.toLowerCase().includes(q)||(g.note||'').toLowerCase().includes(q));
   gs=[...gs].sort((a,b)=>new Date(b.date)-new Date(a.date));
 
-  // Show filtered total when not showing all
+  // Show total summary always
   const filtTotalEl=document.getElementById('filtTotal');
   const isFiltered=filt!=='Todos'||q;
   if(filtTotalEl){
-    if(isFiltered&&gs.length>0){
-      const total=gs.reduce((s,g)=>s+(g._isInstallment?g._cuota:+g.amount),0);
-      const label=q?`"${q}"`:(filt!=='Todos'?filt:'búsqueda');
-      filtTotalEl.textContent=`${label}: ${fmt(total)} en ${gs.length} gasto${gs.length!==1?'s':''}`;
+    if(gs.length>0){
+      const total=gs.filter(g=>!g._isInstallment).reduce((s,g)=>s+(+g.amount),0);
+      const label=q?`"${q}"`:filt!=='Todos'?filt:'Total';
+      filtTotalEl.textContent=`${label}: ${fmt(total)} en ${gs.filter(g=>!g._isInstallment).length} gasto${gs.filter(g=>!g._isInstallment).length!==1?'s':''}`;
       filtTotalEl.style.display='block';
     } else {
       filtTotalEl.style.display='none';
@@ -1620,6 +1626,7 @@ function renderAll(){
   document.getElementById('mlbl').textContent=lbl;
   const m2=document.getElementById('mlbl2');if(m2)m2.textContent=lbl;
   const m3=document.getElementById('mlbl3');if(m3)m3.textContent=lbl;
+  const mc=document.getElementById('mlbl-credito');if(mc)mc.textContent=lbl;
   const sd2=document.getElementById('salDisp2');if(sd2)sd2.textContent=fmt(S.salary);
   rSummary();rCatRows();rTxList();rIngresos();rCredit();rSavings();rBudget();rAnual();updCrModeUI();rCasa();
 }
@@ -1751,6 +1758,31 @@ function rCredit(){
   document.getElementById('crTotSub').textContent=`${active.length} compra${active.length!==1?'s':''} activa${active.length!==1?'s':''}`;
   document.getElementById('crMon').textContent=fmt(thisMon);
   document.getElementById('crMonSub').textContent=MOS[CM];
+
+  // Consumí/Pago summary panel
+  const consumiThisMonth=S.gastos.filter(g=>{
+    if(g.payType!=='credit')return false;
+    const d=new Date(g.date+'T12:00:00');
+    return d.getMonth()===CM&&d.getFullYear()===CY;
+  }).reduce((s,g)=>s+(+g.amount),0);
+  const pagoThisMonth=thisMon;
+
+  const crSummEl=document.getElementById('crModeSummary');
+  if(crSummEl){
+    crSummEl.innerHTML=`
+      <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-bottom:12px">
+        <div style="background:var(--accent-light);border-radius:var(--R);padding:12px;text-align:center">
+          <div style="font-size:10px;font-weight:700;color:var(--accent);text-transform:uppercase;letter-spacing:.5px;margin-bottom:4px">📅 Consumí en ${MOS[CM]}</div>
+          <div style="font-size:20px;font-weight:700;color:var(--accent)">${fmt(consumiThisMonth)}</div>
+          <div style="font-size:10px;color:var(--text-muted);margin-top:2px">compras realizadas</div>
+        </div>
+        <div style="background:var(--purple-light);border-radius:var(--R);padding:12px;text-align:center">
+          <div style="font-size:10px;font-weight:700;color:var(--purple);text-transform:uppercase;letter-spacing:.5px;margin-bottom:4px">💳 Pago en ${MOS[CM]}</div>
+          <div style="font-size:20px;font-weight:700;color:var(--purple)">${fmt(pagoThisMonth)}</div>
+          <div style="font-size:10px;color:var(--text-muted);margin-top:2px">cuotas que vencen</div>
+        </div>
+      </div>`;
+  }
 
   const con=document.getElementById('crList');
   if(!active.length){con.innerHTML=`<div class="empty"><div class="ee">✅</div><div class="et">Sin deudas en crédito</div><div class="es">Tus compras en cuotas aparecen acá</div></div>`;return;}
@@ -2123,8 +2155,8 @@ function rBudget(){
     const key=getCatId(cat);
 
     if(hasChildren){
-      const childrenSp=children.reduce((s,c)=>s+catSpend(c.name,debitGs,creditInstGs),0);
       const localParentMode=window._budMode[key]||(S.crMode||'consumo');
+      const childrenSp=children.reduce((s,c)=>s+catSpend(c.name,debitGs,creditInstGs,localParentMode),0);
       const directSp=catSpend(cat.name,debitGs,creditInstGs,localParentMode);
       const totalSp=childrenSp+directSp;
       const totalBu=children.reduce((s,c)=>s+getBudgetUSD(c),0);
@@ -2316,7 +2348,7 @@ function openGastoDetail(id, isInst, instNum, instTotal){
       <div style="width:48px;height:48px;border-radius:12px;background:${col}22;display:flex;align-items:center;justify-content:center;font-size:24px;flex-shrink:0">${em}</div>
       <div>
         <div style="font-size:17px;font-weight:700;letter-spacing:-.3px">${g.desc}</div>
-        <div style="font-size:12px;color:var(--text-muted);margin-top:2px">${g.category}</div>
+        <div style="font-size:12px;color:var(--accent);margin-top:2px;cursor:pointer;font-weight:600" onclick="closeM('mGastoDetail');setF('${g.category}');tab('gastos')">${g.category} →</div>
       </div>
     </div>
 
@@ -2350,10 +2382,26 @@ function openGastoDetail(id, isInst, instNum, instTotal){
   openM('mGastoDetail');
 }
 
-function filterCreditMonth(){
-  filt='Crédito';
+// Navigate to gastos filtered by category and month
+function gotoFilteredGastos(catName, month, year){
+  // Set month/year
+  CM=month; CY=year;
+  filt=catName;
+  renderAll();
   tab('gastos');
 }
+
+// Total summary line in gastos (shown when filt=Todos or any filter)
+function getTxSummaryLine(gastos){
+  if(!gastos.length)return'';
+  const total=gastos.reduce((s,g)=>s+(+g.amount),0);
+  return `<div style="padding:8px 14px;background:var(--bg);border-radius:var(--r);margin-bottom:8px;font-size:12px;color:var(--text-muted);text-align:center">
+    <strong style="color:var(--text)">${fmt(total)}</strong> en ${gastos.length} gasto${gastos.length!==1?'s':''}
+  </div>`;
+}
+
+
+function filterCreditMonth(){}
 
 function toggleChipGroup(parentId, parentName){
   const children=getChildren(parentId);
@@ -2703,17 +2751,30 @@ function saveEditBudget(){
   if(!name){toast('Ingresá un nombre');return;}
   const v=parseFloat(document.getElementById('ebInput').value)||0;
   const emoji=document.getElementById('ebEmoji').value||'📦';
-  const oldName=S.categories[eCatIdx].name;
+  const cat=S.categories[eCatIdx];
+  const oldName=cat.name;
+  const oldId=getCatId(cat); // may be name if no id
   const newParentId=document.getElementById('ebParent')?.value||null;
+
+  // Ensure the category has a real id before saving
+  if(!cat.id) cat.id=Date.now().toString();
+
   S.categories[eCatIdx].name=name;
   const budCur=txCur.ebinput||'USD';
   S.categories[eCatIdx].budgetCur=budCur;
-  S.categories[eCatIdx].budget=budCur==='UYU'?v:toUSD(v,'USD'); // store UYU as-is, USD as USD
+  S.categories[eCatIdx].budget=budCur==='UYU'?v:toUSD(v,'USD');
   S.categories[eCatIdx].emoji=emoji;
   S.categories[eCatIdx].parentId=newParentId||null;
-  // Update all gastos that used the old category name
+
   if(oldName!==name){
+    // Update gastos
     S.gastos.forEach(g=>{if(g.category===oldName)g.category=name;});
+    // Fix children whose parentId was the old name (before id existed)
+    S.categories.forEach(c=>{
+      if(c.parentId===oldId||c.parentId===oldName){
+        c.parentId=cat.id;
+      }
+    });
   }
   save();popCats();renderAll();closeM('mEditBudget');toast('Categoría actualizada');
 }
@@ -3025,9 +3086,9 @@ function renderBulk(){
         </div>
         <div class="fld">
           <div class="fl">Fecha</div>
-          <div class="date-wrap">
+          <div class="date-wrap" onclick="this.querySelector('input[type=date]').showPicker?this.querySelector('input[type=date]').showPicker():this.querySelector('input[type=date]').click()">
             <input type="date" class="fi" style="font-size:11px;padding:5px 8px" value="${tx.date||''}" onchange="bulkTxs[${i}].date=this.value;updDateDisplay(this,this.nextElementSibling)">
-            <div class="date-display" style="font-size:11px;padding:5px 8px"><span>${tx.date?fmtDateDisp(tx.date):'DD/MM/AAAA'}</span><svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="4" width="18" height="18" rx="2"/><line x1="16" y1="2" x2="16" y2="6"/><line x1="8" y1="2" x2="8" y2="6"/><line x1="3" y1="10" x2="21" y2="10"/></svg></div>
+            <div class="date-display" style="cursor:pointer" style="font-size:11px;padding:5px 8px"><span>${tx.date?fmtDateDisp(tx.date):'DD/MM/AAAA'}</span><svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="4" width="18" height="18" rx="2"/><line x1="16" y1="2" x2="16" y2="6"/><line x1="8" y1="2" x2="8" y2="6"/><line x1="3" y1="10" x2="21" y2="10"/></svg></div>
           </div>
         </div>
       </div>
@@ -3354,7 +3415,8 @@ function rAnual(){
       ${r.data.map((v,mi)=>{
         const isOver=bu>0&&v>bu;
         const isCurMonth=activeMonths[mi]===CM&&CY_annual===CY;
-        return `<td class="${v===0?'zero':''}${isOver?' ov':''}${isCurMonth?' cur-month':''}">${v>0?fmt(v):'—'}</td>`;
+        const mIdx=activeMonths[mi];
+        return `<td class="${v===0?'zero':''}${isOver?' ov':''}${isCurMonth?' cur-month':''}" ${v>0?`onclick="gotoFilteredGastos('${r.cat.name}',${mIdx},${CY_annual})" style="cursor:pointer"`:''}>${v>0?fmt(v):'—'}</td>`;
       }).join('')}
       <td class="avg">${avg>0?fmt(avg):'—'}</td>
       <td style="font-weight:700">${r.total>0?fmt(r.total):'—'}</td>
