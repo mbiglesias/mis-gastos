@@ -877,9 +877,7 @@ onAuthStateChanged(auth, (user) => {
       <div class="mlbl" id="mlbl2"></div>
       <button class="marr" onclick="chM(1)">›</button>
     </div>
-    <div style="padding:0 16px 8px">
-      <input type="text" class="fi" id="txSearch" placeholder="🔍  Buscar gastos..." oninput="rTxList()" style="background:var(--white)">
-    </div>
+    <input type="text" id="txSearch" style="display:none" oninput="rTxList()">
     <div id="chipsWrap"></div>
     <div id="filtTotal" style="display:none;padding:8px 16px;background:var(--accent-light);border-radius:var(--r);margin:0 0 8px;font-size:13px;font-weight:600;color:var(--accent)"></div>
     <div id="txList"></div>
@@ -1140,9 +1138,10 @@ onAuthStateChanged(auth, (user) => {
           <div style="font-size:20px;font-weight:700;letter-spacing:-.5px" id="casaTotal">—</div>
         </div>
       </div>
-      <div style="background:rgba(255,255,255,.2);border-radius:4px;height:6px;margin-bottom:10px">
+      <div style="background:rgba(255,255,255,.2);border-radius:4px;height:6px;margin-bottom:4px">
         <div id="casaProgressBar" style="height:100%;border-radius:4px;background:#4ade80;transition:width .5s;width:0%"></div>
       </div>
+      <div id="casaCoverage" style="font-size:11px;opacity:.8;text-align:right;margin-bottom:8px">0%</div>
       <div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:8px">
         <div style="background:rgba(255,255,255,.12);border-radius:10px;padding:10px">
           <div style="font-size:9px;opacity:.7;margin-bottom:3px;text-transform:uppercase">Tengo</div>
@@ -1512,9 +1511,13 @@ function rTxList(){
   const isFiltered=filt!=='Todos'||q;
   if(filtTotalEl){
     if(gs.length>0){
-      const total=gs.filter(g=>!g._isInstallment).reduce((s,g)=>s+(+g.amount),0);
+      // For installments, use the cuota amount; for regular gastos use amount
+      const realGs=gs.filter(g=>!g._isInstallment);
+      const instGs=gs.filter(g=>g._isInstallment);
+      const total=realGs.reduce((s,g)=>s+(+g.amount),0)+instGs.reduce((s,g)=>s+(g._cuota||0),0);
+      const count=realGs.length+instGs.length;
       const label=q?`"${q}"`:filt!=='Todos'?filt:'Total';
-      filtTotalEl.textContent=`${label}: ${fmt(total)} en ${gs.filter(g=>!g._isInstallment).length} gasto${gs.filter(g=>!g._isInstallment).length!==1?'s':''}`;
+      filtTotalEl.textContent=`${label}: ${fmt(total)} en ${count} gasto${count!==1?'s':''}`;
       filtTotalEl.style.display='block';
     } else {
       filtTotalEl.style.display='none';
@@ -1744,13 +1747,15 @@ function rCredit(){
     const endY=s.getFullYear()+Math.floor((s.getMonth()+tot)/12);
     return new Date(endY,endM%12,1)>=new Date(now.getFullYear(),now.getMonth(),1);
   });
+  // Total pendiente = what's still owed as of viewed month (CM/CY)
   const totPend=active.reduce((s,g)=>{
     const st=new Date(g.date+'T12:00:00');
     const inst=+g.installments||1;
     const cuota=g.amount/inst;
-    const diff=(now.getFullYear()-st.getFullYear())*12+(now.getMonth()-st.getMonth());
-    // Remaining = total - (diff-1) already paid (deferred by 1 month)
-    return s+Math.max(0,inst-(diff-1))*cuota;
+    const diffViewed=(CY-st.getFullYear())*12+(CM-st.getMonth());
+    // Cuotas pagadas hasta el mes visto (con deferral de 1)
+    const paidAtViewed=Math.max(0,Math.min(inst,diffViewed-1));
+    return s+Math.max(0,inst-paidAtViewed)*cuota;
   },0);
   const thisMon=crDue(CM,CY).reduce((s,g)=>s+(+g.amount/(+g.installments||1)),0);
 
@@ -1790,13 +1795,16 @@ function rCredit(){
     const inst=+g.installments||1;
     const cuota=g.amount/inst;
     const s=new Date(g.date+'T12:00:00');
-    const diff=(now.getFullYear()-s.getFullYear())*12+(now.getMonth()-s.getMonth());
-    const paid=Math.max(0,diff-1); // 1-month deferral: paid = months elapsed - 1
+    // Use real now for "paid so far", but show next cobro relative to viewed month
+    const diffNow=(now.getFullYear()-s.getFullYear())*12+(now.getMonth()-s.getMonth());
+    const paid=Math.max(0,diffNow-1); // cuotas ya pagadas hasta hoy
     const rem=inst-paid;
     const pct=(paid/inst)*100;
-    // Next payment date: purchase date + paid+1 months (next cuota)
-    const nextPay=new Date(s.getFullYear(),s.getMonth()+paid+1,1);
-    // Last payment date
+    // diffViewed = difference between viewed month and purchase month
+    const diffViewed=(CY-s.getFullYear())*12+(CM-s.getMonth());
+    // Next cobro = the cuota that falls in the viewed month (if any), else next after today
+    const cuotaEnEsteMes=diffViewed; // cuota number due in viewed month (1-indexed with deferral)
+    const nextPay=new Date(s.getFullYear(),s.getMonth()+paid+1,1); // next real cobro
     const lastPay=new Date(s.getFullYear(),s.getMonth()+inst,1);
     const purchaseStr=s.toLocaleDateString('es-UY',{day:'numeric',month:'short',year:'numeric'});
     const nextStr=nextPay.toLocaleDateString('es-UY',{day:'numeric',month:'short',year:'numeric'});
@@ -2293,7 +2301,7 @@ function selTxCur(key,cur,btn){
         if(cur==='UYU'&&prevCur==='USD'){
           inp.value=Math.round(v*XR);
         } else if(cur==='USD'&&prevCur==='UYU'){
-          inp.value=Math.round(v/XR*100)/100;
+          inp.value=XR?Math.round(v/XR*100)/100:v;
         }
       }
     }
@@ -2584,6 +2592,10 @@ function confirmAddGoal(){
   const goal=S.goals[addGoalIdx];
   if(!goal.entries)goal.entries=[];
   const amtUSD=toUSD(v,txCur.addgoal)*(_isWithdrawal?-1:1);
+  // Validate withdrawal doesn't exceed saved
+  if(_isWithdrawal&&Math.abs(amtUSD)>(+goal.saved||0)){
+    toast('No podés retirar más de lo ahorrado');return;
+  }
   goal.entries.push({id:Date.now().toString(),amount:amtUSD,date,note,currency:txCur.addgoal,origAmount:v,tcAtSave:txCur.addgoal==='UYU'?XR:null});
   goal.saved=goal.entries.reduce((s,e)=>s+(+e.amount),0);
   save();rSavings();rCasa();closeM('mAddGoal');
@@ -4076,11 +4088,11 @@ function runSearch(q){
   const cats=S.categories.filter(c=>c.name?.toLowerCase().includes(term));
   if(cats.length){
     html+=`<div style="font-size:10px;font-weight:700;color:var(--text-muted);text-transform:uppercase;letter-spacing:.5px;padding:8px 14px 4px">Categorías (${cats.length})</div>`;
-    html+=cats.map(c=>`<div style="display:flex;align-items:center;gap:10px;padding:10px 14px;border-bottom:1px solid var(--border);cursor:pointer" onclick="closeM('mSearch');tab('presupuestos')">
+    html+=cats.map(c=>`<div style="display:flex;align-items:center;gap:10px;padding:10px 14px;border-bottom:1px solid var(--border);cursor:pointer" onclick="closeM('mSearch');setF('${c.name}');tab('gastos')">
       <div style="width:36px;height:36px;border-radius:10px;background:${c.color}22;display:flex;align-items:center;justify-content:center;font-size:18px;flex-shrink:0">${c.emoji}</div>
       <div style="flex:1">
         <div style="font-size:13px;font-weight:600">${highlight(c.name,term)}</div>
-        <div style="font-size:11px;color:var(--text-muted)">${getBudgetUSD(c)>0?'Presupuesto: '+fmtBudget(c):'Sin presupuesto'}</div>
+        <div style="font-size:11px;color:var(--text-muted)">${getBudgetUSD(c)>0?'Presupuesto: '+fmtBudget(c):'Sin presupuesto'} · Ver gastos →</div>
       </div>
       <div style="color:var(--text-muted)">›</div>
     </div>`).join('');
@@ -4192,7 +4204,20 @@ function rCasa(){
   document.getElementById('casaPadresNecesario').textContent=fmtUSD(aportePadres);
   document.getElementById('casaPadresLbl').textContent=`mínimo necesario: ${fmtUSD(minimoNecesarioPadres)}`;
   document.getElementById('casaRemanente').textContent=fmtUSD(remanente);
-  document.getElementById('casaProgressBar').style.width=pct+'%';
+  const progressBar=document.getElementById('casaProgressBar');
+  progressBar.style.width=Math.min(100,pct)+'%';
+  progressBar.style.background=pct>=100?'#fbbf24':'#4ade80';
+  // Show completion badge if covered
+  const coverageEl=document.getElementById('casaCoverage');
+  if(coverageEl){
+    if(pct>=100){
+      coverageEl.textContent='✅ ¡Objetivo cubierto!';
+      coverageEl.style.display='block';
+    } else {
+      coverageEl.textContent=`${Math.round(pct)}% cubierto`;
+      coverageEl.style.display='block';
+    }
+  }
 
   // Pagado count
   const pagados=cs.filter(c=>c.pagado).length;
