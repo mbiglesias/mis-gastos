@@ -1104,6 +1104,11 @@ onAuthStateChanged(auth, (user) => {
 
   <!-- PRESUPUESTOS -->
   <div id="t-presupuestos" style="display:none">
+    <div class="mnav">
+      <button class="marr" onclick="chM(-1)">‹</button>
+      <div class="mlbl" id="mlbl-presupuestos"></div>
+      <button class="marr" onclick="chM(1)">›</button>
+    </div>
     <div class="salary-card">
       <div><div class="sal-lbl">Salario mensual</div><div class="sal-val" id="salDisp">USD 6,300</div></div>
       <button class="sal-edit" onclick="openM('mSalary')">Editar</button>
@@ -1615,9 +1620,21 @@ function crDue(m,y){
     if(g.payType!=='credit')return false;
     const s=new Date(g.date+'T12:00:00');
     const inst=+g.installments||1;
-    const diff=(y-s.getFullYear())*12+(m-s.getMonth());
-    // Deferred 1 month: cuota 1 shows the month after purchase
-    return diff>=1&&diff<=inst;
+    const deferral=s.getDate()<=6?1:2;
+    const firstM=s.getMonth()+deferral;
+    const firstY=s.getFullYear()+Math.floor(firstM/12);
+    const fm=((firstM%12)+12)%12;
+    const diff=(y-firstY)*12+(m-fm);
+    return diff>=0&&diff<inst;
+  }).map(g=>{
+    const s=new Date(g.date+'T12:00:00');
+    const inst=+g.installments||1;
+    const deferral=s.getDate()<=6?1:2;
+    const firstM=s.getMonth()+deferral;
+    const firstY=s.getFullYear()+Math.floor(firstM/12);
+    const fm=((firstM%12)+12)%12;
+    const instNum=(y-firstY)*12+(m-fm)+1;
+    return {...g,_cuota:g.amount/inst,_instNum:instNum,_instTotal:inst};
   });
 }
 
@@ -1630,6 +1647,7 @@ function renderAll(){
   const m2=document.getElementById('mlbl2');if(m2)m2.textContent=lbl;
   const m3=document.getElementById('mlbl3');if(m3)m3.textContent=lbl;
   const mc=document.getElementById('mlbl-credito');if(mc)mc.textContent=lbl;
+  const mp=document.getElementById('mlbl-presupuestos');if(mp)mp.textContent=lbl;
   const sd2=document.getElementById('salDisp2');if(sd2)sd2.textContent=fmt(S.salary);
   rSummary();rCatRows();rTxList();rIngresos();rCredit();rSavings();rBudget();rAnual();updCrModeUI();rCasa();
 }
@@ -1816,7 +1834,7 @@ function rCredit(){
         <div style="display:flex;align-items:center;gap:10px">
           <div class="txico" style="background:${col}22;flex-shrink:0;width:36px;height:36px;font-size:18px">${em}</div>
           <div style="flex:1">
-            <div class="crid">${g.desc}</div>
+            <div class="crid">${g.desc}${g.recurring?' <span style="font-size:10px;background:var(--accent-light);color:var(--accent);border-radius:6px;padding:1px 6px;font-weight:700">🔁 Recurrente</span>':''}</div>
             <div style="font-size:10px;color:var(--text-muted);margin-top:2px">Compra: ${purchaseStr}</div>
           </div>
           <div style="display:flex;align-items:center;gap:8px">
@@ -3053,8 +3071,20 @@ Si no encontrás transacciones devolvé [].`}
 function renderBulk(){
   const container=document.getElementById('bulkReview');
   const list=document.getElementById('bulkList');
+  // Detect duplicates
+  bulkTxs.forEach(tx=>{
+    if(tx._excluded){tx._isDuplicate=false;return;}
+    const amtUSD=tx.amountUSD||+tx.amount||0;
+    tx._isDuplicate=S.gastos.some(g=>{
+      const sameAmt=Math.abs(+g.amount-amtUSD)<0.5;
+      const sameDesc=g.desc&&tx.desc&&g.desc.toLowerCase().trim()===tx.desc.toLowerCase().trim();
+      const sameDate=g.date===tx.date;
+      return (sameAmt&&sameDate)||(sameDesc&&sameDate);
+    });
+  });
+  const dups=bulkTxs.filter(t=>t._isDuplicate&&!t._excluded).length;
   const active=bulkTxs.filter(t=>!t._excluded);
-  document.getElementById('bulkTitle').textContent=`${bulkTxs.length} transacciones encontradas`;
+  document.getElementById('bulkTitle').textContent=`${bulkTxs.length} transacciones encontradas${dups>0?' · ⚠️ '+dups+' posible'+(dups>1?'s':'')+' duplicado'+(dups>1?'s':''):''}`;
   document.getElementById('bulkCount').textContent=`${active.length} seleccionadas`;
   document.getElementById('bulkConfirmBtn').textContent=`Agregar ${active.length} gastos`;
 
@@ -3066,7 +3096,7 @@ function renderBulk(){
       ?`<button class="bulk-include" onclick="toggleBulk(${i})">↩</button>`
       :`<button class="bulk-exclude" onclick="toggleBulk(${i})">✕</button>`;
     const amtDisp=(+tx.amount||0).toLocaleString('es-UY',{minimumFractionDigits:0,maximumFractionDigits:2});
-    return `<div class="bulk-item${tx._excluded?' excluded':''}" id="bulk-item-${i}">
+    return `<div class="bulk-item${tx._excluded?' excluded':''}" id="bulk-item-${i}" style="${tx._isDuplicate?'border-left:3px solid #f59e0b':''}">
       <div class="bulk-item-top">
         <input class="fi bulk-item-desc" value="${(tx.desc||'Sin descripción').replace(/"/g,'&quot;')}" style="font-size:13px;font-weight:600;padding:5px 8px;flex:1;min-width:0" oninput="bulkTxs[${i}].desc=this.value" placeholder="Descripción">
         <div class="bulk-item-amt" style="flex-shrink:0;padding-left:6px">${tx.currency==='USD'?'USD':'$U'} ${amtDisp}</div>
@@ -4147,102 +4177,98 @@ function getCasaState(){
 function saveCasaState(state){localStorage.setItem('mg_casa',JSON.stringify(state));}
 function saveCasaConfig(){
   const state=getCasaState();
-  state.aportePadres=parseFloat(document.getElementById('casaAportePadres').value)||30000;
+  state.aportePadres=parseFloat(document.getElementById('casaAportePadres').value)||35000;
   state.boleto=parseFloat(document.getElementById('casaBoleto').value)||29500;
   saveCasaState(state);
 }
 
 function rCasa(){
   const state=getCasaState();
-  const cs=state.conceptos;
-  const aportePadres=state.aportePadres||30000;
+  const aportePadres=state.aportePadres||35000;
   const boletoPagado=state.boleto||29500;
-
-  // Set config inputs
   const apEl=document.getElementById('casaAportePadres');
   const boEl=document.getElementById('casaBoleto');
   if(apEl&&!apEl.matches(':focus'))apEl.value=aportePadres;
   if(boEl&&!boEl.matches(':focus'))boEl.value=boletoPagado;
 
-  // En la cuenta = sum of all savings goals
+  // DYNAMIC: from savings
   const enCuenta=S.goals.reduce((s,g)=>s+(+g.saved||0),0);
 
-  // Tengo = boleto pagado + en la cuenta
-  const tengo=boletoPagado+enCuenta;
-
-  // ── DYNAMIC formulas matching spreadsheet ──
+  // FIXED
+  const PRECIO_CASA=295000;
   const PRENDA=213507;
-  const PRECIO_75=295000*0.75; // 221250
+  const COMISION=9726;
+  const CONEXIONES=5900;
+  const NOTARIALES=6000;
+  const ESCRITURAS=6000;
 
-  // Extra mío = en cuenta - promesa (dinámico, crece con los ahorros)
-  const extraMio=Math.max(0, enCuenta - 29500);
+  // Formulas matching spreadsheet
+  const necesitaBanco=PRECIO_CASA-PRENDA; // 81493
+  const faltaDeMi=Math.max(0, necesitaBanco-enCuenta-boletoPagado);
+  const faltaSinEscrituras=faltaDeMi+COMISION+CONEXIONES+NOTARIALES;
+  const faltaConEscrituras=faltaSinEscrituras+ESCRITURAS;
+  const colchon=aportePadres-faltaSinEscrituras;
+  const pctHipoteca=Math.min(100,((enCuenta+boletoPagado)/necesitaBanco)*100);
 
-  // Nominal que come la prenda = (221250 - 213507) - extra mío (dinámico)
-  const nominalVal=(PRECIO_75 - PRENDA) - extraMio; // baja cuando extra mío sube
+  const fmtUSD=v=>`USD ${Math.abs(Math.round(v)).toLocaleString('en-US')}`;
+  const setEl=(id,val)=>{const el=document.getElementById(id);if(el)el.textContent=val;};
 
-  // Total gasto (dinámico porque extra mío y nominal cambian)
-  const totalGasto=cs.reduce((s,c)=>{
-    if(c.esExtra) return s+extraMio;
-    if(c.esNominal) return s+nominalVal;
-    return s+(c.monto||0);
-  },0);
+  setEl('casaEnCuenta',fmtUSD(enCuenta));
+  setEl('casaEnCuenta2',fmtUSD(enCuenta));
+  setEl('casaTengo',fmtUSD(enCuenta+boletoPagado));
+  setEl('casaFaltaSin',fmtUSD(faltaSinEscrituras));
+  setEl('casaFaltaCon',fmtUSD(faltaConEscrituras));
+  setEl('casaAportePadresDisp',fmtUSD(aportePadres));
+  setEl('casaColchon',(colchon<0?'-':'')+fmtUSD(colchon));
 
-  // Mínimo necesario a padres = comision + saldo5 + conexiones + nominal
-  const minimoNecesarioPadres=9726+14750+5900+nominalVal;
-
-  // Les pedís siempre 30000, el colchón = lo que sobra
-  const remanente=aportePadres - minimoNecesarioPadres;
-
-  // Progress = (tengo + aportePadres) vs totalGasto
-  const pct=Math.min(100,((tengo+aportePadres)/totalGasto)*100);
-
-  // Update DOM
-  const fmtUSD=v=>`USD ${Math.round(v).toLocaleString('en-US')}`;
-  document.getElementById('casaTotal').textContent=fmtUSD(totalGasto);
-  document.getElementById('casaEnCuenta').textContent=fmtUSD(enCuenta);
-  document.getElementById('casaTengo').textContent=fmtUSD(tengo);
-  document.getElementById('casaPadresNecesario').textContent=fmtUSD(aportePadres);
-  document.getElementById('casaPadresLbl').textContent=`mínimo necesario: ${fmtUSD(minimoNecesarioPadres)}`;
-  document.getElementById('casaRemanente').textContent=fmtUSD(remanente);
   const progressBar=document.getElementById('casaProgressBar');
-  progressBar.style.width=Math.min(100,pct)+'%';
-  progressBar.style.background=pct>=100?'#fbbf24':'#4ade80';
-  // Show completion badge if covered
+  if(progressBar){
+    progressBar.style.width=Math.min(100,pctHipoteca)+'%';
+    progressBar.style.background=pctHipoteca>=100?'#fbbf24':'#4ade80';
+  }
   const coverageEl=document.getElementById('casaCoverage');
   if(coverageEl){
-    if(pct>=100){
-      coverageEl.textContent='✅ ¡Objetivo cubierto!';
-      coverageEl.style.display='block';
-    } else {
-      coverageEl.textContent=`${Math.round(pct)}% cubierto`;
-      coverageEl.style.display='block';
-    }
+    coverageEl.textContent=pctHipoteca>=100?'✅ ¡Hipoteca cubierta!':`${Math.round(pctHipoteca)}% cubierto`;
   }
 
-  // Pagado count
-  const pagados=cs.filter(c=>c.pagado).length;
-  document.getElementById('casaPagadoCount').textContent=`${pagados}/${cs.length} pagados`;
+  const PRECIO_CASA_V=295000;
+  const rows=[
+    {label:'Boleto que ya pagué',monto:boletoPagado,quien:'Mío',color:'var(--accent)',pagado:true},
+    {label:'Tengo yo en este momento 🔄',monto:enCuenta,quien:'Mío',color:'var(--accent)',pagado:false},
+    {label:'Lo que necesita el banco (hipoteca)',monto:necesitaBanco,quien:'Banco',color:'var(--purple)',isTotal:true},
+    {label:'Lo que falta de mí 🔄',monto:faltaDeMi,quien:'Padres',color:'var(--green)',pagado:false},
+    {label:'Comisión inmobiliaria',monto:COMISION,quien:'Padres',color:'var(--green)'},
+    {label:'Conexiones',monto:CONEXIONES,quien:'Padres',color:'var(--green)'},
+    {label:'Gastos notariales',monto:NOTARIALES,quien:'Padres',color:'var(--green)'},
+    {label:'Gastos escrituras',monto:ESCRITURAS,quien:'?',color:'var(--text-muted)'},
+  ];
 
-  // Render conceptos
   const con=document.getElementById('casaConceptos');
-  const quienColor={'Mio':'var(--accent)','Banco':'var(--purple)','Padres':'var(--green)','?':'var(--text-muted)'};
-  con.innerHTML=cs.map((c,i)=>{
-    const montoReal=c.esExtra?extraMio:c.esNominal?nominalVal:(c.monto||0);
-    const isNeg=montoReal<0;
-    const montoStr=isNeg?`-USD ${Math.abs(Math.round(montoReal)).toLocaleString('en-US')}`:`USD ${Math.round(montoReal).toLocaleString('en-US')}`;
-    const col=quienColor[c.quien]||'var(--text-muted)';
-    return `<div style="display:flex;align-items:center;gap:10px;padding:11px 14px;border-bottom:1px solid var(--border);${c.pagado?'background:var(--green-light)':''}">
-      <button onclick="toggleCasaPagado(${i})" style="width:22px;height:22px;border-radius:50%;border:2px solid ${c.pagado?'var(--green)':'var(--border)'};background:${c.pagado?'var(--green)':'transparent'};cursor:pointer;flex-shrink:0;display:flex;align-items:center;justify-content:center;font-size:11px">${c.pagado?'✓':''}</button>
+  if(!con)return;
+  con.innerHTML=rows.map(r=>`
+    <div style="display:flex;align-items:center;gap:10px;padding:11px 14px;border-bottom:1px solid var(--border);${r.pagado?'background:var(--green-light)':''}${r.isTotal?';background:var(--bg)':''}">
       <div style="flex:1;min-width:0">
-        <div style="font-size:13px;font-weight:600;${c.pagado?'text-decoration:line-through;color:var(--text-muted)':''}">${c.label}</div>
-        <div style="font-size:10px;color:var(--text-muted);margin-top:1px">${c.mes}${c.fecha&&c.fecha!=='TBD'?' · '+c.fecha:c.fecha==='TBD'?' · fecha TBD':''} ${c.nota?'· '+c.nota:''}</div>
+        <div style="font-size:13px;font-weight:${r.isTotal?'700':'600'};${r.pagado?'text-decoration:line-through;color:var(--text-muted)':''}">${r.label}</div>
       </div>
       <div style="text-align:right;flex-shrink:0">
-        <div style="font-size:13px;font-weight:700;color:${isNeg?'var(--green)':c.pagado?'var(--text-muted)':'var(--text)'}">${montoStr}</div>
-        <div style="font-size:10px;font-weight:600;color:${col}">${c.quien}</div>
+        <div style="font-size:13px;font-weight:700;color:${r.isTotal?'var(--purple)':'var(--text)'}">${fmtUSD(r.monto)}</div>
+        <div style="font-size:10px;font-weight:600;color:${r.color}">${r.quien}</div>
+      </div>
+    </div>`).join('')+`
+    <div style="padding:12px 14px;background:var(--bg)">
+      <div style="display:flex;justify-content:space-between;margin-bottom:4px">
+        <span style="font-size:12px;font-weight:700">Pedir a padres (sin escrituras)</span>
+        <span style="font-size:13px;font-weight:700;color:var(--green)">${fmtUSD(faltaSinEscrituras)}</span>
+      </div>
+      <div style="display:flex;justify-content:space-between;margin-bottom:4px">
+        <span style="font-size:12px;font-weight:700">Pedir a padres (con escrituras)</span>
+        <span style="font-size:13px;font-weight:700;color:var(--green)">${fmtUSD(faltaConEscrituras)}</span>
+      </div>
+      <div style="display:flex;justify-content:space-between">
+        <span style="font-size:12px;color:var(--text-muted)">Aporte padres: ${fmtUSD(aportePadres)}</span>
+        <span style="font-size:13px;font-weight:700;color:${colchon>=0?'var(--green)':'var(--red)'}">Colchón: ${(colchon<0?'-':'')+fmtUSD(colchon)}</span>
       </div>
     </div>`;
-  }).join('');
 }
 
 function toggleCasaPagado(i){
