@@ -836,6 +836,7 @@ onAuthStateChanged(auth, (user) => {
         <div class="sl li">Gastado este mes</div>
         <div class="sv li" id="sumSpent">$0</div>
         <div class="ss li" id="sumCount">ver gastos ›</div>
+        <div id="sumCreditBox" style="display:none;font-size:11px;margin-top:4px;padding:4px 0"></div>
       </div>
       <div class="sc gb primary tap-card" onclick="tab('ahorros')">
         <div class="sl li">Disponible</div>
@@ -1669,14 +1670,8 @@ function rSummary(){
   const spent=debitGs.reduce((s,g)=>s+(+g.amount),0);
   // In 'consumo' mode, add full credit purchases from this month to "gastado"
   const crMode=S.crMode||'consumo';
-  const crPurchasedThisMonth=crMode==='consumo'
-    ? S.gastos.filter(g=>{
-        if(g.payType!=='credit')return false;
-        const d=new Date(g.date+'T12:00:00');
-        return d.getMonth()===CM&&d.getFullYear()===CY;
-      }).reduce((s,g)=>s+(+g.amount),0)
-    : 0;
-  const spentDisplay=spent+crPurchasedThisMonth;
+  // Gastado = débito only. Crédito se muestra separado en la tab Crédito
+  const spentDisplay=spent;
   const budTot=S.categories.reduce((s,c)=>s+getBudgetUSD(c),0);
   const sal=+S.salary||0;
   const extraInc=S.ingresos.filter(i=>{const d=new Date(i.date+'T12:00:00');return d.getMonth()===CM&&d.getFullYear()===CY;}).reduce((s,i)=>s+(+i.amount),0);
@@ -1692,6 +1687,15 @@ function rSummary(){
   const left=totalIncome-spent-savedThisMonth-creditThisMonth;
 
   document.getElementById('sumSpent').textContent=fmt(spentDisplay);
+  const crdBox=document.getElementById('sumCreditBox');
+  if(crdBox){
+    if(creditThisMonth>0){
+      crdBox.style.display='block';
+      crdBox.innerHTML=`<span style="color:var(--purple)">🟣 +${fmt(creditThisMonth)} en cuotas este mes</span> · <span style="cursor:pointer;color:var(--accent)" onclick="tab('credito')">ver detalle →</span>`;
+    } else {
+      crdBox.style.display='none';
+    }
+  }
   document.getElementById('sumCount').textContent=`${S.gastos.filter(g=>{const d=new Date(g.date+'T12:00:00');return d.getMonth()===CM&&d.getFullYear()===CY;}).length} gasto${gs.length!==1?'s':''} →`;
   document.getElementById('sumBudget').textContent=fmt(budTot);
   // Budget overrun indicator
@@ -1707,7 +1711,7 @@ function rSummary(){
     if(budLbl)budLbl.textContent='configurar ›';
   }
   document.getElementById('sumLeft').textContent=fmt(Math.abs(left));
-  const leftLbl=left<0?'en exceso ⚠️':((savedThisMonth>0||creditThisMonth>0)?'descontando compromisos':'libre este mes');
+  const leftLbl=left<0?'en exceso ⚠️':(creditThisMonth>0&&savedThisMonth>0?'descontando ahorros y cuotas':(creditThisMonth>0?'descontando cuotas del mes':(savedThisMonth>0?'descontando ahorros':'libre este mes')));
   document.getElementById('sumLeftLbl').textContent=leftLbl;
   document.getElementById('sumLeft').className='sv li';
   document.getElementById('sumSalary').textContent=fmt(totalIncome);
@@ -1753,16 +1757,14 @@ function rCatRows(){
     const hasChildren=children.length>0;
     let sp;
     if(mode==='credito'){
-      const getCrSpend=catName=>S.gastos.filter(g=>{
-        if(g.payType!=='credit')return false;
-        const d=new Date(g.date+'T12:00:00');
-        return d.getMonth()===CM&&d.getFullYear()===CY&&g.category===catName;
-      }).reduce((s,g)=>s+(+g.amount),0);
-      sp=hasChildren?children.reduce((s,c)=>s+getCrSpend(c.name),0)+getCrSpend(cat.name):getCrSpend(cat.name);
+      // Show credit CUOTAS due this month (consistent with crDue)
+      const getCrCuota=catName=>creditInstGs.filter(g=>g.category===catName).reduce((s,g)=>s+(g._cuota||g.amount/(+g.installments||1)),0);
+      sp=hasChildren?children.reduce((s,c)=>s+getCrCuota(c.name),0)+getCrCuota(cat.name):getCrCuota(cat.name);
     } else {
+      // Show debit only
       sp=hasChildren
-        ?children.reduce((s,c)=>s+catSpend(c.name,debitGs,creditInstGs),0)+catSpend(cat.name,debitGs,creditInstGs)
-        :catSpend(cat.name,debitGs,creditInstGs);
+        ?children.reduce((s,c)=>s+debitGs.filter(g=>g.category===c.name).reduce((a,g)=>a+(+g.amount),0),0)+debitGs.filter(g=>g.category===cat.name).reduce((a,g)=>a+(+g.amount),0)
+        :debitGs.filter(g=>g.category===cat.name).reduce((a,g)=>a+(+g.amount),0);
     }
     const bu=hasChildren?children.reduce((s,c)=>s+getBudgetUSD(c),0):getBudgetUSD(cat);
     const pct=bu>0?Math.min((sp/bu)*100,100):0;
@@ -2106,18 +2108,10 @@ function getBudgetDisplay(cat){
 }
 
 function catSpend(catName,debitGs,creditInstGs,modeOverride){
+  // Debito: always count full amount
   const d=debitGs.filter(g=>g.category===catName).reduce((s,g)=>s+(+g.amount),0);
-  const mode=modeOverride||(S.crMode||'consumo');
-  let c=0;
-  if(mode==='consumo'){
-    const crGs=S.gastos.filter(g=>g.payType==='credit'&&g.category===catName);
-    crGs.forEach(g=>{
-      const date=new Date(g.date+'T12:00:00');
-      if(date.getMonth()===CM&&date.getFullYear()===CY) c+=+g.amount;
-    });
-  } else {
-    c=creditInstGs.filter(g=>g.category===catName).reduce((s,g)=>s+(g._cuota||g.amount/(+g.installments||1)),0);
-  }
+  // Credito: always use the cuota amount due this month (consistent with crDue)
+  const c=creditInstGs.filter(g=>g.category===catName).reduce((s,g)=>s+(g._cuota||g.amount/(+g.installments||1)),0);
   return d+c;
 }
 
