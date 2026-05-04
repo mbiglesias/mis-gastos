@@ -836,7 +836,6 @@ onAuthStateChanged(auth, (user) => {
         <div class="sl li">Gastado este mes</div>
         <div class="sv li" id="sumSpent">$0</div>
         <div class="ss li" id="sumCount">ver gastos ›</div>
-        <div id="sumCreditBox" style="display:none;font-size:11px;margin-top:4px;padding:4px 0"></div>
       </div>
       <div class="sc gb primary tap-card" onclick="tab('ahorros')">
         <div class="sl li">Disponible</div>
@@ -1501,7 +1500,11 @@ function rTxList(){
   chWrap.innerHTML=mainRow+subRow;
 
   const q=(document.getElementById('txSearch')?.value||'').toLowerCase().trim();
-  if(filt==='Crédito')gs=gs.filter(g=>g.payType==='credit'||g._isInstallment);
+  if(filt==='Crédito'){
+    // Show installments due this month + any credit purchase that shows as 1 cuota this month
+    const instIds=new Set(gs.filter(g=>g._isInstallment).map(g=>g.id));
+    gs=gs.filter(g=>g._isInstallment||g.payType==='credit');
+  }
   else if(filt!=='Todos'){
     // Check if filt is a parent category — if so show all children too
     const filtCat=S.categories.find(c=>c.name===filt);
@@ -1525,11 +1528,22 @@ function rTxList(){
   const isFiltered=filt!=='Todos'||q;
   if(filtTotalEl){
     if(gs.length>0){
-      // For installments, use the cuota amount; for regular gastos use amount
-      const realGs=gs.filter(g=>!g._isInstallment);
-      const instGs=gs.filter(g=>g._isInstallment);
-      const total=realGs.reduce((s,g)=>s+(+g.amount),0)+instGs.reduce((s,g)=>s+(g._cuota||0),0);
-      const count=realGs.length+instGs.length;
+      let total=0;
+      let count=0;
+      gs.forEach(g=>{
+        if(g._isInstallment){
+          total+=g._cuota||0;
+          count++;
+        } else if(g.payType==='credit'){
+          // Use crDue amount if available, else full amount
+          const due=crDue(CM,CY).find(d=>d.id===g.id);
+          total+=due?(due._cuota||0):(+g.amount);
+          count++;
+        } else {
+          total+=+g.amount;
+          count++;
+        }
+      });
       const label=q?`"${q}"`:filt!=='Todos'?filt:'Total';
       filtTotalEl.textContent=`${label}: ${fmt(total)} en ${count} gasto${count!==1?'s':''}`;
       filtTotalEl.style.display='block';
@@ -1688,10 +1702,14 @@ function rSummary(){
 
   document.getElementById('sumSpent').textContent=fmt(spentDisplay);
   const crdBox=document.getElementById('sumCreditBox');
+  const crdAmt=document.getElementById('sumCreditAmt');
+  const crdSub=document.getElementById('sumCreditSub');
   if(crdBox){
     if(creditThisMonth>0){
-      crdBox.style.display='block';
-      crdBox.innerHTML=`<span style="color:var(--purple)">🟣 +${fmt(creditThisMonth)} en cuotas este mes</span> · <span style="cursor:pointer;color:var(--accent)" onclick="tab('credito')">ver detalle →</span>`;
+      crdBox.style.display='flex';
+      if(crdAmt)crdAmt.textContent=fmt(creditThisMonth);
+      const cuotaCount=crDue(CM,CY).length;
+      if(crdSub)crdSub.textContent=`${cuotaCount} cuota${cuotaCount!==1?'s':''} que vencen este mes`;
     } else {
       crdBox.style.display='none';
     }
