@@ -1692,7 +1692,16 @@ function rSummary(){
   const totalIncome=sal+extraInc;
   const totalSaved=S.goals.reduce((s,g)=>s+(+g.saved||0),0);
   // Credit does NOT reduce disponible (paid later) — shown separately
-  const creditThisMonth=crDue(CM,CY).reduce((s,g)=>s+(+g.amount/(+g.installments||1)),0);
+  // creditThisMonth = cuotas crDue + compras de crédito del mes no en crDue
+  const crDueItemsSum=crDue(CM,CY);
+  const crDueIdsSet=new Set(crDueItemsSum.map(g=>g.id));
+  const crExtra=S.gastos.filter(g=>{
+    if(g.payType!=='credit')return false;
+    if(crDueIdsSet.has(g.id))return false;
+    const d=new Date(g.date+'T12:00:00');
+    return d.getMonth()===CM&&d.getFullYear()===CY;
+  });
+  const creditThisMonth=crDueItemsSum.reduce((s,g)=>s+(+g.amount/(+g.installments||1)),0)+crExtra.reduce((s,g)=>s+(+g.amount),0);
   // Only savings added THIS month reduce disponible
   const savedThisMonth=S.goals.reduce((s,g)=>{
     const entries=g.entries||[];
@@ -1820,12 +1829,25 @@ function rCredit(){
     const paidAtViewed=Math.max(0,Math.min(inst,diffViewed-1));
     return s+Math.max(0,inst-paidAtViewed)*cuota;
   },0);
-  const thisMon=crDue(CM,CY).reduce((s,g)=>s+(+g.amount/(+g.installments||1)),0);
+  // Total a pagar este mes = same calculation as Gastos filtrado por Crédito
+  // crDue cuotas + any 1-cuota credit purchases from this month
+  const crDueItems=crDue(CM,CY);
+  const crDueIds=new Set(crDueItems.map(g=>g.id));
+  // Add credit purchases not in crDue (1-cuota items visible in Gastos)
+  const allCreditThisMonth=S.gastos.filter(g=>{
+    if(g.payType!=='credit')return false;
+    if(crDueIds.has(g.id))return false; // already counted
+    const d=new Date(g.date+'T12:00:00');
+    return d.getMonth()===CM&&d.getFullYear()===CY;
+  });
+  const thisMon=crDueItems.reduce((s,g)=>s+(+g.amount/(+g.installments||1)),0)
+    + allCreditThisMonth.reduce((s,g)=>s+(+g.amount),0);
+  const thisMonCount=crDueItems.length+allCreditThisMonth.length;
 
   document.getElementById('crTot').textContent=fmt(totPend);
   document.getElementById('crTotSub').textContent=`${active.length} compra${active.length!==1?'s':''} activa${active.length!==1?'s':''}`;
   document.getElementById('crMon').textContent=fmt(thisMon);
-  document.getElementById('crMonSub').textContent=MOS[CM];
+  document.getElementById('crMonSub').textContent=`${thisMonCount} cobro${thisMonCount!==1?'s':''} en ${MOS[CM]}`;
 
   // Consumí/Pago summary panel
   const consumiThisMonth=S.gastos.filter(g=>{
