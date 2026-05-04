@@ -1436,12 +1436,16 @@ function mGastos(){
   // Purchased in April → cuota 1 shows in May, cuota 2 in June, etc.
   const creditDue=[];
   S.gastos.filter(g=>g.payType==='credit').forEach(g=>{
-    const start=new Date(g.date+'T12:00:00');
+    const s=new Date(g.date+'T12:00:00');
     const inst=+g.installments||1;
-    // diff>=1 means we're at least 1 month after purchase
-    const diff=(CY-start.getFullYear())*12+(CM-start.getMonth());
-    if(diff>=1&&diff<=inst){
-      creditDue.push({...g,_isInstallment:true,_instNum:diff,_instTotal:inst,_cuota:g.amount/inst});
+    // Use same day-6 deferral as crDue()
+    const deferral=s.getDate()<=6?1:2;
+    const firstM=s.getMonth()+deferral;
+    const firstY=s.getFullYear()+Math.floor(firstM/12);
+    const fm=((firstM%12)+12)%12;
+    const diff=(CY-firstY)*12+(CM-fm);
+    if(diff>=0&&diff<inst){
+      creditDue.push({...g,_isInstallment:true,_instNum:diff+1,_instTotal:inst,_cuota:g.amount/inst});
     }
   });
   return [...debits,...recurringDue,...creditDue];
@@ -1501,9 +1505,7 @@ function rTxList(){
 
   const q=(document.getElementById('txSearch')?.value||'').toLowerCase().trim();
   if(filt==='Crédito'){
-    // Show installments due this month + any credit purchase that shows as 1 cuota this month
-    const instIds=new Set(gs.filter(g=>g._isInstallment).map(g=>g.id));
-    gs=gs.filter(g=>g._isInstallment||g.payType==='credit');
+    gs=gs.filter(g=>g._isInstallment);
   }
   else if(filt!=='Todos'){
     // Check if filt is a parent category — if so show all children too
@@ -1528,22 +1530,8 @@ function rTxList(){
   const isFiltered=filt!=='Todos'||q;
   if(filtTotalEl){
     if(gs.length>0){
-      let total=0;
-      let count=0;
-      gs.forEach(g=>{
-        if(g._isInstallment){
-          total+=g._cuota||0;
-          count++;
-        } else if(g.payType==='credit'){
-          // Use crDue amount if available, else full amount
-          const due=crDue(CM,CY).find(d=>d.id===g.id);
-          total+=due?(due._cuota||0):(+g.amount);
-          count++;
-        } else {
-          total+=+g.amount;
-          count++;
-        }
-      });
+      const total=gs.reduce((s,g)=>s+(g._isInstallment?(g._cuota||0):(+g.amount)),0);
+      const count=gs.length;
       const label=q?`"${q}"`:filt!=='Todos'?filt:'Total';
       filtTotalEl.textContent=`${label}: ${fmt(total)} en ${count} gasto${count!==1?'s':''}`;
       filtTotalEl.style.display='block';
@@ -1692,16 +1680,8 @@ function rSummary(){
   const totalIncome=sal+extraInc;
   const totalSaved=S.goals.reduce((s,g)=>s+(+g.saved||0),0);
   // Credit does NOT reduce disponible (paid later) — shown separately
-  // creditThisMonth = cuotas crDue + compras de crédito del mes no en crDue
-  const crDueItemsSum=crDue(CM,CY);
-  const crDueIdsSet=new Set(crDueItemsSum.map(g=>g.id));
-  const crExtra=S.gastos.filter(g=>{
-    if(g.payType!=='credit')return false;
-    if(crDueIdsSet.has(g.id))return false;
-    const d=new Date(g.date+'T12:00:00');
-    return d.getMonth()===CM&&d.getFullYear()===CY;
-  });
-  const creditThisMonth=crDueItemsSum.reduce((s,g)=>s+(+g.amount/(+g.installments||1)),0)+crExtra.reduce((s,g)=>s+(+g.amount),0);
+  // creditThisMonth = sum of cuotas due this month (same as Gastos/Crédito filter)
+  const creditThisMonth=crDue(CM,CY).reduce((s,g)=>s+(g._cuota||g.amount/(+g.installments||1)),0);
   // Only savings added THIS month reduce disponible
   const savedThisMonth=S.goals.reduce((s,g)=>{
     const entries=g.entries||[];
