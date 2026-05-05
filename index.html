@@ -4236,8 +4236,17 @@ function rCasa(){
   if(apEl&&!apEl.matches(':focus'))apEl.value=aportePadres;
   if(boEl&&!boEl.matches(':focus'))boEl.value=boletoPagado;
 
-  // DYNAMIC: from savings
-  const enCuenta=S.goals.reduce((s,g)=>s+(+g.saved||0),0);
+  // DYNAMIC: separate your savings from padres savings
+  const padresEnCuenta=S.goals.reduce((s,g)=>{
+    if(g.name&&g.name.toLowerCase().includes('padres'))return s+(+g.saved||0);
+    return s;
+  },0);
+  const enCuentaPropio=S.goals.reduce((s,g)=>{
+    if(g.name&&g.name.toLowerCase().includes('padres'))return s;
+    return s+(+g.saved||0);
+  },0);
+  const enCuenta=enCuentaPropio; // tracker uses only YOUR savings for "falta de mí"
+  const enCuentaTotal=enCuentaPropio+padresEnCuenta; // total for display
 
   // FIXED
   const PRECIO_CASA=295000;
@@ -4258,9 +4267,9 @@ function rCasa(){
   const fmtUSD=v=>`USD ${Math.abs(Math.round(v)).toLocaleString('en-US')}`;
   const setEl=(id,val)=>{const el=document.getElementById(id);if(el)el.textContent=val;};
 
-  setEl('casaEnCuenta',fmtUSD(enCuenta));
-  setEl('casaEnCuenta2',fmtUSD(enCuenta));
-  setEl('casaTengo',fmtUSD(enCuenta+boletoPagado));
+  setEl('casaEnCuenta',fmtUSD(enCuentaPropio));
+  setEl('casaEnCuenta2',fmtUSD(enCuentaTotal));
+  setEl('casaTengo',fmtUSD(enCuentaPropio+boletoPagado));
   setEl('casaFaltaSin',fmtUSD(faltaSinEscrituras));
   setEl('casaFaltaCon',fmtUSD(faltaConEscrituras));
   setEl('casaAportePadresDisp',fmtUSD(aportePadres));
@@ -4279,9 +4288,10 @@ function rCasa(){
   const PRECIO_CASA_V=295000;
   const rows=[
     {label:'Boleto que ya pagué',monto:boletoPagado,quien:'Mío',color:'var(--accent)',pagado:true},
-    {label:'Tengo yo en este momento 🔄',monto:enCuenta,quien:'Mío',color:'var(--accent)',pagado:false},
+    {label:'Mis ahorros 🔄',monto:enCuentaPropio,quien:'Mío',color:'var(--accent)'},
+    {label:'Recibido de padres 🔄',monto:padresEnCuenta,quien:'Padres',color:'var(--green)'},
     {label:'Lo que necesita el banco (hipoteca)',monto:necesitaBanco,quien:'Banco',color:'var(--purple)',isTotal:true},
-    {label:'Lo que falta de mí 🔄',monto:faltaDeMi,quien:'Padres',color:'var(--green)',pagado:false},
+    {label:'Lo que falta de mí 🔄',monto:faltaDeMi,quien:'Padres',color:'var(--green)'},
     {label:'Comisión inmobiliaria',monto:COMISION,quien:'Padres',color:'var(--green)'},
     {label:'Conexiones',monto:CONEXIONES,quien:'Padres',color:'var(--green)'},
     {label:'Gastos notariales',monto:NOTARIALES,quien:'Padres',color:'var(--green)'},
@@ -4300,18 +4310,26 @@ function rCasa(){
         <div style="font-size:10px;font-weight:600;color:${r.color}">${r.quien}</div>
       </div>
     </div>`).join('')+`
-    <div style="padding:12px 14px;background:var(--bg)">
-      <div style="display:flex;justify-content:space-between;margin-bottom:4px">
-        <span style="font-size:12px;font-weight:700">Pedir a padres (sin escrituras)</span>
-        <span style="font-size:13px;font-weight:700;color:var(--green)">${fmtUSD(faltaSinEscrituras)}</span>
+    <div style="border-top:2px solid var(--border);margin-top:4px">
+      <div style="padding:12px 14px;border-bottom:1px solid var(--border)">
+        <div style="font-size:10px;font-weight:700;color:var(--text-muted);text-transform:uppercase;letter-spacing:.5px;margin-bottom:8px">Resumen — Pedirle a Padres</div>
+        <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:6px">
+          <span style="font-size:13px;color:var(--text-mid)">Sin escrituras</span>
+          <span style="font-size:15px;font-weight:700;color:var(--green)">${fmtUSD(faltaSinEscrituras)}</span>
+        </div>
+        <div style="display:flex;justify-content:space-between;align-items:center">
+          <span style="font-size:13px;color:var(--text-mid)">Con escrituras</span>
+          <span style="font-size:15px;font-weight:700;color:var(--green)">${fmtUSD(faltaConEscrituras)}</span>
+        </div>
       </div>
-      <div style="display:flex;justify-content:space-between;margin-bottom:4px">
-        <span style="font-size:12px;font-weight:700">Pedir a padres (con escrituras)</span>
-        <span style="font-size:13px;font-weight:700;color:var(--green)">${fmtUSD(faltaConEscrituras)}</span>
-      </div>
-      <div style="display:flex;justify-content:space-between">
-        <span style="font-size:12px;color:var(--text-muted)">Aporte padres: ${fmtUSD(aportePadres)}</span>
-        <span style="font-size:13px;font-weight:700;color:${colchon>=0?'var(--green)':'var(--red)'}">Colchón: ${(colchon<0?'-':'')+fmtUSD(colchon)}</span>
+      <div style="padding:12px 14px;background:${colchon>=0?'var(--green-light)':'var(--red-light)'}">
+        <div style="display:flex;justify-content:space-between;align-items:center">
+          <div>
+            <div style="font-size:13px;font-weight:700;color:${colchon>=0?'var(--green)':'var(--red)'}">Colchón</div>
+            <div style="font-size:11px;color:var(--text-muted)">De los USD 35,000 que aportan</div>
+          </div>
+          <div style="font-size:22px;font-weight:700;color:${colchon>=0?'var(--green)':'var(--red)'}">${(colchon<0?'-':'')+fmtUSD(colchon)}</div>
+        </div>
       </div>
     </div>`;
 }
