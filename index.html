@@ -1438,12 +1438,12 @@ function mGastos(){
   S.gastos.filter(g=>g.payType==='credit').forEach(g=>{
     const s=new Date(g.date+'T12:00:00');
     const inst=+g.installments||1;
-    // Use same day-6 deferral as crDue()
-    const deferral=s.getDate()<=6?1:2;
-    const firstM=s.getMonth()+deferral;
-    const firstY=s.getFullYear()+Math.floor(firstM/12);
-    const fm=((firstM%12)+12)%12;
-    const diff=(CY-firstY)*12+(CM-fm);
+    // Cierre día 6: compra el 1-6 → cobra ese mismo mes; compra el 7+ → cobra mes siguiente
+    const firstCuotaMonth = s.getDate()<=6 ? s.getMonth() : s.getMonth()+1;
+    const firstCuotaYear = s.getFullYear() + Math.floor(firstCuotaMonth/12);
+    const fm = ((firstCuotaMonth%12)+12)%12;
+    // diff = how many months after first cuota we are
+    const diff = (CY-firstCuotaYear)*12+(CM-fm);
     if(diff>=0&&diff<inst){
       creditDue.push({...g,_isInstallment:true,_instNum:diff+1,_instTotal:inst,_cuota:g.amount/inst});
     }
@@ -1631,8 +1631,8 @@ function crDue(m,y){
     if(g.payType!=='credit')return false;
     const s=new Date(g.date+'T12:00:00');
     const inst=+g.installments||1;
-    const deferral=s.getDate()<=6?1:2;
-    const firstM=s.getMonth()+deferral;
+    // Cierre día 6: compra 1-6 → cobra ese mes; compra 7+ → cobra mes siguiente
+    const firstM=s.getDate()<=6?s.getMonth():s.getMonth()+1;
     const firstY=s.getFullYear()+Math.floor(firstM/12);
     const fm=((firstM%12)+12)%12;
     const diff=(y-firstY)*12+(m-fm);
@@ -1640,8 +1640,7 @@ function crDue(m,y){
   }).map(g=>{
     const s=new Date(g.date+'T12:00:00');
     const inst=+g.installments||1;
-    const deferral=s.getDate()<=6?1:2;
-    const firstM=s.getMonth()+deferral;
+    const firstM=s.getDate()<=6?s.getMonth():s.getMonth()+1;
     const firstY=s.getFullYear()+Math.floor(firstM/12);
     const fm=((firstM%12)+12)%12;
     const instNum=(y-firstY)*12+(m-fm)+1;
