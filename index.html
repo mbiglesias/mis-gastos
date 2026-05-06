@@ -1681,10 +1681,12 @@ function rSummary(){
   // Credit does NOT reduce disponible (paid later) — shown separately
   // creditThisMonth = sum of cuotas due this month (same as Gastos/Crédito filter)
   const creditThisMonth=crDue(CM,CY).reduce((s,g)=>s+(g._cuota||g.amount/(+g.installments||1)),0);
-  // Only savings added THIS month reduce disponible
+  // Only savings added THIS month from YOUR bolsillos reduce disponible
+  // Bolsillos de padres (nombre contiene "padres") no salen de tu ingreso
   const savedThisMonth=S.goals.reduce((s,g)=>{
+    if(g.name&&g.name.toLowerCase().includes('padres'))return s;
     const entries=g.entries||[];
-    return s+entries.filter(e=>{const d=new Date(e.date+'T12:00:00');return d.getMonth()===CM&&d.getFullYear()===CY;}).reduce((a,e)=>a+(+e.amount),0);
+    return s+entries.filter(e=>{const d=new Date(e.date+'T12:00:00');return d.getMonth()===CM&&d.getFullYear()===CY&&+e.amount>0;}).reduce((a,e)=>a+(+e.amount),0);
   },0);
   const left=totalIncome-spent-savedThisMonth-creditThisMonth;
 
