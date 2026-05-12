@@ -1565,12 +1565,7 @@ function rTxList(){
   keys.forEach(key=>{
     const its=grp[key];
     if(key.startsWith('inst-')){
-      // Calculate expected payment date: purchase date + instNum months (1-month deferral)
-      const g0=its[0];
-      const start=new Date(g0.date+'T12:00:00');
-      const payMonth=new Date(start.getFullYear(), start.getMonth()+g0._instNum, 1);
-      const payStr=payMonth.toLocaleDateString('es-UY',{day:'numeric',month:'short',year:'numeric'});
-      h+=`<div class="txg">Cobro esperado: ${payStr}</div>`;
+      // No group header for installments — date info is shown inside each card
     } else {
       const d=new Date(key+'T12:00:00');
       h+=`<div class="txg">${d.toLocaleDateString('es-UY',{weekday:'short',day:'numeric',month:'short'})}</div>`;
@@ -1592,6 +1587,17 @@ function rTxList(){
           ? `<span class="bdg" style="background:#fef3c7;color:#d97706">🔁 Recurrente</span>`
           : `<span class="bdg bdg-db">💳 Débito</span>`;
 
+      // Purchase date label for installment cards
+      let purchaseDateLabel='';
+      if(isInst){
+        const pd=new Date(g.date+'T12:00:00');
+        const pdStr=pd.toLocaleDateString('es-UY',{day:'numeric',month:'short',year:'numeric'});
+        const start=new Date(g.date+'T12:00:00');
+        const payMonth=new Date(start.getFullYear(), start.getMonth()+instNum, 1);
+        const payStr=payMonth.toLocaleDateString('es-UY',{day:'numeric',month:'short',year:'numeric'});
+        purchaseDateLabel=`<div style="font-size:10px;color:var(--text-muted);margin-top:2px">🛒 Compra: ${pdStr} &nbsp;·&nbsp; 📅 Cobro: ${payStr}</div>`;
+      }
+
       // Amount to show: for installments, show the cuota amount; for original purchase entry, show total
       const displayAmt=isInst?fmt(cuota):fmt(g.amount);
       const subAmt=isInst
@@ -1612,6 +1618,7 @@ function rTxList(){
           <div class="txb">
             <div class="txd">${g.desc}</div>
             <div class="txm">${badge}<span>${g.category}</span>${g.note?`<span>· ${g.note}</span>`:''}</div>
+            ${purchaseDateLabel}
           </div>
           <div class="txr" style="flex-shrink:0">
             <div class="txa" style="${isInst?'color:var(--purple)':''}">${displayAmt}</div>
