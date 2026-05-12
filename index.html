@@ -1765,9 +1765,15 @@ function rCatRows(){
     const hasChildren=children.length>0;
     let sp;
     if(mode==='credito'){
-      // Show credit CUOTAS due this month (consistent with crDue)
-      const getCrCuota=catName=>creditInstGs.filter(g=>g.category===catName).reduce((s,g)=>s+(g._cuota||g.amount/(+g.installments||1)),0);
-      sp=hasChildren?children.reduce((s,c)=>s+getCrCuota(c.name),0)+getCrCuota(cat.name):getCrCuota(cat.name);
+      // Show credit PURCHASES made this month (consumo), regardless of when they're charged
+      const getCrSpend=catName=>S.gastos.filter(g=>{
+        if(g.payType!=='credit')return false;
+        const d=new Date(g.date+'T12:00:00');
+        return d.getMonth()===CM&&d.getFullYear()===CY&&g.category===catName;
+      }).reduce((s,g)=>s+(+g.amount),0);
+      sp=hasChildren
+        ?children.reduce((s,c)=>s+getCrSpend(c.name),0)+getCrSpend(cat.name)
+        :getCrSpend(cat.name);
     } else {
       // Show debit only
       sp=hasChildren
