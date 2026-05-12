@@ -1529,31 +1529,28 @@ function rTxList(){
     return;
   }
 
-  // Group by display date: installments group under their original purchase date label but show cuota info
+  // Group by date: installments use their purchase date as group key (prefixed to keep sort order)
   const grp={};
   gs.forEach(g=>{
-    // For installments shown in future months, use a synthetic "due this month" date for grouping
-    const key=g._isInstallment?`inst-${g.id}`:g.date;
+    const key=g._isInstallment?`inst-${g.date}-${g.id}`:g.date;
     if(!grp[key])grp[key]=[];
     grp[key].push(g);
   });
 
   let h='<div class="txl">';
-  // Sort group keys: real dates first sorted desc, then installment groups
+  // Sort all groups by date descending (extract date portion for inst- keys too)
   const keys=Object.keys(grp).sort((a,b)=>{
-    const da=a.startsWith('inst-')?'0000-00-00':a;
-    const db=b.startsWith('inst-')?'0000-00-00':b;
+    const da=a.startsWith('inst-')?a.slice(5,15):a;
+    const db=b.startsWith('inst-')?b.slice(5,15):b;
     return db.localeCompare(da);
   });
 
   keys.forEach(key=>{
     const its=grp[key];
-    if(key.startsWith('inst-')){
-      // No group header for installments — date info is shown inside each card
-    } else {
-      const d=new Date(key+'T12:00:00');
-      h+=`<div class="txg">${d.toLocaleDateString('es-UY',{weekday:'short',day:'numeric',month:'short'})}</div>`;
-    }
+    // Always show a date header — for installments use their purchase date
+    const dateStr=key.startsWith('inst-')?key.slice(5,15):key;
+    const d=new Date(dateStr+'T12:00:00');
+    h+=`<div class="txg">${d.toLocaleDateString('es-UY',{weekday:'short',day:'numeric',month:'short'})}</div>`;
     its.forEach(g=>{
       const cat=S.categories.find(c=>c.name===g.category);
       const em=cat?cat.emoji:'📦';const col=cat?cat.color:'#6b7280';
@@ -1571,15 +1568,13 @@ function rTxList(){
           ? `<span class="bdg" style="background:#fef3c7;color:#d97706">🔁 Recurrente</span>`
           : `<span class="bdg bdg-db">💳 Débito</span>`;
 
-      // Purchase date label for installment cards
+      // Cobro date label for installment cards (purchase date already shown in group header)
       let purchaseDateLabel='';
       if(isInst){
-        const pd=new Date(g.date+'T12:00:00');
-        const pdStr=pd.toLocaleDateString('es-UY',{day:'numeric',month:'short',year:'numeric'});
         const start=new Date(g.date+'T12:00:00');
         const payMonth=new Date(start.getFullYear(), start.getMonth()+instNum, 1);
         const payStr=payMonth.toLocaleDateString('es-UY',{day:'numeric',month:'short',year:'numeric'});
-        purchaseDateLabel=`<div style="font-size:10px;color:var(--text-muted);margin-top:2px">🛒 Compra: ${pdStr} &nbsp;·&nbsp; 📅 Cobro: ${payStr}</div>`;
+        purchaseDateLabel=`<div style="font-size:10px;color:var(--text-muted);margin-top:2px">📅 Cobro esperado: ${payStr}</div>`;
       }
 
       // Amount to show: for installments, show the cuota amount; for original purchase entry, show total
@@ -1770,15 +1765,14 @@ function rCatRows(){
 
 
 function rCredit(){
-  const now=new Date();
   const crGs=S.gastos.filter(g=>g.payType==='credit');
+  // Active = still has cuotas pending as of the VIEWED month (CM/CY)
   const active=crGs.filter(g=>{
     const s=new Date(g.date+'T12:00:00');
     const tot=+g.installments||1;
-    // With 1-month deferral, last payment is tot months after purchase
     const endM=s.getMonth()+tot;
     const endY=s.getFullYear()+Math.floor((s.getMonth()+tot)/12);
-    return new Date(endY,endM%12,1)>=new Date(now.getFullYear(),now.getMonth(),1);
+    return new Date(endY,endM%12,1)>=new Date(CY,CM,1);
   });
   // Total pendiente = what's still owed as of viewed month (CM/CY)
   const totPend=active.reduce((s,g)=>{
@@ -1786,18 +1780,15 @@ function rCredit(){
     const inst=+g.installments||1;
     const cuota=g.amount/inst;
     const diffViewed=(CY-st.getFullYear())*12+(CM-st.getMonth());
-    // Cuotas pagadas hasta el mes visto (con deferral de 1)
     const paidAtViewed=Math.max(0,Math.min(inst,diffViewed-1));
     return s+Math.max(0,inst-paidAtViewed)*cuota;
   },0);
   // Total a pagar este mes = same calculation as Gastos filtrado por Crédito
-  // crDue cuotas + any 1-cuota credit purchases from this month
   const crDueItems=crDue(CM,CY);
   const crDueIds=new Set(crDueItems.map(g=>g.id));
-  // Add credit purchases not in crDue (1-cuota items visible in Gastos)
   const allCreditThisMonth=S.gastos.filter(g=>{
     if(g.payType!=='credit')return false;
-    if(crDueIds.has(g.id))return false; // already counted
+    if(crDueIds.has(g.id))return false;
     const d=new Date(g.date+'T12:00:00');
     return d.getMonth()===CM&&d.getFullYear()===CY;
   });
@@ -1841,16 +1832,11 @@ function rCredit(){
     const inst=+g.installments||1;
     const cuota=g.amount/inst;
     const s=new Date(g.date+'T12:00:00');
-    // Use real now for "paid so far", but show next cobro relative to viewed month
-    const diffNow=(now.getFullYear()-s.getFullYear())*12+(now.getMonth()-s.getMonth());
-    const paid=Math.max(0,diffNow-1); // cuotas ya pagadas hasta hoy
-    const rem=inst-paid;
-    const pct=(paid/inst)*100;
-    // diffViewed = difference between viewed month and purchase month
+    // All calculations relative to viewed month (CM/CY)
     const diffViewed=(CY-s.getFullYear())*12+(CM-s.getMonth());
-    // Next cobro = the cuota that falls in the viewed month (if any), else next after today
-    const cuotaEnEsteMes=diffViewed; // cuota number due in viewed month (1-indexed with deferral)
-    const nextPay=new Date(s.getFullYear(),s.getMonth()+paid+1,1); // next real cobro
+    const paid=Math.max(0,Math.min(inst,diffViewed-1)); // cuotas paid as of viewed month
+    const rem=inst-paid;
+    const nextPay=new Date(s.getFullYear(),s.getMonth()+paid+1,1); // next cobro from viewed month
     const lastPay=new Date(s.getFullYear(),s.getMonth()+inst,1);
     const purchaseStr=s.toLocaleDateString('es-UY',{day:'numeric',month:'short',year:'numeric'});
     const nextStr=nextPay.toLocaleDateString('es-UY',{day:'numeric',month:'short',year:'numeric'});
