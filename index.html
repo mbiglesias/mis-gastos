@@ -148,6 +148,9 @@ onAuthStateChanged(auth, (user) => {
 
   /* HEADER */
   .hdr{background:var(--white);padding:10px 16px 0;position:sticky;top:0;z-index:50;border-bottom:1px solid var(--border)}
+  .hdr-mnav{display:flex;align-items:center;justify-content:space-between;padding:6px 0 8px}
+  .hdr-mnav .marr{width:32px;height:32px;border-radius:50%;border:1px solid var(--border);background:none;cursor:pointer;font-size:16px;color:var(--text-mid);display:flex;align-items:center;justify-content:center;transition:all .15s}
+  .hdr-mnav .marr:hover{background:var(--accent-light);border-color:var(--accent);color:var(--accent)}
   .hdr-top{display:flex;align-items:center;justify-content:space-between;margin-bottom:8px}
   .app-title{font-size:17px;font-weight:700;letter-spacing:-.3px}
   .hdr-right{display:flex;gap:6px;align-items:center}
@@ -171,6 +174,10 @@ onAuthStateChanged(auth, (user) => {
 
   /* CARDS */
   .sg{display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-bottom:10px}
+  .sc.hero{grid-column:1/-1;padding:22px 18px 18px}
+  .sc.hero .sv{font-size:38px;letter-spacing:-1px}
+  .sc.hero .sl{font-size:11px;letter-spacing:.6px}
+  .sc.hero .ss{font-size:11px;margin-top:5px}
   .sc{background:var(--white);border-radius:var(--R);padding:13px 14px;box-shadow:var(--sh)}
   .sc.primary{padding:16px 14px}
   .sc.ab{background:var(--accent)}.sc.pb{background:var(--purple)}.sc.gb{background:var(--green)}
@@ -754,7 +761,7 @@ onAuthStateChanged(auth, (user) => {
     <div class="mt" style="margin-bottom:16px">Más secciones</div>
     <div style="display:flex;flex-direction:column;gap:8px">
       <button class="mas-item" onclick="closeMas();tab('escanear')">📸 <span>Escanear recibo</span></button>
-      <button class="mas-item" onclick="closeMas();tab('ahorros')">🎯 <span>Ahorros</span></button>
+      <button class="mas-item" onclick="closeMas();tab('credito')">🟣 <span>Crédito</span></button>
       <button class="mas-item" onclick="closeMas();tab('anual')">📊 <span>Vista anual</span></button>
       <button class="mas-item" onclick="closeMas();tab('presupuestos')">⚙️ <span>Presupuestos y categorías</span></button>
       <button class="mas-item" onclick="closeMas();tab('casa')">🏠 <span>Tracker Casa</span></button>
@@ -817,8 +824,13 @@ onAuthStateChanged(auth, (user) => {
     <button class="nav-tab on" id="nt-resumen" onclick="tab('resumen')">Resumen</button>
     <button class="nav-tab" id="nt-gastos" onclick="tab('gastos')">Gastos</button>
     <button class="nav-tab" id="nt-ingresos" onclick="tab('ingresos')">Ingresos</button>
-    <button class="nav-tab" id="nt-credito" onclick="tab('credito')">Crédito</button>
+    <button class="nav-tab" id="nt-ahorros" onclick="tab('ahorros')">Ahorros</button>
     <button class="nav-tab" id="nt-mas" onclick="openMas()">Más ›</button>
+  </div>
+  <div class="hdr-mnav" id="globalMonthNav">
+    <button class="marr" onclick="chM(-1)">‹</button>
+    <div class="mlbl" id="mlbl" style="font-size:15px;font-weight:700"></div>
+    <button class="marr" onclick="chM(1)">›</button>
   </div>
 </div>
 
@@ -826,29 +838,21 @@ onAuthStateChanged(auth, (user) => {
 
   <!-- RESUMEN -->
   <div id="t-resumen">
-    <div class="mnav">
-      <button class="marr" onclick="chM(-1)">‹</button>
-      <div class="mlbl" id="mlbl"></div>
-      <button class="marr" onclick="chM(1)">›</button>
-    </div>
     <div class="sg">
-      <div class="sc ab primary tap-card" onclick="tab('gastos')">
-        <div class="sl li">Gastado este mes</div>
-        <div class="sv li" id="sumSpent">$0</div>
-        <div class="ss li" id="sumCount">ver gastos ›</div>
-      </div>
-      <div class="sc gb primary tap-card" onclick="tab('ahorros')">
-        <div class="sl li">Disponible</div>
+      <!-- HERO: Disponible -->
+      <div class="sc gb hero tap-card" onclick="tab('ahorros')">
+        <div class="sl li">Disponible este mes</div>
         <div class="sv li" id="sumLeft">$0</div>
         <div class="ss li" id="sumLeftLbl">libre este mes ›</div>
       </div>
-      <div class="sc tap-card" id="budgetCard" onclick="tab('presupuestos')">
-        <div class="sl">Presupuesto</div>
-        <div class="sv" id="sumBudget">$0</div>
-        <div class="ss" id="sumBudgetLbl">configurar ›</div>
+      <!-- Secondary row -->
+      <div class="sc ab tap-card" onclick="tab('gastos')">
+        <div class="sl li">Gastado</div>
+        <div class="sv li" id="sumSpent">$0</div>
+        <div class="ss li" id="sumCount">ver gastos ›</div>
       </div>
       <div class="sc tap-card" onclick="tab('ingresos')">
-        <div class="sl" id="sumSalaryLbl">Ingreso mensual</div>
+        <div class="sl" id="sumSalaryLbl">Ingresos</div>
         <div class="sv" id="sumSalary">$0</div>
         <div class="ss">ver detalle ›</div>
       </div>
@@ -880,11 +884,6 @@ onAuthStateChanged(auth, (user) => {
 
   <!-- GASTOS -->
   <div id="t-gastos" style="display:none">
-    <div class="mnav">
-      <button class="marr" onclick="chM(-1)">‹</button>
-      <div class="mlbl" id="mlbl2"></div>
-      <button class="marr" onclick="chM(1)">›</button>
-    </div>
     <input type="text" id="txSearch" style="display:none" oninput="rTxList()">
     <div id="chipsWrap"></div>
     <div id="filtTotal" style="display:none;padding:8px 16px;background:var(--accent-light);border-radius:var(--r);margin:0 0 8px;font-size:13px;font-weight:600;color:var(--accent)"></div>
@@ -1018,11 +1017,6 @@ onAuthStateChanged(auth, (user) => {
 
   <!-- INGRESOS -->
   <div id="t-ingresos" style="display:none">
-    <div class="mnav">
-      <button class="marr" onclick="chM(-1)">‹</button>
-      <div class="mlbl" id="mlbl3"></div>
-      <button class="marr" onclick="chM(1)">›</button>
-    </div>
     <!-- salary card -->
     <div class="salary-card" style="margin-bottom:10px">
       <div><div class="sal-lbl">Salario base mensual</div><div class="sal-val" id="salDisp2">USD 6,300</div></div>
@@ -1085,11 +1079,6 @@ onAuthStateChanged(auth, (user) => {
     </div>
   </div>
   <div id="t-credito" style="display:none">
-    <div class="mnav">
-      <button class="marr" onclick="chM(-1)">‹</button>
-      <div class="mlbl" id="mlbl-credito"></div>
-      <button class="marr" onclick="chM(1)">›</button>
-    </div>
     <div class="sg" style="margin-bottom:10px">
       <div class="sc pb"><div class="sl li">Total pendiente</div><div class="sv li" id="crTot">$0</div><div class="ss li" id="crTotSub"></div></div>
       <div class="sc tap-card" onclick="filterCreditMonth()" style="cursor:pointer"><div class="sl">Este mes</div><div class="sv pu" id="crMon">$0</div><div class="ss" id="crMonSub">ver cuotas ›</div></div>
@@ -1112,11 +1101,6 @@ onAuthStateChanged(auth, (user) => {
 
   <!-- PRESUPUESTOS -->
   <div id="t-presupuestos" style="display:none">
-    <div class="mnav">
-      <button class="marr" onclick="chM(-1)">‹</button>
-      <div class="mlbl" id="mlbl-presupuestos"></div>
-      <button class="marr" onclick="chM(1)">›</button>
-    </div>
     <div class="salary-card">
       <div><div class="sal-lbl">Salario mensual</div><div class="sal-val" id="salDisp">USD 6,300</div></div>
       <button class="sal-edit" onclick="openM('mSalary')">Editar</button>
@@ -1661,10 +1645,6 @@ function crDue(m,y){
 function renderAll(){
   const lbl=`${MOS[CM]} ${CY}`;
   document.getElementById('mlbl').textContent=lbl;
-  const m2=document.getElementById('mlbl2');if(m2)m2.textContent=lbl;
-  const m3=document.getElementById('mlbl3');if(m3)m3.textContent=lbl;
-  const mc=document.getElementById('mlbl-credito');if(mc)mc.textContent=lbl;
-  const mp=document.getElementById('mlbl-presupuestos');if(mp)mp.textContent=lbl;
   const sd2=document.getElementById('salDisp2');if(sd2)sd2.textContent=fmt(S.salary);
   rSummary();rCatRows();rTxList();rIngresos();rCredit();rSavings();rBudget();rAnual();updCrModeUI();rCasa();
 }
@@ -1712,19 +1692,6 @@ function rSummary(){
     }
   }
   document.getElementById('sumCount').textContent=`${S.gastos.filter(g=>{const d=new Date(g.date+'T12:00:00');return d.getMonth()===CM&&d.getFullYear()===CY;}).length} gasto${gs.length!==1?'s':''} →`;
-  document.getElementById('sumBudget').textContent=fmt(budTot);
-  // Budget overrun indicator
-  const budCard=document.getElementById('budgetCard');
-  const budLbl=document.getElementById('sumBudgetLbl');
-  if(budTot>0){
-    const debitSpent=debitGs.reduce((s,g)=>s+(+g.amount),0);
-    const overBudget=debitSpent>budTot;
-    if(budCard){budCard.style.background=overBudget?'var(--red-light)':'';budCard.style.border=overBudget?'1.5px solid var(--red)':'';}
-    if(budLbl)budLbl.textContent=overBudget?`⚠️ Excedido por ${fmt(debitSpent-budTot)}`:'configurar ›';
-  } else {
-    if(budCard){budCard.style.background='';budCard.style.border='';}
-    if(budLbl)budLbl.textContent='configurar ›';
-  }
   document.getElementById('sumLeft').textContent=fmt(Math.abs(left));
   const leftLbl=left<0?'en exceso ⚠️':(creditThisMonth>0&&savedThisMonth>0?'descontando ahorros y cuotas':(creditThisMonth>0?'descontando cuotas del mes':(savedThisMonth>0?'descontando ahorros':'libre este mes')));
   document.getElementById('sumLeftLbl').textContent=leftLbl;
@@ -3549,7 +3516,9 @@ function openMas(){openM('mMas');}
 function closeMas(){closeM('mMas');}
 
 const TABS=['resumen','gastos','escanear','ingresos','credito','ahorros','anual','presupuestos','casa'];
-const NAV_TABS_DIRECT=['resumen','gastos','ingresos','credito'];
+const NAV_TABS_DIRECT=['resumen','gastos','ingresos','ahorros'];
+// Tabs that use the global month nav
+const MONTH_NAV_TABS=['resumen','gastos','ingresos','credito','ahorros','presupuestos'];
 
 function tab(name){
   TABS.forEach(t=>{const el=document.getElementById('t-'+t);if(el)el.style.display=t===name?'block':'none';});
@@ -3557,7 +3526,10 @@ function tab(name){
   NAV_TABS_DIRECT.forEach(t=>{const btn=document.getElementById('nt-'+t);if(btn)btn.classList.toggle('on',t===name);});
   // "Más" button active when in secondary sections
   const masBtn=document.getElementById('nt-mas');
-  if(masBtn)masBtn.classList.toggle('on',['escanear','ahorros','anual','presupuestos'].includes(name));
+  if(masBtn)masBtn.classList.toggle('on',['escanear','credito','anual','presupuestos'].includes(name));
+  // Show/hide global month nav
+  const gmn=document.getElementById('globalMonthNav');
+  if(gmn)gmn.style.display=MONTH_NAV_TABS.includes(name)?'flex':'none';
   if(name==='anual')rAnual();
 }
 
