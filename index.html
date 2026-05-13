@@ -1104,24 +1104,32 @@ onAuthStateChanged(auth, (user) => {
 
   <!-- PRESUPUESTOS -->
   <div id="t-presupuestos" style="display:none">
-    <div class="salary-card">
-      <div><div class="sal-lbl">Salario mensual</div><div class="sal-val" id="salDisp">USD 6,300</div></div>
+
+    <!-- SECCIÓN: Ingresos -->
+    <div style="font-size:10px;font-weight:700;color:var(--text-muted);text-transform:uppercase;letter-spacing:.6px;margin-bottom:6px">💰 Ingresos</div>
+    <div class="salary-card" style="margin-bottom:16px">
+      <div><div class="sal-lbl">Salario base mensual</div><div class="sal-val" id="salDisp">USD 6,300</div></div>
       <button class="sal-edit" onclick="openM('mSalary')">Editar</button>
     </div>
-    <!-- Credit accounting mode toggle -->
-    <div style="background:var(--white);border-radius:var(--R);padding:12px 14px;margin-bottom:10px;box-shadow:var(--sh)">
-      <div style="font-size:11px;font-weight:700;color:var(--text-muted);text-transform:uppercase;letter-spacing:.5px;margin-bottom:8px">Crédito en presupuesto</div>
+
+    <!-- SECCIÓN: Crédito -->
+    <div style="font-size:10px;font-weight:700;color:var(--text-muted);text-transform:uppercase;letter-spacing:.6px;margin-bottom:6px">🟣 Crédito</div>
+    <div style="background:var(--white);border-radius:var(--R);padding:14px;margin-bottom:16px;box-shadow:var(--sh)">
+      <div style="font-size:13px;font-weight:600;margin-bottom:4px">¿En qué mes cuento el crédito?</div>
+      <div style="font-size:11px;color:var(--text-muted);margin-bottom:10px" id="crModeDesc">El gasto aparece en el mes en que compraste.</div>
       <div style="display:flex;gap:8px">
         <button id="btnCrConsumo" class="btn bp" style="flex:1;font-size:12px;padding:8px" onclick="setCrMode('consumo')">📅 Mes que consumí</button>
         <button id="btnCrPago" class="btn bg" style="flex:1;font-size:12px;padding:8px" onclick="setCrMode('pago')">💳 Mes que pago</button>
       </div>
-      <div style="font-size:11px;color:var(--text-muted);margin-top:8px" id="crModeDesc">El gasto aparece en el presupuesto del mes en que compraste. Las cuotas siguen afectando el disponible mes a mes.</div>
-      <!-- Comparison panel -->
-      <button onclick="toggleCrComparison()" style="width:100%;margin-top:10px;padding:8px;background:var(--bg);border:none;border-radius:var(--r);font-family:inherit;font-size:12px;font-weight:600;color:var(--accent);cursor:pointer" id="crCompBtn">▼ Ver comparativa de crédito</button>
-      <div id="crComparison" style="display:none;margin-top:10px"></div>
+    </div>
+
+    <!-- SECCIÓN: Categorías y límites -->
+    <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:6px">
+      <div style="font-size:10px;font-weight:700;color:var(--text-muted);text-transform:uppercase;letter-spacing:.6px">📂 Categorías y límites</div>
+      <button onclick="openM('mNewCat')" style="font-size:11px;font-weight:700;color:var(--accent);background:none;border:none;cursor:pointer;font-family:inherit;padding:2px 0">+ Nueva</button>
     </div>
     <div id="budList"></div>
-    <button class="btn bg" onclick="openM('mNewCat')" style="width:100%;margin-top:4px">+ Nueva categoría</button>
+
   </div>
 
   <!-- CASA -->
@@ -2190,154 +2198,58 @@ function catSpend(catName,debitGs,creditInstGs,modeOverride){
 }
 
 function rBudget(){
-  const debitGs=mGastos().filter(g=>g.payType!=='credit');
-  const creditInstGs=crDue(CM,CY);
   const con=document.getElementById('budList');if(!con)return;
   const parents=getParents();
   let html='';
-  if(!window._budExpanded)window._budExpanded={};
-  if(!window._budMode)window._budMode={};
 
-  // Helper: get gastos for a category in a given mode
-  function catGastos(catName, mode){
-    const debits=debitGs.filter(g=>g.category===catName);
-    if(mode==='consumo'){
-      // Credit purchased this month
-      const crPurch=S.gastos.filter(g=>g.payType==='credit'&&g.category===catName&&(()=>{const d=new Date(g.date+'T12:00:00');return d.getMonth()===CM&&d.getFullYear()===CY;})());
-      return [...debits,...crPurch.map(g=>({...g,_displayAmt:g.amount,_label:'compra'}))];
-    } else {
-      // Credit cuotas due this month
-      const crInst=creditInstGs.filter(g=>g.category===catName);
-      return [...debits,...crInst.map(g=>({...g,_displayAmt:g._cuota||g.amount/(+g.installments||1),_label:`Cuota ${g._instNum}/${g._instTotal||g.installments}`}))];
-    }
-  }
-
-  function catDetailHTML(catName, key, includeChildren=false){
-    const mode=window._budMode[key]||(S.crMode||'consumo');
-    let gastos=catGastos(catName,mode);
-    // For parent categories, also include gastos from children
-    if(includeChildren){
-      const cat=S.categories.find(c=>c.name===catName);
-      if(cat){
-        const children=getChildren(getCatId(cat));
-        children.forEach(child=>{
-          const childGs=catGastos(child.name,mode);
-          gastos=[...gastos,...childGs];
-        });
-      }
-    }
-    if(!gastos.length)return `<div style="font-size:11px;color:var(--text-muted);padding:8px 0;text-align:center">Sin gastos este mes</div>`;
-    return gastos.map(g=>{
-      const amt=g._displayAmt!==undefined?g._displayAmt:+g.amount;
-      const label=g._label||(g.payType==='credit'?`Cuota ${g._instNum||1}/${g._instTotal||g.installments||1}`:'');
-      const isInstRow=!!g._isInstallment;
-      const instN=g._instNum||1;
-      const instT=g._instTotal||+g.installments||1;
-      return `<div style="display:flex;align-items:center;gap:8px;padding:8px 0;border-bottom:1px solid var(--border);cursor:pointer" onclick="openGastoDetail('${g.id}',${isInstRow},${instN},${instT})">
-        <div style="flex:1;min-width:0">
-          <div style="font-size:12px;font-weight:600;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">${g.desc}</div>
-          ${label?`<div style="font-size:10px;color:var(--purple)">${label}</div>`:''}
-        </div>
-        <div style="display:flex;align-items:center;gap:6px;flex-shrink:0">
-          <div style="font-size:12px;font-weight:700">${fmt(amt)}</div>
-          <div style="color:var(--text-muted);font-size:14px">›</div>
-        </div>
-      </div>`;
-    }).join('');
-  }
-
-  function expandBtn(catName, key, sp, includeChildren=false){
-    const hasCr=S.gastos.some(g=>g.payType==='credit'&&g.category===catName);
-    if(!hasCr&&sp===0&&!includeChildren)return'';
-    const isExp=window._budExpanded[key];
-    const mode=window._budMode[key]||(S.crMode||'consumo');
-    const detail=isExp?`
-      <div style="padding:8px 0 4px">
-        <div style="display:flex;gap:4px;margin-bottom:4px">
-          <button onclick="setBudMode('${key}','consumo');rBudget()" style="flex:1;padding:4px 6px;border-radius:6px;border:none;font-family:inherit;font-size:10px;font-weight:700;cursor:pointer;background:${mode==='consumo'?'var(--accent)':'var(--bg)'};color:${mode==='consumo'?'#fff':'var(--text-muted)'}">📅 Consumí</button>
-          <button onclick="setBudMode('${key}','pago');rBudget()" style="flex:1;padding:4px 6px;border-radius:6px;border:none;font-family:inherit;font-size:10px;font-weight:700;cursor:pointer;background:${mode==='pago'?'var(--purple)':'var(--bg)'};color:${mode==='pago'?'#fff':'var(--text-muted)'}">💳 Pago</button>
-        </div>
-        <div style="font-size:10px;color:var(--text-muted);margin-bottom:8px;text-align:center">
-          ${mode==='consumo'
-            ? 'Gastos realizados en <strong>este mes</strong>, aunque se paguen después'
-            : 'Lo que <strong>sale de tu cuenta este mes</strong> (débito + cuotas que vencen)'}
-        </div>
-        ${catDetailHTML(catName,key,includeChildren)}
-      </div>`:'';
-    return `<button onclick="toggleBudExp('${key}');rBudget()" style="width:100%;margin-top:6px;padding:5px;background:var(--bg);border:none;border-radius:6px;font-family:inherit;font-size:10px;font-weight:700;color:var(--accent);cursor:pointer">${isExp?'▲ Ocultar':'▼ Ver gastos'}</button>${detail}`;
-  }
-
-  parents.forEach((cat,pi)=>{
+  parents.forEach(cat=>{
     const i=S.categories.indexOf(cat);
-    const children=getChildren(getCatId(cat));
+    const catId=getCatId(cat);
+    const children=getChildren(catId);
     const hasChildren=children.length>0;
-    const key=getCatId(cat);
+    const bu=hasChildren
+      ?children.reduce((s,c)=>s+getBudgetUSD(c),0)
+      :getBudgetUSD(cat);
 
-    if(hasChildren){
-      const localParentMode=window._budMode[key]||(S.crMode||'consumo');
-      const childrenSp=children.reduce((s,c)=>s+catSpend(c.name,debitGs,creditInstGs,localParentMode),0);
-      const directSp=catSpend(cat.name,debitGs,creditInstGs,localParentMode);
-      const totalSp=childrenSp+directSp;
-      const totalBu=children.reduce((s,c)=>s+getBudgetUSD(c),0);
-      const pct=totalBu>0?Math.min((totalSp/totalBu)*100,100):0;
-      const ov=totalSp>totalBu&&totalBu>0;
-      html+=`<div class="bi" style="background:var(--bg);border-radius:var(--r) var(--r) 0 0;margin-bottom:0;flex-direction:column;align-items:stretch;gap:0">
-        <div style="display:flex;align-items:center;gap:8px">
-          <div class="biico" style="background:${cat.color}22">${cat.emoji}</div>
-          <div class="bib" style="flex:1"><div class="bin" style="font-weight:700">${cat.name}</div>${totalBu>0?`<div class="bibar"><div class="bibf" style="width:${pct}%;background:${ov?'var(--red)':'var(--accent)'}"></div></div>`:''}</div>
-          <div class="bir"><div class="biam" style="color:${ov?'var(--red)':'inherit'}">${fmt(totalSp)}</div><div class="bilm">${totalBu>0?'de '+fmt(totalBu):'grupo'}</div></div>
-          <div class="bias"><button class="bab" onclick="openEB(${i})">✏️</button><button class="bab dng" onclick="delCat(${i})">✕</button></div>
+    // Parent row
+    html+=`<div style="background:var(--white);border-radius:${hasChildren?'var(--R) var(--R) 0 0':'var(--R)'};margin-bottom:${hasChildren?'0':'8px'};box-shadow:var(--sh);padding:12px 14px">
+      <div style="display:flex;align-items:center;gap:10px">
+        <div style="width:36px;height:36px;border-radius:10px;background:${cat.color}22;display:flex;align-items:center;justify-content:center;font-size:18px;flex-shrink:0">${cat.emoji}</div>
+        <div style="flex:1;min-width:0">
+          <div style="font-weight:700;font-size:14px">${cat.name}</div>
+          <div style="font-size:11px;color:var(--text-muted)">${hasChildren?`${children.length} subcategoría${children.length>1?'s':''}`:bu>0?`Límite: ${fmt(bu)}/mes`:'Sin límite mensual'}</div>
         </div>
-        ${expandBtn(cat.name,key,catSpend(cat.name,debitGs,creditInstGs,localParentMode),true)}
-      </div>`;
+        <div style="display:flex;gap:6px">
+          <button onclick="openEB(${i})" style="width:30px;height:30px;border-radius:8px;border:1px solid var(--border);background:var(--bg);cursor:pointer;font-size:14px">✏️</button>
+          <button onclick="delCat(${i})" style="width:30px;height:30px;border-radius:8px;border:1px solid var(--border);background:var(--bg);cursor:pointer;font-size:14px;color:var(--red)">✕</button>
+        </div>
+      </div>
+    </div>`;
+
+    // Children rows
+    if(hasChildren){
       children.forEach((child,ci)=>{
         const ci2=S.categories.indexOf(child);
-        const ck=getCatId(child);
-        const localChildMode=window._budMode[ck]||window._budMode[key]||(S.crMode||'consumo');
-        const sp=catSpend(child.name,debitGs,creditInstGs,localChildMode);
-        const bu=getBudgetUSD(child);
-        const pct2=bu>0?Math.min((sp/bu)*100,100):0;
-        const ov2=sp>bu&&bu>0;
-        const col=ov2?'var(--red)':(pct2>=100?'var(--accent)':child.color);
+        const cbu=getBudgetUSD(child);
         const isLast=ci===children.length-1;
-        html+=`<div class="bi" style="padding-left:32px;background:var(--white);${isLast?'border-radius:0 0 var(--r) var(--r);margin-bottom:10px':'border-radius:0'};flex-direction:column;align-items:stretch;gap:0">
-          <div style="display:flex;align-items:center;gap:8px">
-            <div class="biico" style="background:${child.color}22;width:28px;height:28px;font-size:14px">${child.emoji}</div>
-            <div class="bib" style="flex:1"><div class="bin" style="font-size:12px">${child.name}</div><div class="bibar"><div class="bibf" style="width:${pct2}%;background:${col}"></div></div></div>
-            <div class="bir"><div class="biam" style="font-size:12px;color:${ov2?'var(--red)':'inherit'}">${fmt(sp)}</div><div class="bilm">${bu>0?'de '+fmt(bu):'sin límite'}</div></div>
-            <div class="bias"><button class="bab" onclick="openEB(${ci2})">✏️</button><button class="bab dng" onclick="delCat(${ci2})">✕</button></div>
+        html+=`<div style="background:var(--white);border-top:1px solid var(--border);border-radius:${isLast?'0 0 var(--R) var(--R)':'0'};margin-bottom:${isLast?'8px':'0'};box-shadow:var(--sh);padding:10px 14px 10px 24px">
+          <div style="display:flex;align-items:center;gap:10px">
+            <div style="width:28px;height:28px;border-radius:8px;background:${child.color}22;display:flex;align-items:center;justify-content:center;font-size:14px;flex-shrink:0">${child.emoji}</div>
+            <div style="flex:1;min-width:0">
+              <div style="font-weight:600;font-size:13px">${child.name}</div>
+              <div style="font-size:11px;color:var(--text-muted)">${cbu>0?`Límite: ${fmt(cbu)}/mes`:'Sin límite'}</div>
+            </div>
+            <div style="display:flex;gap:6px">
+              <button onclick="openEB(${ci2})" style="width:28px;height:28px;border-radius:8px;border:1px solid var(--border);background:var(--bg);cursor:pointer;font-size:13px">✏️</button>
+              <button onclick="delCat(${ci2})" style="width:28px;height:28px;border-radius:8px;border:1px solid var(--border);background:var(--bg);cursor:pointer;font-size:13px;color:var(--red)">✕</button>
+            </div>
           </div>
-          ${expandBtn(child.name,ck,sp)}
         </div>`;
       });
-    } else {
-      const localMode=window._budMode[key]||(S.crMode||'consumo');
-      const sp=catSpend(cat.name,debitGs,creditInstGs,localMode);
-      const bu=getBudgetUSD(cat);
-      const pct=bu>0?Math.min((sp/bu)*100,100):0;
-      const ov=sp>bu&&bu>0;
-      const col=ov?'var(--red)':(pct>=100?'var(--accent)':cat.color);
-      html+=`<div class="bi" style="flex-direction:column;align-items:stretch;gap:0">
-        <div style="display:flex;align-items:center;gap:8px">
-          <div class="biico" style="background:${cat.color}22">${cat.emoji}</div>
-          <div class="bib" style="flex:1"><div class="bin">${cat.name}</div><div class="bibar"><div class="bibf" style="width:${pct}%;background:${col}"></div></div></div>
-          <div class="bir"><div class="biam" style="color:${ov?'var(--red)':'inherit'}">${fmt(sp)}</div><div class="bilm">${bu>0?'de '+fmt(bu):'sin límite'}</div></div>
-          <div class="bias"><button class="bab" onclick="openEB(${i})">✏️</button><button class="bab dng" onclick="delCat(${i})">✕</button></div>
-        </div>
-        ${expandBtn(cat.name,key,sp)}
-      </div>`;
     }
   });
-  con.innerHTML=html;
-}
 
-function toggleBudExp(key){
-  if(!window._budExpanded)window._budExpanded={};
-  window._budExpanded[key]=!window._budExpanded[key];
-}
-function setBudMode(key,mode){
-  if(!window._budMode)window._budMode={};
-  window._budMode[key]=mode;
+  con.innerHTML=html||`<div style="text-align:center;padding:24px;color:var(--text-muted);font-size:13px">Sin categorías. Creá una con + Nueva.</div>`;
 }
 
 function getCatId(cat){return cat.id||cat.name;}
