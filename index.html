@@ -761,7 +761,7 @@ onAuthStateChanged(auth, (user) => {
     <div class="mt" style="margin-bottom:16px">Más secciones</div>
     <div style="display:flex;flex-direction:column;gap:8px">
       <button class="mas-item" onclick="closeMas();tab('escanear')">📸 <span>Escanear recibo</span></button>
-      <button class="mas-item" onclick="closeMas();tab('credito')">🟣 <span>Crédito</span></button>
+      <button class="mas-item" onclick="closeMas();tab('ingresos')">💰 <span>Ingresos</span></button>
       <button class="mas-item" onclick="closeMas();tab('anual')">📊 <span>Vista anual</span></button>
       <button class="mas-item" onclick="closeMas();tab('presupuestos')">⚙️ <span>Presupuestos y categorías</span></button>
       <button class="mas-item" onclick="closeMas();tab('casa')">🏠 <span>Tracker Casa</span></button>
@@ -823,7 +823,7 @@ onAuthStateChanged(auth, (user) => {
   <div class="nav-tabs">
     <button class="nav-tab on" id="nt-resumen" onclick="tab('resumen')">Resumen</button>
     <button class="nav-tab" id="nt-gastos" onclick="tab('gastos')">Gastos</button>
-    <button class="nav-tab" id="nt-ingresos" onclick="tab('ingresos')">Ingresos</button>
+    <button class="nav-tab" id="nt-credito" onclick="tab('credito')">Crédito</button>
     <button class="nav-tab" id="nt-ahorros" onclick="tab('ahorros')">Ahorros</button>
     <button class="nav-tab" id="nt-mas" onclick="openMas()">Más ›</button>
   </div>
@@ -860,27 +860,23 @@ onAuthStateChanged(auth, (user) => {
         <div class="ss">ver detalle ›</div>
       </div>
     </div>
-    <div class="cbox" id="creditBox" style="display:none;cursor:pointer" onclick="tab('credito')">
-      <div class="cbox-icon">🟣</div>
-      <div class="cbox-body"><div class="cbox-title">Cuotas este mes</div><div class="cbox-sub" id="cboxSub"></div></div>
-      <div style="display:flex;align-items:center;gap:6px">
-        <div class="cbox-amt" id="cboxAmt">$0</div>
-        <div style="color:var(--purple);font-size:16px">›</div>
+    <!-- Budget banner -->
+    <div id="budgetBanner" style="display:none;background:var(--white);border-radius:var(--R);padding:12px 14px;margin-bottom:10px;box-shadow:var(--sh);cursor:pointer" onclick="tab('presupuestos')">
+      <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:6px">
+        <div style="font-size:11px;font-weight:700;color:var(--text-muted);text-transform:uppercase;letter-spacing:.5px">Presupuesto mensual</div>
+        <div style="font-size:11px;color:var(--text-muted)" id="budgetPct"></div>
       </div>
+      <div style="display:flex;align-items:baseline;gap:4px;margin-bottom:8px">
+        <span style="font-size:22px;font-weight:700" id="budgetSpent"></span>
+        <span style="font-size:13px;color:var(--text-muted)">/ <span id="budgetTotal"></span></span>
+      </div>
+      <div class="pbb"><div class="pbf" id="progFill" style="width:0%"></div></div>
     </div>
     <div class="pw">
-      <div class="ph" onclick="tab('gastos')" style="cursor:pointer">
-        <div class="pt">Por categoría <span style="font-size:10px;color:var(--text-muted);font-weight:400">del presupuesto</span></div>
-        <div style="display:flex;align-items:center;gap:6px">
-          <div class="pp" id="progPct">0%</div>
-          <div style="color:var(--text-muted);font-size:13px">›</div>
-        </div>
-      </div>
       <div style="display:flex;gap:6px;margin-bottom:8px">
         <button onclick="window._catRowMode='debito';rCatRows()" id="btnCatDebito" style="flex:1;padding:5px;border-radius:8px;border:none;font-family:inherit;font-size:11px;font-weight:700;cursor:pointer;background:var(--accent);color:#fff">💳 Débito</button>
         <button onclick="window._catRowMode='credito';rCatRows()" id="btnCatCredito" style="flex:1;padding:5px;border-radius:8px;border:1px solid var(--border);font-family:inherit;font-size:11px;font-weight:700;cursor:pointer;background:var(--bg);color:var(--text-muted)">🟣 Crédito</button>
       </div>
-      <div class="pbb"><div class="pbf" id="progFill" style="width:0%"></div></div>
       <div class="crs" id="catRows"></div>
     </div>
   </div>
@@ -1115,11 +1111,14 @@ onAuthStateChanged(auth, (user) => {
     <!-- SECCIÓN: Crédito -->
     <div style="font-size:10px;font-weight:700;color:var(--text-muted);text-transform:uppercase;letter-spacing:.6px;margin-bottom:6px">🟣 Crédito</div>
     <div style="background:var(--white);border-radius:var(--R);padding:14px;margin-bottom:16px;box-shadow:var(--sh)">
-      <div style="font-size:13px;font-weight:600;margin-bottom:4px">¿En qué mes cuento el crédito?</div>
-      <div style="font-size:11px;color:var(--text-muted);margin-bottom:10px" id="crModeDesc">El gasto aparece en el mes en que compraste.</div>
-      <div style="display:flex;gap:8px">
+      <div style="font-size:13px;font-weight:600;margin-bottom:2px">¿En qué mes cuento el crédito?</div>
+      <div style="font-size:11px;color:var(--text-muted);margin-bottom:12px">Afecta cómo se muestra el gasto por categoría en Resumen.</div>
+      <div style="display:flex;gap:8px;margin-bottom:10px">
         <button id="btnCrConsumo" class="btn bp" style="flex:1;font-size:12px;padding:8px" onclick="setCrMode('consumo')">📅 Mes que consumí</button>
         <button id="btnCrPago" class="btn bg" style="flex:1;font-size:12px;padding:8px" onclick="setCrMode('pago')">💳 Mes que pago</button>
+      </div>
+      <div style="background:var(--bg);border-radius:var(--r);padding:10px 12px">
+        <div id="crModeDesc" style="font-size:11px;color:var(--text-muted);line-height:1.5"></div>
       </div>
     </div>
 
@@ -1730,22 +1729,22 @@ function rSummary(){
   document.getElementById('sumSalaryLbl').textContent=extraInc>0?'salario + extras':'ingreso mensual';
   document.getElementById('salDisp').textContent=fmt(S.salary);
 
-  const cdue=crDue(CM,CY);
-  const cbox=document.getElementById('creditBox');
-  if(cdue.length>0){
-    const cs=cdue.reduce((s,g)=>s+(+g.amount/(+g.installments||1)),0);
-    cbox.style.display='flex';
-    document.getElementById('cboxAmt').textContent=fmt(cs);
-    document.getElementById('cboxSub').textContent=`${cdue.length} cuota${cdue.length!==1?'s':''} pendiente${cdue.length!==1?'s':''}`;
-  } else {
-    cbox.style.display='none';
+  // Budget banner
+  const budBanner=document.getElementById('budgetBanner');
+  if(budBanner){
+    if(budTot>0){
+      budBanner.style.display='block';
+      document.getElementById('budgetSpent').textContent=fmt(spent);
+      document.getElementById('budgetTotal').textContent=fmt(budTot);
+      const pct=Math.min((spent/budTot)*100,100);
+      document.getElementById('budgetPct').textContent=Math.round(pct)+'%';
+      document.getElementById('budgetPct').style.color=pct>90?'var(--red)':pct>70?'var(--orange)':'var(--text-muted)';
+      const f=document.getElementById('progFill');
+      if(f){f.style.width=pct+'%';f.className='pbf'+(pct>90?' ov':pct>70?' wa':'');}
+    } else {
+      budBanner.style.display='none';
+    }
   }
-
-  const pct=budTot>0?Math.min((spent/budTot)*100,100):0;
-  document.getElementById('progPct').textContent=Math.round(pct)+'%';
-  const f=document.getElementById('progFill');
-  f.style.width=pct+'%';
-  f.className='pbf'+(pct>90?' ov':pct>70?' wa':'');
 }
 
 // ============================================================
@@ -2160,9 +2159,9 @@ function updCrModeUI(){
   if(bc){bc.className=`btn ${mode==='consumo'?'bp':'bg'}`;bc.style.cssText='flex:1;font-size:12px;padding:8px';}
   if(bp){bp.className=`btn ${mode==='pago'?'bp':'bg'}`;bp.style.cssText='flex:1;font-size:12px;padding:8px';}
   const desc=document.getElementById('crModeDesc');
-  if(desc)desc.textContent=mode==='consumo'
-    ?'El gasto aparece en el presupuesto del mes en que compraste. Las cuotas siguen afectando el disponible mes a mes.'
-    :'Las cuotas aparecen en el presupuesto del mes en que se cobran. Igual al comportamiento anterior.';
+  if(desc)desc.innerHTML=mode==='consumo'
+    ?'<strong>📅 Mes que consumí:</strong> si compraste en mayo con tarjeta, aparece como gasto de mayo — aunque lo pagues en junio.'
+    :'<strong>💳 Mes que pago:</strong> la cuota aparece en el mes en que sale de tu cuenta. Una compra de mayo aparece en junio.';
 }
 
 // Format budget in its saved currency for display
@@ -3501,18 +3500,15 @@ function openMas(){openM('mMas');}
 function closeMas(){closeM('mMas');}
 
 const TABS=['resumen','gastos','escanear','ingresos','credito','ahorros','anual','presupuestos','casa'];
-const NAV_TABS_DIRECT=['resumen','gastos','ingresos','ahorros'];
+const NAV_TABS_DIRECT=['resumen','gastos','credito','ahorros'];
 // Tabs that use the global month nav
 const MONTH_NAV_TABS=['resumen','gastos','ingresos','credito','ahorros','presupuestos'];
 
 function tab(name){
   TABS.forEach(t=>{const el=document.getElementById('t-'+t);if(el)el.style.display=t===name?'block':'none';});
-  // Update direct nav tabs
   NAV_TABS_DIRECT.forEach(t=>{const btn=document.getElementById('nt-'+t);if(btn)btn.classList.toggle('on',t===name);});
-  // "Más" button active when in secondary sections
   const masBtn=document.getElementById('nt-mas');
-  if(masBtn)masBtn.classList.toggle('on',['escanear','credito','anual','presupuestos'].includes(name));
-  // Show/hide global month nav
+  if(masBtn)masBtn.classList.toggle('on',['escanear','ingresos','anual','presupuestos'].includes(name));
   const gmn=document.getElementById('globalMonthNav');
   if(gmn)gmn.style.display=MONTH_NAV_TABS.includes(name)?'flex':'none';
   if(name==='anual')rAnual();
