@@ -1926,45 +1926,30 @@ function rCredit(){
     const inst=+g.installments||1;
     const cuota=g.amount/inst;
     const s=new Date(g.date+'T12:00:00');
-    // All calculations relative to viewed month (CM/CY)
     const diffViewed=(CY-s.getFullYear())*12+(CM-s.getMonth());
-    const paid=Math.max(0,Math.min(inst,diffViewed-1)); // cuotas paid as of viewed month
-    const rem=inst-paid;
-    const nextPay=new Date(s.getFullYear(),s.getMonth()+paid+1,1); // next cobro from viewed month
-    const lastPay=new Date(s.getFullYear(),s.getMonth()+inst,1);
+    const paid=Math.max(0,Math.min(inst,diffViewed-1));
+    const nextPay=new Date(s.getFullYear(),s.getMonth()+paid+1,1);
     const purchaseStr=s.toLocaleDateString('es-UY',{day:'numeric',month:'short',year:'numeric'});
     const nextStr=nextPay.toLocaleDateString('es-UY',{day:'numeric',month:'short',year:'numeric'});
-    const lastStr=lastPay.toLocaleDateString('es-UY',{month:'short',year:'numeric'});
     const cat=S.categories.find(c=>c.name===g.category);
-    const em=cat?cat.emoji:'📦';const col=cat?cat.color:'#6b7280';
+    const em=cat?cat.emoji:'📦';
+    const col=cat?cat.color:'#6b7280';
     return `<div class="cri" style="cursor:pointer" onclick="openGastoDetail('${g.id}',false,${paid+1},${inst})">
-      <div class="crit">
-        <div style="display:flex;align-items:center;gap:10px">
-          <div class="txico" style="background:${col}22;flex-shrink:0;width:36px;height:36px;font-size:18px">${em}</div>
-          <div style="flex:1">
-            <div class="crid">${g.desc}${g.recurring?' <span style="font-size:10px;background:var(--accent-light);color:var(--accent);border-radius:6px;padding:1px 6px;font-weight:700">🔁 Recurrente</span>':''}</div>
-            <div style="font-size:10px;color:var(--text-muted);margin-top:2px">Compra: ${purchaseStr}</div>
+      <div style="display:flex;align-items:center;gap:10px">
+        <div class="txico" style="background:${col}22;flex-shrink:0">${em}</div>
+        <div style="flex:1;min-width:0">
+          <div class="txd">${g.desc}${g.recurring?` <span style="font-size:10px;background:var(--accent-light);color:var(--accent);border-radius:6px;padding:1px 5px;font-weight:700">🔁</span>`:''}</div>
+          <div class="txm">
+            <span class="bdg bdg-cr">🟣 Cuota ${paid+1}/${inst}</span>
+            <span style="color:var(--text-muted)">${g.category}</span>
           </div>
-          <div style="display:flex;align-items:center;gap:8px">
-            <div class="cria">${fmt(g.amount)}</div>
-            <div style="color:var(--text-muted);font-size:16px">›</div>
-          </div>
+          <div style="font-size:10px;color:var(--text-muted);margin-top:2px">🛒 ${purchaseStr} &nbsp;·&nbsp; 📅 Cobro: ${nextStr}</div>
         </div>
-      </div>
-      <div class="crim" style="margin-top:8px">
-        <span style="background:var(--purple-light);color:var(--purple);padding:2px 8px;border-radius:10px;font-weight:700">📅 Próx. cobro: ${nextStr}</span>
-      </div>
-      <div class="crim" style="margin-top:4px">
-        <span>${fmt(cuota)}/mes</span><span>·</span>
-        <span>${paid}/${inst} cuotas pagadas</span><span>·</span>
-        <span>${rem} restante${rem!==1?'s':''}</span><span>·</span>
-        <span>último cobro: ${lastStr}</span>
-      </div>
-      <div style="margin-top:8px">
-        <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:4px">
-          <div style="display:flex;gap:2px">${Array.from({length:inst},(_,idx)=>`<div style="width:${Math.max(6,Math.min(24,180/inst))}px;height:6px;border-radius:3px;background:${idx<paid?'var(--purple)':'var(--border)'}"></div>`).join('')}</div>
-          <div style="font-size:10px;color:var(--text-muted);font-weight:600">Cuota ${paid+1}/${inst}</div>
+        <div style="text-align:right;flex-shrink:0">
+          <div style="font-size:15px;font-weight:700;color:var(--purple)">${fmt(cuota)}</div>
+          <div style="font-size:10px;color:var(--text-muted)">Total: ${fmt(g.amount)}</div>
         </div>
+        <div style="color:var(--text-muted);font-size:14px">›</div>
       </div>
     </div>`;
   }).join('');
