@@ -1226,6 +1226,7 @@ const DEF = {
 };
 let S={};
 let CM=new Date().getMonth(), CY=new Date().getFullYear();
+window._getCM=()=>CM; window._getCY=()=>CY;
 let filt='Todos';
 let eCatIdx=null, eGoalIdx=null, addGoalIdx=null;
 let pendG=null,   // waiting for category pick
@@ -1651,11 +1652,11 @@ function renderAll(){
   rSummary();rCatRows();rTxList();rIngresos();rCredit();rSavings();rBudget();rAnual();updCrModeUI();rCasa();
 }
 
-function goToday(){
+window.goToday=function(){
   const now=new Date();
   CM=now.getMonth();CY=now.getFullYear();
   renderAll();
-}
+};
 
 // ============================================================
 // SUMMARY
@@ -1701,12 +1702,18 @@ function rSummary(){
   }
   document.getElementById('sumCount').textContent=`${S.gastos.filter(g=>{const d=new Date(g.date+'T12:00:00');return d.getMonth()===CM&&d.getFullYear()===CY;}).length} gasto${gs.length!==1?'s':''} →`;
   document.getElementById('sumLeft').textContent=fmt(Math.abs(left));
-  let leftLbl;
+  let leftLbl, heroCard=document.querySelector('.sc.gb.hero');
   if(left<0){
-    // Distinguish: is the excess due to savings, or actual overspending?
     const leftWithoutSavings=totalIncome-spent-creditThisMonth;
-    leftLbl=leftWithoutSavings>=0?'ahorraste más de tu disponible 💚':'en exceso ⚠️';
+    if(leftWithoutSavings>=0){
+      leftLbl='ahorraste más de tu disponible 💚';
+      if(heroCard){heroCard.style.background='';heroCard.classList.add('gb');heroCard.classList.remove('ab');}
+    } else {
+      leftLbl='en exceso ⚠️';
+      if(heroCard){heroCard.style.background='var(--red)';heroCard.classList.remove('gb');}
+    }
   } else {
+    if(heroCard){heroCard.style.background='';heroCard.classList.add('gb');heroCard.classList.remove('ab');}
     leftLbl=creditThisMonth>0&&savedThisMonth>0?'descontando ahorros y cuotas':(creditThisMonth>0?'descontando cuotas del mes':(savedThisMonth>0?'descontando ahorros':'libre este mes'));
   }
   document.getElementById('sumLeftLbl').textContent=leftLbl;
@@ -1738,50 +1745,110 @@ function rSummary(){
 // ============================================================
 function rCatRows(){
   if(!window._catRowMode)window._catRowMode='debito';
+  if(!window._catRowOpen)window._catRowOpen={};
   const mode=window._catRowMode;
   const debitGs=mGastos().filter(g=>g.payType!=='credit');
   const creditInstGs=crDue(CM,CY);
 
-  // Update button styles
   const btnD=document.getElementById('btnCatDebito');
   const btnC=document.getElementById('btnCatCredito');
   if(btnD){btnD.style.background=mode==='debito'?'var(--accent)':'var(--bg)';btnD.style.color=mode==='debito'?'#fff':'var(--text-muted)';btnD.style.border=mode==='debito'?'none':'1px solid var(--border)';}
   if(btnC){btnC.style.background=mode==='credito'?'var(--purple)':'var(--bg)';btnC.style.color=mode==='credito'?'#fff':'var(--text-muted)';btnC.style.border=mode==='credito'?'none':'1px solid var(--border)';}
 
-  const parents=getParents();
-  document.getElementById('catRows').innerHTML=parents.map(cat=>{
-    const children=getChildren(getCatId(cat));
-    const hasChildren=children.length>0;
-    let sp;
+  function calcSpend(catName){
     if(mode==='credito'){
-      // Show credit PURCHASES made this month (consumo), regardless of when they're charged
-      const getCrSpend=catName=>S.gastos.filter(g=>{
+      return S.gastos.filter(g=>{
         if(g.payType!=='credit')return false;
         const d=new Date(g.date+'T12:00:00');
         return d.getMonth()===CM&&d.getFullYear()===CY&&g.category===catName;
       }).reduce((s,g)=>s+(+g.amount),0);
-      sp=hasChildren
-        ?children.reduce((s,c)=>s+getCrSpend(c.name),0)+getCrSpend(cat.name)
-        :getCrSpend(cat.name);
-    } else {
-      // Show debit only
-      sp=hasChildren
-        ?children.reduce((s,c)=>s+debitGs.filter(g=>g.category===c.name).reduce((a,g)=>a+(+g.amount),0),0)+debitGs.filter(g=>g.category===cat.name).reduce((a,g)=>a+(+g.amount),0)
-        :debitGs.filter(g=>g.category===cat.name).reduce((a,g)=>a+(+g.amount),0);
     }
+    return debitGs.filter(g=>g.category===catName).reduce((s,g)=>s+(+g.amount),0);
+  }
+
+  const parents=getParents();
+  let html='';
+
+  parents.forEach(cat=>{
+    const catId=getCatId(cat);
+    const children=getChildren(catId);
+    const hasChildren=children.length>0;
+    const isOpen=!!window._catRowOpen[catId];
+
+    // Calculate parent spend (parent direct + all children)
+    const directSp=calcSpend(cat.name);
+    const childrenSp=hasChildren?children.reduce((s,c)=>s+calcSpend(c.name),0):0;
+    const sp=directSp+childrenSp;
     const bu=hasChildren?children.reduce((s,c)=>s+getBudgetUSD(c),0):getBudgetUSD(cat);
     const pct=bu>0?Math.min((sp/bu)*100,100):0;
     const ov=sp>bu&&bu>0;
     const col=ov?'var(--red)':(pct>=100?'var(--accent)':cat.color);
-    if(sp===0)return'';
-    return `<div class="cr" style="cursor:pointer" onclick="setF('${cat.name}');tab('gastos')">
-      <div class="ci" style="background:${cat.color}22">${cat.emoji}</div>
-      <div style="flex:1"><div class="cn">${cat.name}${hasChildren?` <span style="font-size:10px;color:var(--text-muted)">(${children.length})</span>`:''}</div><div class="cbw"><div class="cbf" style="width:${pct}%;background:${mode==='credito'?'var(--purple)':col}"></div></div></div>
-      <div><div class="ca" style="color:${mode==='credito'?'var(--purple)':'inherit'}">${fmt(sp)}</div><div class="cbl">${bu>0?'de '+fmt(bu):'sin límite'}</div></div>
-      <div style="color:var(--text-muted);font-size:13px">›</div>
-    </div>`;
-  }).filter(Boolean).join('');
+    const isEmpty=sp===0;
+    const dimStyle=isEmpty?'opacity:.45':'';
+
+    // Parent row
+    if(hasChildren){
+      // Tapping the row opens children toggle; separate › goes to Gastos
+      html+=`<div style="${dimStyle}">
+        <div class="cr" style="cursor:pointer" onclick="toggleCatRow('${catId}')">
+          <div class="ci" style="background:${cat.color}22">${cat.emoji}</div>
+          <div style="flex:1">
+            <div class="cn">${cat.name} <span style="font-size:10px;color:var(--text-muted)">${children.length} sub</span></div>
+            <div class="cbw"><div class="cbf" style="width:${pct}%;background:${mode==='credito'?'var(--purple)':col}"></div></div>
+          </div>
+          <div>
+            <div class="ca" style="color:${mode==='credito'?'var(--purple)':'inherit'}">${isEmpty?'–':fmt(sp)}</div>
+            <div class="cbl">${bu>0?'de '+fmt(bu):'sin límite'}</div>
+          </div>
+          <div style="color:var(--text-muted);font-size:13px;transition:transform .2s;transform:rotate(${isOpen?'90deg':'0deg'})">${isOpen?'▾':'▸'}</div>
+        </div>
+        ${isOpen?`<div style="padding-left:12px;border-left:2px solid ${cat.color}33;margin-left:24px;margin-bottom:4px">
+          ${children.map(child=>{
+            const csp=calcSpend(child.name);
+            const cbu=getBudgetUSD(child);
+            const cpct=cbu>0?Math.min((csp/cbu)*100,100):0;
+            const cov=csp>cbu&&cbu>0;
+            const ccol=cov?'var(--red)':(cpct>=100?'var(--accent)':child.color);
+            const cempty=csp===0;
+            return `<div class="cr" style="cursor:pointer;opacity:${cempty?.5:1}" onclick="setF('${child.name}');tab('gastos')">
+              <div class="ci" style="background:${child.color}22;width:28px;height:28px;font-size:14px">${child.emoji}</div>
+              <div style="flex:1">
+                <div class="cn" style="font-size:12px">${child.name}</div>
+                <div class="cbw"><div class="cbf" style="width:${cpct}%;background:${mode==='credito'?'var(--purple)':ccol}"></div></div>
+              </div>
+              <div>
+                <div class="ca" style="font-size:13px;color:${mode==='credito'?'var(--purple)':'inherit'}">${cempty?'–':fmt(csp)}</div>
+                <div class="cbl">${cbu>0?'de '+fmt(cbu):'sin límite'}</div>
+              </div>
+              <div style="color:var(--text-muted);font-size:13px">›</div>
+            </div>`;
+          }).join('')}
+        </div>`:''}
+      </div>`;
+    } else {
+      html+=`<div class="cr" style="cursor:pointer;${dimStyle}" onclick="setF('${cat.name}');tab('gastos')">
+        <div class="ci" style="background:${cat.color}22">${cat.emoji}</div>
+        <div style="flex:1">
+          <div class="cn">${cat.name}</div>
+          <div class="cbw"><div class="cbf" style="width:${pct}%;background:${mode==='credito'?'var(--purple)':col}"></div></div>
+        </div>
+        <div>
+          <div class="ca" style="color:${mode==='credito'?'var(--purple)':'inherit'}">${isEmpty?'–':fmt(sp)}</div>
+          <div class="cbl">${bu>0?'de '+fmt(bu):'sin límite'}</div>
+        </div>
+        <div style="color:var(--text-muted);font-size:13px">›</div>
+      </div>`;
+    }
+  });
+
+  document.getElementById('catRows').innerHTML=html;
 }
+
+window.toggleCatRow=function(catId){
+  if(!window._catRowOpen)window._catRowOpen={};
+  window._catRowOpen[catId]=!window._catRowOpen[catId];
+  rCatRows();
+};
 
 
 function rCredit(){
