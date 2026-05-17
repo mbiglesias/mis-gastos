@@ -1540,16 +1540,24 @@ function rTxList(){
     return;
   }
 
-  // Group by date: installments use their purchase date as group key (prefixed to keep sort order)
+  // Group by date: installments use compute date = purchase date + (instNum-1) months
   const grp={};
   gs.forEach(g=>{
-    const key=g._isInstallment?`inst-${g.date}-${g.id}`:g.date;
+    let key;
+    if(g._isInstallment){
+      const s=new Date(g.date+'T12:00:00');
+      const instNum=g._instNum||1;
+      const computeDate=new Date(s.getFullYear(),s.getMonth()+(instNum-1),s.getDate());
+      const iso=computeDate.toISOString().split('T')[0];
+      key=`inst-${iso}-${g.id}`;
+    } else {
+      key=g.date;
+    }
     if(!grp[key])grp[key]=[];
     grp[key].push(g);
   });
 
   let h='<div class="txl">';
-  // Sort all groups by date descending (extract date portion for inst- keys too)
   const keys=Object.keys(grp).sort((a,b)=>{
     const da=a.startsWith('inst-')?a.slice(5,15):a;
     const db=b.startsWith('inst-')?b.slice(5,15):b;
@@ -1558,7 +1566,6 @@ function rTxList(){
 
   keys.forEach(key=>{
     const its=grp[key];
-    // Always show a date header — for installments use their purchase date
     const dateStr=key.startsWith('inst-')?key.slice(5,15):key;
     const d=new Date(dateStr+'T12:00:00');
     h+=`<div class="txg">${d.toLocaleDateString('es-UY',{weekday:'short',day:'numeric',month:'short'})}</div>`;
@@ -1864,17 +1871,23 @@ function rCredit(){
   const active=crGs.filter(g=>{
     const s=new Date(g.date+'T12:00:00');
     const tot=+g.installments||1;
-    const endM=s.getMonth()+tot;
-    const endY=s.getFullYear()+Math.floor((s.getMonth()+tot)/12);
-    return new Date(endY,endM%12,1)>=new Date(CY,CM,1);
+    const firstM=s.getDate()<=6?s.getMonth():s.getMonth()+1;
+    const firstY=s.getFullYear()+Math.floor(firstM/12);
+    const fm=((firstM%12)+12)%12;
+    const lastM=fm+tot-1;
+    const lastY=firstY+Math.floor(lastM/12);
+    return new Date(lastY,(lastM%12+12)%12,1)>=new Date(CY,CM,1);
   });
   // Total pendiente = what's still owed as of viewed month (CM/CY)
   const totPend=active.reduce((s,g)=>{
     const st=new Date(g.date+'T12:00:00');
     const inst=+g.installments||1;
     const cuota=g.amount/inst;
-    const diffViewed=(CY-st.getFullYear())*12+(CM-st.getMonth());
-    const paidAtViewed=Math.max(0,Math.min(inst,diffViewed-1));
+    const firstM=st.getDate()<=6?st.getMonth():st.getMonth()+1;
+    const firstY=st.getFullYear()+Math.floor(firstM/12);
+    const fm=((firstM%12)+12)%12;
+    const diff=(CY-firstY)*12+(CM-fm);
+    const paidAtViewed=Math.max(0,Math.min(inst,diff));
     return s+Math.max(0,inst-paidAtViewed)*cuota;
   },0);
   // Total a pagar este mes = same calculation as Gastos filtrado por Crédito
@@ -1926,11 +1939,15 @@ function rCredit(){
     const inst=+g.installments||1;
     const cuota=g.amount/inst;
     const s=new Date(g.date+'T12:00:00');
-    const diffViewed=(CY-s.getFullYear())*12+(CM-s.getMonth());
-    const paid=Math.max(0,Math.min(inst,diffViewed-1));
-    const nextPay=new Date(s.getFullYear(),s.getMonth()+paid+1,1);
+    // Day-6 cutoff: purchases on or before the 6th → first cuota same month
+    const firstM=s.getDate()<=6?s.getMonth():s.getMonth()+1;
+    const firstY=s.getFullYear()+Math.floor(firstM/12);
+    const fm=((firstM%12)+12)%12;
+    const fy=firstY;
+    // Cuotas paid as of viewed month (CM/CY)
+    const diff=(CY-fy)*12+(CM-fm);
+    const paid=Math.max(0,Math.min(inst,diff));
     const purchaseStr=s.toLocaleDateString('es-UY',{day:'numeric',month:'short',year:'numeric'});
-    const nextStr=nextPay.toLocaleDateString('es-UY',{day:'numeric',month:'short',year:'numeric'});
     const cat=S.categories.find(c=>c.name===g.category);
     const em=cat?cat.emoji:'📦';
     const col=cat?cat.color:'#6b7280';
@@ -1943,7 +1960,7 @@ function rCredit(){
             <span class="bdg bdg-cr">🟣 Cuota ${paid+1}/${inst}</span>
             <span style="color:var(--text-muted)">${g.category}</span>
           </div>
-          <div style="font-size:10px;color:var(--text-muted);margin-top:2px">🛒 ${purchaseStr} &nbsp;·&nbsp; 📅 Cobro: ${nextStr}</div>
+          <div style="font-size:10px;color:var(--text-muted);margin-top:2px">🛒 ${purchaseStr}</div>
         </div>
         <div style="text-align:right;flex-shrink:0">
           <div style="font-size:15px;font-weight:700;color:var(--purple)">${fmt(cuota)}</div>
