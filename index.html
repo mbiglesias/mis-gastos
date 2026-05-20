@@ -1508,7 +1508,7 @@ function rTxList(){
 
   const q=(document.getElementById('txSearch')?.value||'').toLowerCase().trim();
   if(filt==='Crédito'){
-    gs=gs.filter(g=>g._isInstallment);
+    gs=gs.filter(g=>g._isInstallment||g._isCardDebit);
   }
   else if(filt!=='Todos'){
     // Check if filt is a parent category — if so show all children too
@@ -1889,6 +1889,11 @@ function rCredit(){
     const firstM=s.getDate()<=6?s.getMonth():s.getMonth()+1;
     const firstY=s.getFullYear()+Math.floor(firstM/12);
     const fm=((firstM%12)+12)%12;
+    // Recurring card-debits (1 cuota recurrente) → always active from first cuota month
+    if(g.recurring&&tot===1){
+      const diff=(CY-firstY)*12+(CM-fm);
+      return diff>=0;
+    }
     const lastM=fm+tot-1;
     const lastY=firstY+Math.floor(lastM/12);
     return new Date(lastY,(lastM%12+12)%12,1)>=new Date(CY,CM,1);
@@ -1905,10 +1910,12 @@ function rCredit(){
     const paidAtViewed=Math.max(0,Math.min(inst,diff));
     return s+Math.max(0,inst-paidAtViewed)*cuota;
   },0);
-  // Total a pagar este mes = same calculation as Gastos filtrado por Crédito
+  // Total a pagar este mes = cuotas normales + suscripciones en tarjeta
   const crDueItems=crDue(CM,CY);
-  const thisMon=crDueItems.reduce((s,g)=>s+(+g.amount/(+g.installments||1)),0);
-  const thisMonCount=crDueItems.length;
+  const cardDebitItems=mGastos().filter(g=>g._isCardDebit);
+  const thisMon=crDueItems.reduce((s,g)=>s+(g._cuota||+g.amount/(+g.installments||1)),0)
+               +cardDebitItems.reduce((s,g)=>s+(+g.amount),0);
+  const thisMonCount=crDueItems.length+cardDebitItems.length;
 
   document.getElementById('crTot').textContent=fmt(totPend);
   document.getElementById('crTotSub').textContent=`${active.length} compra${active.length!==1?'s':''} activa${active.length!==1?'s':''}`;
@@ -1964,7 +1971,9 @@ function rCredit(){
         <div style="flex:1;min-width:0">
           <div class="txd">${g.desc}${g.recurring?` <span style="font-size:10px;background:var(--accent-light);color:var(--accent);border-radius:6px;padding:1px 5px;font-weight:700">🔁</span>`:''}</div>
           <div class="txm">
-            <span class="bdg bdg-cr">🟣 Cuota ${paid+1}/${inst}</span>
+            ${g.recurring&&inst===1
+              ?`<span class="bdg" style="background:#dbeafe;color:#2563eb">💳 tarjeta</span>`
+              :`<span class="bdg bdg-cr">🟣 Cuota ${paid+1}/${inst}</span>`}
             <span style="color:var(--text-muted)">${g.category}</span>
           </div>
           <div style="font-size:10px;color:var(--text-muted);margin-top:2px">🛒 ${purchaseStr}</div>
