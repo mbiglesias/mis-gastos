@@ -1439,10 +1439,14 @@ function mGastos(){
     const fm = ((firstCuotaMonth%12)+12)%12;
     // diff = how many months after first cuota we are
     const diff = (CY-firstCuotaYear)*12+(CM-fm);
-    if(g.recurring&&diff>=0){
-      // Recurring credit: show every month from first cuota onwards
+    if(g.recurring&&inst===1&&diff>=0){
+      // Recurring 1-cuota on credit card → treat as debit (subscription/fixed payment)
       const virtDate=`${CY}-${String(CM+1).padStart(2,'0')}-${String(s.getDate()).padStart(2,'0')}`;
-      creditDue.push({...g,date:virtDate,_isInstallment:true,_instNum:1,_instTotal:1,_cuota:g.amount,_isRecurring:true});
+      recurringDue.push({...g,date:virtDate,_isRecurring:true,_isCardDebit:true,id:g.id+'_rec_'+CY+'_'+CM});
+    } else if(g.recurring&&diff>=0){
+      // Recurring multi-cuota credit: show every month from first cuota onwards
+      const virtDate=`${CY}-${String(CM+1).padStart(2,'0')}-${String(s.getDate()).padStart(2,'0')}`;
+      creditDue.push({...g,date:virtDate,_isInstallment:true,_instNum:1,_instTotal:inst,_cuota:g.amount,_isRecurring:true});
     } else if(!g.recurring&&diff>=0&&diff<inst){
       creditDue.push({...g,_isInstallment:true,_instNum:diff+1,_instTotal:inst,_cuota:g.amount/inst});
     }
@@ -1582,13 +1586,15 @@ function rTxList(){
       const cuota=g._cuota||g.amount/inst;
       const instNum=g._instNum||1;
 
-      const badge=isCr
-        ? isInst
-          ? `<span class="bdg bdg-cr">🟣 Cuota ${instNum}/${inst}</span>`
-          : `<span class="bdg bdg-cr">🟣 Crédito — ${inst} cuota${inst>1?'s':''}</span>`
-        : g._isRecurring
-          ? `<span class="bdg" style="background:#fef3c7;color:#d97706">🔁 Recurrente</span>`
-          : `<span class="bdg bdg-db">💳 Débito</span>`;
+      const badge=g._isCardDebit
+        ? `<span class="bdg" style="background:#dbeafe;color:#2563eb">💳 tarjeta</span>`
+        : isCr
+          ? isInst
+            ? `<span class="bdg bdg-cr">🟣 Cuota ${instNum}/${inst}</span>`
+            : `<span class="bdg bdg-cr">🟣 Crédito — ${inst} cuota${inst>1?'s':''}</span>`
+          : g._isRecurring
+            ? `<span class="bdg" style="background:#fef3c7;color:#d97706">🔁 Recurrente</span>`
+            : `<span class="bdg bdg-db">💳 Débito</span>`;
 
       // Cobro date label for installment cards (purchase date already shown in group header)
       let purchaseDateLabel='';
@@ -1613,7 +1619,9 @@ function rTxList(){
 
       const tapAttr=`onclick="openGastoDetail('${g.id}',${JSON.stringify(isInst)},${JSON.stringify(instNum)},${JSON.stringify(inst)})"`
 
-      h+=`<div class="txi"${isInst?' style="border-left:3px solid var(--purple)"':''} ${tapAttr}>
+      const rowBorder=isInst&&!g._isCardDebit?' style="border-left:3px solid var(--purple)"':'';
+      const amtColor=isInst&&!g._isCardDebit?'color:var(--purple)':'';
+      h+=`<div class="txi"${rowBorder} ${tapAttr}>
         <div class="txi-row">
           <div class="txico" style="background:${col}22;flex-shrink:0">${em}</div>
           <div class="txb">
@@ -1622,7 +1630,7 @@ function rTxList(){
             ${purchaseDateLabel}
           </div>
           <div class="txr" style="flex-shrink:0">
-            <div class="txa" style="${isInst?'color:var(--purple)':''}">${displayAmt}</div>
+            <div class="txa" style="${amtColor}">${displayAmt}</div>
             ${subAmt}
           </div>
           <div style="color:var(--text-muted);font-size:18px;flex-shrink:0">›</div>
@@ -1645,8 +1653,10 @@ function crDue(m,y){
     const firstY=s.getFullYear()+Math.floor(firstM/12);
     const fm=((firstM%12)+12)%12;
     const diff=(y-firstY)*12+(m-fm);
-    if(g.recurring&&diff>=0){
-      results.push({...g,_cuota:g.amount,_instNum:1,_instTotal:1});
+    if(g.recurring&&inst===1&&diff>=0){
+      // Treated as card-debit — excluded from credit due
+    } else if(g.recurring&&diff>=0){
+      results.push({...g,_cuota:g.amount,_instNum:1,_instTotal:inst});
     } else if(!g.recurring&&diff>=0&&diff<inst){
       results.push({...g,_cuota:g.amount/inst,_instNum:diff+1,_instTotal:inst});
     }
