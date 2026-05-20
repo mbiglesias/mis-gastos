@@ -1776,6 +1776,16 @@ function rCatRows(){
   const debitGs=mGastos().filter(g=>g.payType!=='credit'||g._isCardDebit);
   const creditDueGs=crDue(CM,CY);
   const btnC=document.getElementById('btnCatCredito');
+  const btnD=document.getElementById('btnCatDebito');
+  if(btnC&&btnD){
+    if(mode==='credito'){
+      btnC.style.background='var(--accent)';btnC.style.color='#fff';btnC.style.border='none';
+      btnD.style.background='var(--bg)';btnD.style.color='var(--text-muted)';btnD.style.border='1px solid var(--border)';
+    } else {
+      btnD.style.background='var(--accent)';btnD.style.color='#fff';btnD.style.border='none';
+      btnC.style.background='var(--bg)';btnC.style.color='var(--text-muted)';btnC.style.border='1px solid var(--border)';
+    }
+  }
 
   function calcSpend(catName){
     if(mode==='credito'){
