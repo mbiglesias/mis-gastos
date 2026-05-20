@@ -1689,7 +1689,7 @@ window.goToday=function(){
 // ============================================================
 function rSummary(){
   const gs=mGastos();
-  const debitGs=gs.filter(g=>g.payType!=='credit');
+  const debitGs=gs.filter(g=>g.payType!=='credit'||g._isCardDebit);
   const spent=debitGs.reduce((s,g)=>s+(+g.amount),0);
   // In 'consumo' mode, add full credit purchases from this month to "gastado"
   const crMode=S.crMode||'consumo';
@@ -1773,7 +1773,7 @@ function rCatRows(){
   if(!window._catRowMode)window._catRowMode='debito';
   if(!window._catRowOpen)window._catRowOpen={};
   const mode=window._catRowMode;
-  const debitGs=mGastos().filter(g=>g.payType!=='credit');
+  const debitGs=mGastos().filter(g=>g.payType!=='credit'||g._isCardDebit);
   const creditDueGs=crDue(CM,CY);
   const btnC=document.getElementById('btnCatCredito');
 
