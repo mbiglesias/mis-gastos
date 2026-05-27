@@ -2080,36 +2080,45 @@ async function generateAnalysis(key,y,m){
   var MNAMES=['Enero','Febrero','Marzo','Abril','Mayo','Junio','Julio','Agosto','Septiembre','Octubre','Noviembre','Diciembre'];
   var monthName=MNAMES[m]+' '+y;
 
-  var gastos=S.gastos.filter(function(g){
-    var d=new Date(g.date+'T12:00:00');
-    return d.getMonth()===m&&d.getFullYear()===y&&g.payType!=='credit';
-  });
-  var cr=crDue(m,y);
-  var pm=m===0?11:m-1; var py=m===0?y-1:y;
-  var prevGastos=S.gastos.filter(function(g){
-    var d=new Date(g.date+'T12:00:00');
-    return d.getMonth()===pm&&d.getFullYear()===py&&g.payType!=='credit';
-  });
+  // Use same logic as rSummary to get accurate month data
+  // Temporarily swap CM/CY globals to reuse mGastos/crDue for arbitrary month
+  var _CM=CM, _CY=CY;
+  CM=m; CY=y;
+  var monthGs=mGastos();
+  var debitGs=monthGs.filter(function(g){return g.payType!=='credit'||g._isCardDebit;});
+  var crGs=crDue(m,y);
+  CM=_CM; CY=_CY;
 
+  // Previous month
+  var pm=m===0?11:m-1; var py=m===0?y-1:y;
+  CM=pm; CY=py;
+  var prevGs=mGastos().filter(function(g){return g.payType!=='credit'||g._isCardDebit;});
+  var prevCrGs=crDue(pm,py);
+  CM=_CM; CY=_CY;
+
+  // Aggregate by category for this month (debit + credit due)
   var byCat={};
-  gastos.concat(cr).forEach(function(g){
+  debitGs.concat(crGs).forEach(function(g){
     var cat=g.category||'Sin categor\u00eda';
     var amt=g._cuota||+g.amount;
     byCat[cat]=(byCat[cat]||0)+amt;
   });
+  // Previous month aggregation
   var prevByCat={};
-  prevGastos.forEach(function(g){
+  prevGs.concat(prevCrGs).forEach(function(g){
     var cat=g.category||'Sin categor\u00eda';
-    prevByCat[cat]=(prevByCat[cat]||0)+(+g.amount);
+    var amt=g._cuota||+g.amount;
+    prevByCat[cat]=(prevByCat[cat]||0)+amt;
   });
 
   var totalSpent=Object.values(byCat).reduce(function(s,v){return s+v;},0);
   var totalPrev=Object.values(prevByCat).reduce(function(s,v){return s+v;},0);
-  var ingrs=(S.ingresos||[]).filter(function(i){
+  // Income = salary + extra ingresos (same as rSummary)
+  var extraIngrs=(S.ingresos||[]).filter(function(i){
     var d=new Date(i.date+'T12:00:00');
     return d.getMonth()===m&&d.getFullYear()===y;
   });
-  var totalIncome=ingrs.reduce(function(s,i){return s+(+i.amount);},0);
+  var totalIncome=(+S.salary||0)+extraIngrs.reduce(function(s,i){return s+(+i.amount);},0);
 
   var catLines=Object.entries(byCat).sort(function(a,b){return b[1]-a[1];}).map(function(entry){
     var cat=entry[0]; var amt=entry[1];
