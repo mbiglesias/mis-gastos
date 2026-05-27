@@ -2072,99 +2072,111 @@ function formatAnalysis(text){
 }
 
 async function generateAnalysis(key,y,m){
-  const btn=document.querySelector(`button[onclick*="'${key}'"]`);
-  const contentEl=document.getElementById(`analysis-content-${key}`);
+  var btn=document.querySelector('button[onclick*="\''+key+'\'"]');
+  var contentEl=document.getElementById('analysis-content-'+key);
   if(btn){btn.disabled=true;btn.textContent='Analizando...';}
-  if(contentEl)contentEl.innerHTML='<div style="color:var(--text-muted);font-size:13px">Generando análisis con IA...</div>';
+  if(contentEl)contentEl.innerHTML='<div style="color:var(--text-muted);font-size:13px">Generando an\u00e1lisis con IA...</div>';
 
-  // Build data context for this month
-  const CM2=m, CY2=y;
-  const gastos=S.gastos.filter(g=>{
-    const d=new Date(g.date+'T12:00:00');
-    return d.getMonth()===CM2&&d.getFullYear()===CY2&&g.payType!=='credit';
+  var MNAMES=['Enero','Febrero','Marzo','Abril','Mayo','Junio','Julio','Agosto','Septiembre','Octubre','Noviembre','Diciembre'];
+  var monthName=MNAMES[m]+' '+y;
+
+  var gastos=S.gastos.filter(function(g){
+    var d=new Date(g.date+'T12:00:00');
+    return d.getMonth()===m&&d.getFullYear()===y&&g.payType!=='credit';
   });
-  const cr=crDue(CM2,CY2);
-  const prevGastos=S.gastos.filter(g=>{
-    const d=new Date(g.date+'T12:00:00');
-    const pm=CM2===0?11:CM2-1; const py=CM2===0?CY2-1:CY2;
+  var cr=crDue(m,y);
+  var pm=m===0?11:m-1; var py=m===0?y-1:y;
+  var prevGastos=S.gastos.filter(function(g){
+    var d=new Date(g.date+'T12:00:00');
     return d.getMonth()===pm&&d.getFullYear()===py&&g.payType!=='credit';
   });
-  const MNAMES=['Enero','Febrero','Marzo','Abril','Mayo','Junio','Julio','Agosto','Septiembre','Octubre','Noviembre','Diciembre'];
-  const monthName=MNAMES[m]+' '+y;
 
-  // Aggregate by category
-  const byCat={};
-  [...gastos,...cr].forEach(g=>{
-    const cat=g.category||'Sin categoría';
-    const amt=g._cuota||+g.amount;
+  var byCat={};
+  gastos.concat(cr).forEach(function(g){
+    var cat=g.category||'Sin categor\u00eda';
+    var amt=g._cuota||+g.amount;
     byCat[cat]=(byCat[cat]||0)+amt;
   });
-  const prevByCat={};
-  prevGastos.forEach(g=>{prevByCat[g.category||'Sin categoría']=(prevByCat[g.category||'Sin categoría']||0)+(+g.amount);});
+  var prevByCat={};
+  prevGastos.forEach(function(g){
+    var cat=g.category||'Sin categor\u00eda';
+    prevByCat[cat]=(prevByCat[cat]||0)+(+g.amount);
+  });
 
-  const totalSpent=Object.values(byCat).reduce((s,v)=>s+v,0);
-  const totalPrev=Object.values(prevByCat).reduce((s,v)=>s+v,0);
-  const ingresos=S.ingresos?.filter(i=>{const d=new Date(i.date+'T12:00:00');return d.getMonth()===CM2&&d.getFullYear()===CY2;})||[];
-  const totalIncome=ingresos.reduce((s,i)=>s+(+i.amount),0);
+  var totalSpent=Object.values(byCat).reduce(function(s,v){return s+v;},0);
+  var totalPrev=Object.values(prevByCat).reduce(function(s,v){return s+v;},0);
+  var ingrs=(S.ingresos||[]).filter(function(i){
+    var d=new Date(i.date+'T12:00:00');
+    return d.getMonth()===m&&d.getFullYear()===y;
+  });
+  var totalIncome=ingrs.reduce(function(s,i){return s+(+i.amount);},0);
 
-  const catLines=Object.entries(byCat).sort((a,b)=>b[1]-a[1]).map(([cat,amt])=>{
-    const budget=getBudgetUSD({name:cat});
-    const prev=prevByCat[cat]||0;
-    return `${cat}: USD ${amt.toFixed(0)}${budget>0?` (presupuesto: USD ${budget.toFixed(0)}, ${amt>budget?'EXCEDIDO en USD '+(amt-budget).toFixed(0):'dentro del presupuesto'})`:''}${prev>0?` (mes anterior: USD ${prev.toFixed(0)})`:''}`;
-  }).join('
-');
+  var catLines=Object.entries(byCat).sort(function(a,b){return b[1]-a[1];}).map(function(entry){
+    var cat=entry[0]; var amt=entry[1];
+    var budget=getBudgetUSD({name:cat});
+    var prev=prevByCat[cat]||0;
+    var line=cat+': USD '+amt.toFixed(0);
+    if(budget>0){line+=' (presupuesto: USD '+budget.toFixed(0)+', '+(amt>budget?'EXCEDIDO en USD '+(amt-budget).toFixed(0):'dentro del presupuesto')+')';}
+    if(prev>0){line+=' (mes anterior: USD '+prev.toFixed(0)+')';}
+    return line;
+  }).join('\n');
 
-  const apiKey=S.apiKey||localStorage.getItem('mgApiKey')||'';
+  var apiKey=S.apiKey||localStorage.getItem('mgApiKey')||'';
   if(!apiKey){
-    if(contentEl)contentEl.innerHTML='<div style="color:var(--red);font-size:13px">Necesitás configurar tu API Key de Claude para usar esta función.</div>';
-    if(btn){btn.disabled=false;btn.textContent='✨ Analizar';}
+    if(contentEl)contentEl.innerHTML='<div style="color:var(--red);font-size:13px">Configur\u00e1 tu API Key de Claude (Men\u00fa \u2192 API Key).</div>';
+    if(btn){btn.disabled=false;btn.textContent='\u2728 Analizar';}
     return;
   }
 
-  const prompt=`Sos un asistente financiero personal. Analizá los gastos de ${monthName} y generá un análisis breve y útil.
-
-DATOS DEL MES:
-- Total gastado: USD ${totalSpent.toFixed(0)}
-- Ingresos del mes: USD ${totalIncome.toFixed(0)}
-- Mes anterior total: USD ${totalPrev.toFixed(0)} (${totalPrev>0?(((totalSpent-totalPrev)/totalPrev*100).toFixed(0)+'% vs mes anterior'):'sin datos previos'})
-
-GASTOS POR CATEGORÍA:
-${catLines}
-
-REGLAS IMPORTANTES:
-- Escribí en español, tono directo y personal (tuteá)
-- Si sugerís ajustes de presupuesto, SOLO sugerí reducirlos, nunca aumentarlos
-- Sé específico con los números
-- No uses jerga financiera complicada
-
-FORMATO DE RESPUESTA (usá exactamente estas secciones):
-
-📊 En resumen
-[3-4 líneas resumiendo el mes: qué tal estuvo, lo más destacado, si hubo superávit o déficit]
-
-🔴 Te pasaste en
-[Si no hay categorías excedidas, ponés "Ninguna — buen trabajo manteniéndote dentro del presupuesto." Si hay, listá cada una con: - NombreCategoria: excediste en USD X (breve explicación probable)]
-
-💡 Sugerencias
-[2-3 recomendaciones concretas y específicas para el mes que viene. Solo si hay margen real para bajar gastos. Si ya estás ajustado, decilo honestamente.]`;
+  var diffPct=totalPrev>0?((totalSpent-totalPrev)/totalPrev*100).toFixed(0)+'% vs mes anterior':'sin datos previos';
+  var promptParts=[
+    'Sos un asistente financiero personal. Analiz\u00e1 los gastos de '+monthName+' y gener\u00e1 un an\u00e1lisis breve y \u00fatil.',
+    '',
+    'DATOS DEL MES:',
+    '- Total gastado: USD '+totalSpent.toFixed(0),
+    '- Ingresos del mes: USD '+totalIncome.toFixed(0),
+    '- Mes anterior total: USD '+totalPrev.toFixed(0)+' ('+diffPct+')',
+    '',
+    'GASTOS POR CATEGOR\u00cdA:',
+    catLines,
+    '',
+    'REGLAS IMPORTANTES:',
+    '- Escrib\u00ed en espa\u00f1ol, tono directo y personal (tutea)',
+    '- Si suger\u00eds ajustes de presupuesto, SOLO suger\u00ed reducirlos, nunca aumentarlos',
+    '- S\u00e9 espec\u00edfico con los n\u00fameros',
+    '- No uses jerga financiera complicada',
+    '',
+    'FORMATO DE RESPUESTA (us\u00e1 exactamente estas secciones):',
+    '',
+    '\uD83D\uDCCA En resumen',
+    '[3-4 l\u00edneas resumiendo el mes: qu\u00e9 tal estuvo, lo m\u00e1s destacado, si hubo super\u00e1vit o d\u00e9ficit]',
+    '',
+    '\uD83D\uDD34 Te pasaste en',
+    '[Si no hay categor\u00edas excedidas: "Ninguna \u2014 buen trabajo manteni\u00e9ndote dentro del presupuesto." Si hay, list\u00e1 cada una con: - Categor\u00eda: excediste en USD X]',
+    '',
+    '\uD83D\uDCA1 Sugerencias',
+    '[2-3 recomendaciones concretas para el mes que viene. Solo para bajar gastos, nunca para aumentar presupuesto.]'
+  ];
+  var prompt=promptParts.join('\n');
 
   try{
-    const res=await fetch('https://api.anthropic.com/v1/messages',{
+    var res=await fetch('https://api.anthropic.com/v1/messages',{
       method:'POST',
       headers:{'Content-Type':'application/json'},
       body:JSON.stringify({model:'claude-sonnet-4-20250514',max_tokens:1000,messages:[{role:'user',content:prompt}]})
     });
-    const data=await res.json();
-    const text=data.content?.[0]?.text||'Error generando análisis.';
+    var data=await res.json();
+    var text=(data.content&&data.content[0]&&data.content[0].text)||'Error generando an\u00e1lisis.';
     if(!S.analyses)S.analyses={};
-    S.analyses[key]={text,ts:Date.now()};
+    S.analyses[key]={text:text,ts:Date.now()};
     save();
     rAnalisis();
   }catch(e){
-    if(contentEl)contentEl.innerHTML=`<div style="color:var(--red);font-size:13px">Error: ${e.message}</div>`;
-    if(btn){btn.disabled=false;btn.textContent='✨ Analizar';}
+    if(contentEl)contentEl.innerHTML='<div style="color:var(--red);font-size:13px">Error: '+e.message+'</div>';
+    if(btn){btn.disabled=false;btn.textContent='\u2728 Analizar';}
   }
 }
+
 
 window.toggleCatRow=function(catId){
   if(!window._catRowOpen)window._catRowOpen={};
