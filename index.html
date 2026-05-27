@@ -3817,7 +3817,7 @@ function overlayClose(e,id){if(e.target===e.currentTarget)closeM(id);}
 function openMas(){openM('mMas');}
 function closeMas(){closeM('mMas');}
 
-const TABS=['resumen','gastos','escanear','ingresos','credito','ahorros','anual','presupuestos','casa'];
+const TABS=['resumen','gastos','escanear','ingresos','credito','ahorros','anual','analisis','presupuestos','casa'];
 const NAV_TABS_DIRECT=['resumen','gastos','credito','ahorros'];
 // Tabs that use the global month nav
 const MONTH_NAV_TABS=['resumen','gastos','ingresos','credito','ahorros','presupuestos'];
@@ -3826,10 +3826,11 @@ function tab(name){
   TABS.forEach(t=>{const el=document.getElementById('t-'+t);if(el)el.style.display=t===name?'block':'none';});
   NAV_TABS_DIRECT.forEach(t=>{const btn=document.getElementById('nt-'+t);if(btn)btn.classList.toggle('on',t===name);});
   const masBtn=document.getElementById('nt-mas');
-  if(masBtn)masBtn.classList.toggle('on',['escanear','ingresos','anual','presupuestos'].includes(name));
+  if(masBtn)masBtn.classList.toggle('on',['escanear','ingresos','anual','analisis','presupuestos'].includes(name));
   const gmn=document.getElementById('globalMonthNav');
   if(gmn)gmn.style.display=MONTH_NAV_TABS.includes(name)?'flex':'none';
   if(name==='anual')rAnual();
+  if(name==='analisis')rAnalisis();
 }
 
 // ============================================================
