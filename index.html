@@ -2067,11 +2067,8 @@ function formatAnalysis(text){
     .replace(/\*\*(.*?)\*\*/g,'<strong>$1</strong>')
     .replace(/^(📊.*|🔴.*|💡.*)$/gm,'<div style="font-weight:700;font-size:15px;margin:14px 0 6px">$1</div>')
     .replace(/^- (.+)$/gm,'<div style="padding:3px 0 3px 12px;border-left:2px solid var(--border)">$1</div>')
-    .replace(/
-
-/g,'<br>')
-    .replace(/
-/g,' ');
+    .replace(/\n\n/g,'<br>')
+    .replace(/\n/g,' ');
 }
 
 async function generateAnalysis(key,y,m){
