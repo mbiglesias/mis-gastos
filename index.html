@@ -2172,8 +2172,13 @@ async function generateAnalysis(key,y,m){
     save();
     rAnalisis();
   }catch(e){
-    if(contentEl)contentEl.innerHTML='<div style="color:var(--red);font-size:13px">Error: '+e.message+'</div>';
-    if(btn){btn.disabled=false;btn.textContent='\u2728 Analizar';}
+    console.error('generateAnalysis error:', e);
+    var errMsg='Error: '+e.message;
+    if(e.message==='Failed to fetch'){
+      errMsg='No se pudo conectar con la API. Verificá tu API Key en Menú → API Key, o que tenés conexión a internet.';
+    }
+    if(contentEl)contentEl.innerHTML='<div style="color:var(--red);font-size:13px">'+errMsg+'<br><small style="opacity:.6">apiKey: '+(apiKey?apiKey.slice(0,8)+'...':'NO SET')+'</small></div>';
+    if(btn){btn.disabled=false;btn.textContent='✨ Analizar';}
   }
 }
 
