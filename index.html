@@ -2111,8 +2111,12 @@ async function generateAnalysis(key,y,m){
     prevByCat[cat]=(prevByCat[cat]||0)+amt;
   });
 
-  var totalSpent=Object.values(byCat).reduce(function(s,v){return s+v;},0);
-  var totalPrev=Object.values(prevByCat).reduce(function(s,v){return s+v;},0);
+  var totalDebit=debitGs.reduce(function(s,g){return s+(+g.amount);},0);
+  var totalCredit=crGs.reduce(function(s,g){return s+(g._cuota||+g.amount/(+g.installments||1));},0);
+  var totalSpent=totalDebit+totalCredit;
+  var prevDebit=prevGs.reduce(function(s,g){return s+(+g.amount);},0);
+  var prevCredit=prevCrGs.reduce(function(s,g){return s+(g._cuota||+g.amount/(+g.installments||1));},0);
+  var totalPrev=prevDebit+prevCredit;
   // Income = salary + extra ingresos (same as rSummary)
   var extraIngrs=(S.ingresos||[]).filter(function(i){
     var d=new Date(i.date+'T12:00:00');
@@ -2142,9 +2146,11 @@ async function generateAnalysis(key,y,m){
     'Sos un asistente financiero personal. Analiz\u00e1 los gastos de '+monthName+' y gener\u00e1 un an\u00e1lisis breve y \u00fatil.',
     '',
     'DATOS DEL MES:',
+    '- D\u00e9bito (pagado directo): USD '+totalDebit.toFixed(0),
+    '- Cu\u00f3tas de tarjeta vencidas este mes: USD '+totalCredit.toFixed(0),
     '- Total gastado: USD '+totalSpent.toFixed(0),
     '- Ingresos del mes: USD '+totalIncome.toFixed(0),
-    '- Mes anterior total: USD '+totalPrev.toFixed(0)+' ('+diffPct+')',
+    '- Mes anterior total: USD '+totalPrev.toFixed(0)+' (d\u00e9bito: USD '+prevDebit.toFixed(0)+', tarjeta: USD '+prevCredit.toFixed(0)+') ('+diffPct+')',
     '',
     'GASTOS POR CATEGOR\u00cdA:',
     catLines,
