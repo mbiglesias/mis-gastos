@@ -706,6 +706,11 @@ onAuthStateChanged(auth, (user) => {
         <input type="number" class="fi" id="gSaved" placeholder="0">
       </div>
     </div>
+    <label style="display:flex;align-items:center;gap:8px;margin-bottom:14px;cursor:pointer;font-size:13px">
+      <input type="checkbox" id="gNoDisp" style="width:16px;height:16px;accent-color:var(--accent)">
+      No afecta el disponible mensual
+      <span style="font-size:11px;color:var(--text-muted)">(ej: plata de terceros)</span>
+    </label>
     <div style="display:flex;gap:8px">
       <button class="btn bgn" onclick="saveGoal()">Guardar</button>
       <button class="btn bg" onclick="closeM('mNewGoal')">Cancelar</button>
@@ -1760,7 +1765,7 @@ function rSummary(){
   // Only savings added THIS month from YOUR bolsillos reduce disponible
   // Bolsillos de padres (nombre contiene "padres") no salen de tu ingreso
   const savedThisMonth=S.goals.reduce((s,g)=>{
-    if(g.name&&g.name.toLowerCase().includes('padres'))return s;
+    if(g.noDisponible)return s;
     const entries=g.entries||[];
     return s+entries.filter(e=>{const d=new Date(e.date+'T12:00:00');return d.getMonth()===CM&&d.getFullYear()===CY&&+e.amount>0;}).reduce((a,e)=>a+(+e.amount),0);
   },0);
@@ -2372,7 +2377,7 @@ function rSavings(){
       `<div style="font-size:11px;color:var(--text-muted);margin-top:8px;text-align:center">Sin entradas todavía</div>`;
 
     return `<div class="goal-card">
-      <div class="gh"><div class="ge">${g.emoji}</div><div class="gn">${g.name}</div>
+      <div class="gh"><div class="ge">${g.emoji}</div><div class="gn">${g.name}${g.noDisponible?'<span style="font-size:10px;background:#f1f5f9;color:var(--text-muted);border-radius:4px;padding:1px 5px;margin-left:4px;vertical-align:middle">no afecta disponible</span>':''}</div>
         <div class="gp">${done?'✅':hasTarget?Math.round(pct)+'%':''}</div>
       </div>
       ${hasTarget?`<div class="gbb"><div class="gbf" style="width:${pct}%"></div></div>`:''}
@@ -2905,6 +2910,7 @@ function openNewGoal(){
   eGoalIdx=null;
   document.getElementById('goalMT').textContent='Nuevo bolsillo de ahorro';
   ['gName','gTarget','gSaved','gDeadline'].forEach(id=>document.getElementById(id).value='');
+  document.getElementById('gNoDisp').checked=false;
   setEmojiDisplay('g','🎯');
   openM('mNewGoal');
 }
@@ -2912,6 +2918,7 @@ function openEditGoal(i){
   eGoalIdx=i;const g=S.goals[i];
   document.getElementById('goalMT').textContent='Editar objetivo';
   document.getElementById('gName').value=g.name;
+  document.getElementById('gNoDisp').checked=!!g.noDisponible;
   setEmojiDisplay('g',g.emoji||'🎯');
   document.getElementById('gTarget').value=g.target||'';
   document.getElementById('gSaved').value=g.saved||'';
@@ -2924,9 +2931,10 @@ function saveGoal(){
   const target=toUSD(parseFloat(document.getElementById('gTarget').value)||0,txCur.gtarget);
   const saved=toUSD(parseFloat(document.getElementById('gSaved').value)||0,txCur.gsaved);
   const deadline=document.getElementById('gDeadline').value||null;
+  const noDisponible=document.getElementById('gNoDisp').checked;
   if(!name){toast('Ingresá un nombre');return;}
-  if(eGoalIdx!==null)S.goals[eGoalIdx]={...S.goals[eGoalIdx],name,emoji,target,saved,deadline};
-  else S.goals.push({id:Date.now().toString(),name,emoji,target,saved,deadline,entries:[]});
+  if(eGoalIdx!==null)S.goals[eGoalIdx]={...S.goals[eGoalIdx],name,emoji,target,saved,deadline,noDisponible};
+  else S.goals.push({id:Date.now().toString(),name,emoji,target,saved,deadline,noDisponible,entries:[]});
   save();rSavings();rCasa();closeM('mNewGoal');toast('Objetivo guardado');
 }
 let _editEntryGoalIdx=null, _editEntryIdx=null, _isWithdrawal=false;
@@ -4300,7 +4308,7 @@ async function buildResumenSheet(sid, sheetGid){
 
     // ── Ahorro del mes (USD) — mirrors savedThisMonth in app ──
     const savsByMonth=ALL_MONTHS.map((_,m)=>
-      S.goals.reduce((s,g)=>s+(g.entries||[]).filter(e=>{
+      S.goals.filter(g=>!g.noDisponible).reduce((s,g)=>s+(g.entries||[]).filter(e=>{
         const d=new Date(e.date+'T12:00:00');
         return d.getMonth()===m&&d.getFullYear()===y;
       }).reduce((a,e)=>a+(+e.amount),0),0)
