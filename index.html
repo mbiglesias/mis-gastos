@@ -1635,7 +1635,7 @@ function rTxList(){
   if(cardFilt){
     gs=gs.filter(g=>g.cardId===cardFilt);
   }
-  else if(filt!=='Todos'){
+  else if(filt!=='Todos'&&filt!=='Crédito'){
     // Check if filt is a parent category — if so show all children too
     const filtCat=S.categories.find(c=>c.name===filt);
     if(filtCat){
