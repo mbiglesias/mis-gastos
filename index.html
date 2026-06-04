@@ -886,9 +886,9 @@ onAuthStateChanged(auth, (user) => {
   <div id="t-resumen">
     <div class="sg">
       <!-- HERO: Disponible -->
-      <div class="sc gb hero tap-card" onclick="tab('ahorros')">
+      <div class="sc gb tap-card" onclick="tab('ahorros')">
         <div class="sl li">Disponible este mes</div>
-        <div class="sv li" id="sumLeft">$0</div>
+        <div class="sv li" id="sumLeft" style="font-size:26px;letter-spacing:-.5px">$0</div>
         <div class="ss li" id="sumLeftLbl">libre este mes ›</div>
       </div>
       <!-- Secondary row -->
@@ -1147,6 +1147,7 @@ onAuthStateChanged(auth, (user) => {
     </div>
     <div class="ft" style="margin-bottom:8px">Cuotas activas</div>
     <div id="crModeSummary"></div>
+    <div id="crCardFilter"></div>
     <div id="crList"></div>
   </div>
 
@@ -1311,18 +1312,28 @@ window._getCM=()=>CM; window._getCY=()=>CY;
 // ============================================================
 const DEFAULT_CARDS=[
   {id:'itau',name:'Itaú',emoji:'🏦',color:'#ff6b00',
-   closingDays:{1:5,2:3,3:3,4:6,5:4,6:3,7:3,8:3,9:3,10:5,11:3,12:3}},
+   closingDays:{
+     2026:{1:5,2:3,3:3,4:6,5:4,6:3,7:3,8:3,9:3,10:5,11:3,12:3},
+     // Add future years here as they become available; fallback uses previous year
+   }},
   {id:'santander-visa',name:'Santander Visa',emoji:'💳',color:'#cc0000',closingDay:28},
   {id:'santander-master',name:'Santander Master',emoji:'🔴',color:'#eb001b',closingDay:30}
 ];
 
 function getCards(){return(S.cards&&S.cards.length)?S.cards:DEFAULT_CARDS;}
 
-function getClosingDay(cardId,purchaseMonth){// purchaseMonth 0-indexed
+function getClosingDay(cardId,purchaseMonth,purchaseYear){// purchaseMonth 0-indexed
   if(!cardId)return 6;// legacy fallback
   const card=getCards().find(c=>c.id===cardId);
   if(!card)return 6;
-  if(card.closingDays)return card.closingDays[purchaseMonth+1]||6;
+  if(card.closingDays){
+    // Year-keyed format (Itaú): {2026:{1:5,...}}
+    const yr=purchaseYear||new Date().getFullYear();
+    const byYear=card.closingDays[yr]||card.closingDays[Math.max(...Object.keys(card.closingDays).map(Number))];
+    if(byYear)return byYear[purchaseMonth+1]||6;
+    // Flat format (legacy): {1:5,...}
+    return card.closingDays[purchaseMonth+1]||6;
+  }
   return card.closingDay||6;
 }
 
@@ -1393,6 +1404,11 @@ function ensureDefaults() {
   if (!S.analyses) S.analyses = {};
   if (!S.dismissedAlerts) S.dismissedAlerts = {};
   if (!S.cards) S.cards = [];
+  // One-time migration: assign Itaú to credit gastos without cardId
+  if(!S._cardMigrated){
+    (S.gastos||[]).forEach(g=>{if(g.payType==='credit'&&!g.cardId)g.cardId='itau';});
+    S._cardMigrated=true;
+  }
 }
 
 // ============================================================
@@ -1531,7 +1547,7 @@ function mGastos(){
     const s=new Date(g.date+'T12:00:00');
     const inst=+g.installments||1;
     // Cierre día 6: compra el 1-6 → cobra ese mismo mes; compra el 7+ → cobra mes siguiente
-    const firstCuotaMonth = s.getDate()<=getClosingDay(g.cardId,s.getMonth()) ? s.getMonth() : s.getMonth()+1;
+    const firstCuotaMonth = s.getDate()<=getClosingDay(g.cardId,s.getMonth(),s.getFullYear()) ? s.getMonth() : s.getMonth()+1;
     const firstCuotaYear = s.getFullYear() + Math.floor(firstCuotaMonth/12);
     const fm = ((firstCuotaMonth%12)+12)%12;
     // diff = how many months after first cuota we are
@@ -1586,14 +1602,19 @@ function rTxList(){
     }
   });
   mainRow+=`<button class="chip${filt==='Crédito'?' on':''}" onclick="setF('Crédito')">🟣 Crédito</button>`;
-  getCards().forEach(c=>{
-    mainRow+=`<button class="chip${cardFilt===c.id?' on':''}" onclick="setCardF('${c.id}')" style="${cardFilt===c.id?'background:'+c.color+';color:#fff;border-color:'+c.color:''}">${c.emoji} ${c.name}</button>`;
-  });
   mainRow+=`</div>`;
 
   // Sub row (only if a parent with children is open)
   let subRow='';
-  if(openParentId){
+  if(filt==='Crédito'){
+    subRow=`<div class="chips-sub-row"><button class="chip-sub${!cardFilt?' on':''}" onclick="setCardF('')">Todas las tarjetas</button>`;
+    getCards().forEach(c=>{
+      const active=cardFilt===c.id;
+      const style=active?`background:${c.color}22;color:${c.color};border-color:${c.color}`:'';
+      subRow+=`<button class="chip-sub${active?' on':''}" onclick="setCardF('${c.id}')" style="${style}">${c.emoji} ${c.name}</button>`;
+    });
+    subRow+=`</div>`;
+  } else if(openParentId){
     const openParent=S.categories.find(c=>getCatId(c)===openParentId);
     const children=getChildren(openParentId);
     subRow=`<div class="chips-sub-row">`;
@@ -1611,7 +1632,7 @@ function rTxList(){
     gs=gs.filter(g=>g._isInstallment||g._isCardDebit);
   }
   if(cardFilt){
-    gs=gs.filter(g=>g.cardId===cardFilt||(g._isInstallment&&S.gastos.find(og=>og.id===g.id)?.cardId===cardFilt));
+    gs=gs.filter(g=>g.cardId===cardFilt);
   }
   else if(filt!=='Todos'){
     // Check if filt is a parent category — if so show all children too
@@ -1756,7 +1777,7 @@ function crDue(m,y){
     const s=new Date(g.date+'T12:00:00');
     const inst=+g.installments||1;
     // Cierre día 6: compra 1-6 → cobra ese mes; compra 7+ → cobra mes siguiente
-    const firstM=s.getDate()<=getClosingDay(g.cardId,s.getMonth())?s.getMonth():s.getMonth()+1;
+    const firstM=s.getDate()<=getClosingDay(g.cardId,s.getMonth(),s.getFullYear())?s.getMonth():s.getMonth()+1;
     const firstY=s.getFullYear()+Math.floor(firstM/12);
     const fm=((firstM%12)+12)%12;
     const diff=(y-firstY)*12+(m-fm);
@@ -2443,7 +2464,7 @@ function rCredit(){
   const active=crGs.filter(g=>{
     const s=new Date(g.date+'T12:00:00');
     const tot=+g.installments||1;
-    const firstM=s.getDate()<=getClosingDay(g.cardId,s.getMonth())?s.getMonth():s.getMonth()+1;
+    const firstM=s.getDate()<=getClosingDay(g.cardId,s.getMonth(),s.getFullYear())?s.getMonth():s.getMonth()+1;
     const firstY=s.getFullYear()+Math.floor(firstM/12);
     const fm=((firstM%12)+12)%12;
     // Recurring card-debits (1 cuota recurrente) → always active from first cuota month
@@ -2460,7 +2481,7 @@ function rCredit(){
     const st=new Date(g.date+'T12:00:00');
     const inst=+g.installments||1;
     const cuota=g.amount/inst;
-    const firstM=st.getDate()<=getClosingDay(g.cardId,st.getMonth())?st.getMonth():st.getMonth()+1;
+    const firstM=st.getDate()<=getClosingDay(g.cardId,st.getMonth(),st.getFullYear())?st.getMonth():st.getMonth()+1;
     const firstY=st.getFullYear()+Math.floor(firstM/12);
     const fm=((firstM%12)+12)%12;
     const diff=(CY-firstY)*12+(CM-fm);
@@ -2468,8 +2489,10 @@ function rCredit(){
     return s+Math.max(0,inst-paidAtViewed)*cuota;
   },0);
   // Total a pagar este mes = cuotas normales + suscripciones en tarjeta
-  const crDueItems=crDue(CM,CY);
-  const cardDebitItems=mGastos().filter(g=>g._isCardDebit);
+  const _allCrDue=crDue(CM,CY);
+  const _allCardDebit=mGastos().filter(g=>g._isCardDebit);
+  const crDueItems=S._crCardFilt?_allCrDue.filter(g=>g.cardId===S._crCardFilt):_allCrDue;
+  const cardDebitItems=S._crCardFilt?_allCardDebit.filter(g=>g.cardId===S._crCardFilt):_allCardDebit;
   const thisMon=crDueItems.reduce((s,g)=>s+(g._cuota||+g.amount/(+g.installments||1)),0)
                +cardDebitItems.reduce((s,g)=>s+(+g.amount),0);
   const thisMonCount=crDueItems.length+cardDebitItems.length;
@@ -2504,14 +2527,23 @@ function rCredit(){
       </div>`;
   }
 
+  const crCardCon=document.getElementById('crCardFilter');
+  if(crCardCon){
+    if(!S._crCardFilt)S._crCardFilt='';
+    crCardCon.innerHTML=`<div class="chips" style="margin-bottom:10px">
+      <button class="chip${!S._crCardFilt?' on':''}" onclick="S._crCardFilt='';rCredit()">Todas</button>`+
+      getCards().map(c=>`<button class="chip${S._crCardFilt===c.id?' on':''}" onclick="S._crCardFilt='${c.id}';rCredit()" style="${S._crCardFilt===c.id?'background:'+c.color+'22;color:'+c.color+';border-color:'+c.color:''}">${c.emoji} ${c.name}</button>`).join('')+
+      `</div>`;
+  }
+  const displayActive=S._crCardFilt?active.filter(g=>g.cardId===S._crCardFilt):active;
   const con=document.getElementById('crList');
-  if(!active.length){con.innerHTML=`<div class="empty"><div class="ee">✅</div><div class="et">Sin deudas en crédito</div><div class="es">Tus compras en cuotas aparecen acá</div></div>`;return;}
-  con.innerHTML=active.map(g=>{
+  if(!displayActive.length){con.innerHTML=`<div class="empty"><div class="ee">✅</div><div class="et">Sin deudas en crédito</div><div class="es">Tus compras en cuotas aparecen acá</div></div>`;return;}
+  con.innerHTML=displayActive.map(g=>{
     const inst=+g.installments||1;
     const cuota=g.amount/inst;
     const s=new Date(g.date+'T12:00:00');
     // Day-6 cutoff: purchases on or before the 6th → first cuota same month
-    const firstM=s.getDate()<=getClosingDay(g.cardId,s.getMonth())?s.getMonth():s.getMonth()+1;
+    const firstM=s.getDate()<=getClosingDay(g.cardId,s.getMonth(),s.getFullYear())?s.getMonth():s.getMonth()+1;
     const firstY=s.getFullYear()+Math.floor(firstM/12);
     const fm=((firstM%12)+12)%12;
     const fy=firstY;
@@ -3018,7 +3050,7 @@ function toggleChipGroup(parentId, parentName){
   rTxList();
 }
 
-function setCardF(id){cardFilt=cardFilt===id?'':id;filt='Todos';renderAll();}
+function setCardF(id){cardFilt=id;filt='Crédito';rTxList();}
 function setF(c){filt=c;cardFilt='';rTxList();}
 
 // ============================================================
@@ -4334,17 +4366,19 @@ async function writeAndFormat(sid, tabName, gid, values, fmtRequests, colWidths)
 async function buildGastosSheet(sid, gid){
   const BLUE=hex2rgb('#1a73e8');
   const ALT =hex2rgb('#f8f9fa');
-  const header=['Fecha','Descripción','Categoría','Monto (USD)','Moneda orig.','Monto orig.','Forma de pago','Cuotas','Nota','Recurrente'];
-  const rows=S.gastos.slice().sort((a,b)=>new Date(b.date)-new Date(a.date)).map(g=>[
-    g.date, g.desc, g.category,
-    +(+g.amount).toFixed(2),
-    g.origCur||'USD',
-    +(g.origAmount||+g.amount),
-    g.payType==='credit'?'Crédito':'Débito',
-    +g.installments||1,
-    g.note||'',
-    g.recurring?'Sí':'No'
-  ]);
+  const header=['Fecha','Descripción','Categoría','Monto (USD)','Moneda orig.','Monto orig.','Forma de pago','Tarjeta','Cuotas','Nota','Recurrente'];
+  const rows=S.gastos.slice().sort((a,b)=>new Date(b.date)-new Date(a.date)).map(g=>{
+    const gc=g.payType==='credit'?getCards().find(c=>c.id===g.cardId):null;
+    return [g.date,g.desc,g.category,
+      +(+g.amount).toFixed(2),
+      g.origCur||'USD',
+      +(g.origAmount||+g.amount),
+      g.payType==='credit'?'Crédito':'Débito',
+      gc?gc.name:'',
+      +g.installments||1,
+      g.note||'',
+      g.recurring?'Sí':'No'];
+  });
 
   const fmtReqs=[];
   // Header row: blue bg, white bold text
