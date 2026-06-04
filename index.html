@@ -2304,7 +2304,7 @@ function rAlerts(){
             <div style="font-size:11px;color:#dc2626">Excediste en ${fmt(sp-bu)}</div>
           </div>
         </div>
-        <button onclick="dismissAlert('${monthKey}','${cat.name.replace(/'/g,&quot;\\'&quot;)}');event.stopPropagation()"
+        <button onclick="dismissAlert('${monthKey}',${alerts.indexOf(alerts.find(a=>a.cat.name===cat.name))});event.stopPropagation()"
           style="background:none;border:none;font-size:16px;cursor:pointer;color:#dc2626;padding:4px;line-height:1;flex-shrink:0">✕</button>
       </div>
       <div style="display:flex;justify-content:space-between;font-size:12px;color:var(--text-muted);margin-bottom:6px">
@@ -2318,9 +2318,19 @@ function rAlerts(){
   con.innerHTML=html;
 }
 
-window.dismissAlert=function(monthKey,catName){
+window.dismissAlert=function(monthKey,idx){
   if(!S.dismissedAlerts)S.dismissedAlerts={};
   if(!S.dismissedAlerts[monthKey])S.dismissedAlerts[monthKey]=[];
+  // idx can be a number (from alert array) or a string (cat name)
+  const con=document.getElementById('alertsContainer');
+  const btns=con?con.querySelectorAll('button[onclick]'):[];
+  // Re-resolve by index from current alerts
+  const gs=mGastos();const debitGs=gs.filter(g=>g.payType!=='credit'||g._isCardDebit);const crGs=crDue(CM,CY);const allGs=[...debitGs,...crGs];
+  const dismissed=(S.dismissedAlerts&&S.dismissedAlerts[monthKey])||[];
+  const alerts=[];
+  S.categories.forEach(cat=>{const bu=getBudgetUSD(cat);if(!bu||bu<=0)return;if(dismissed.includes(cat.name))return;const sp=allGs.filter(g=>g.category===cat.name).reduce((s,g)=>s+(g._cuota||+g.amount),0);if(sp>bu)alerts.push(cat.name);});
+  const catName=typeof idx==='number'?alerts[idx]:idx;
+  if(!catName)return;
   if(!S.dismissedAlerts[monthKey].includes(catName))S.dismissedAlerts[monthKey].push(catName);
   save();rAlerts();
 };
