@@ -686,6 +686,73 @@ onAuthStateChanged(auth, (user) => {
   </div>
 </div>
 
+<div class="mo hid" id="mQuickDebtPay" onclick="overlayClose(event,'mQuickDebtPay')">
+  <div class="modal"><div class="mh"></div>
+    <div class="mt">💸 Pago de deuda</div>
+    <div class="fr f1" style="margin-bottom:8px">
+      <div class="fld"><div class="fl">Deuda</div>
+        <select class="fi" id="qdDebtId" onchange="qdUpdateRemaining()">
+          <option value="">— Seleccionar deuda —</option>
+        </select>
+      </div>
+    </div>
+    <div id="qdRemainingRow" style="display:none;margin-bottom:8px;padding:8px 10px;background:var(--bg);border-radius:var(--r);font-size:12px;color:var(--text-muted)">
+      Saldo pendiente: <strong id="qdRemainingAmt"></strong>
+    </div>
+    <div class="fr" style="margin-bottom:8px">
+      <div class="fld">
+        <div class="fl-row"><div class="fl">Monto</div><div class="mini-cur" id="cur-qdamt"><button class="mini-cur-btn on" onclick="selTxCur('qdamt','USD',this)">USD</button><button class="mini-cur-btn" onclick="selTxCur('qdamt','UYU',this)">UYU</button></div></div>
+        <input type="number" class="fi" id="qdAmount" placeholder="0">
+      </div>
+      <div class="fld"><div class="fl">Fecha</div>
+        <div class="date-wrap" onclick="this.querySelector('input[type=date]').showPicker?this.querySelector('input[type=date]').showPicker():this.querySelector('input[type=date]').click()">
+          <input type="date" class="fi" id="qdDate" onchange="updDateDisplay('qdDate','qdDateDisp')">
+          <div class="date-display" style="cursor:pointer" id="qdDateDisp"><span>DD/MM/AAAA</span><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="4" width="18" height="18" rx="2"/><line x1="16" y1="2" x2="16" y2="6"/><line x1="8" y1="2" x2="8" y2="6"/><line x1="3" y1="10" x2="21" y2="10"/></svg></div>
+        </div>
+      </div>
+    </div>
+    <div class="fr f1" style="margin-bottom:16px">
+      <div class="fld"><div class="fl">Nota</div><input class="fi" id="qdNote" placeholder="Opcional..."></div>
+    </div>
+    <div style="display:flex;gap:8px">
+      <button class="btn bgn" style="flex:1" onclick="confirmQuickDebtPay()">Registrar pago</button>
+      <button class="btn bg" onclick="closeM('mQuickDebtPay')">Cancelar</button>
+    </div>
+  </div>
+</div>
+
+<div class="mo hid" id="mQuickSaving" onclick="overlayClose(event,'mQuickSaving')">
+  <div class="modal"><div class="mh"></div>
+    <div class="mt">💰 Registrar ahorro</div>
+    <div class="fr f1" style="margin-bottom:8px">
+      <div class="fld"><div class="fl">Bolsillo</div>
+        <select class="fi" id="qsGoalIdx">
+          <option value="">— Seleccionar bolsillo —</option>
+        </select>
+      </div>
+    </div>
+    <div class="fr" style="margin-bottom:8px">
+      <div class="fld">
+        <div class="fl-row"><div class="fl">Monto</div><div class="mini-cur" id="cur-qsamt"><button class="mini-cur-btn on" onclick="selTxCur('qsamt','USD',this)">USD</button><button class="mini-cur-btn" onclick="selTxCur('qsamt','UYU',this)">UYU</button></div></div>
+        <input type="number" class="fi" id="qsAmount" placeholder="0">
+      </div>
+      <div class="fld"><div class="fl">Tipo</div>
+        <select class="fi" id="qsType">
+          <option value="deposit">💚 Depósito</option>
+          <option value="withdrawal">🔴 Retiro</option>
+        </select>
+      </div>
+    </div>
+    <div class="fr f1" style="margin-bottom:16px">
+      <div class="fld"><div class="fl">Nota</div><input class="fi" id="qsNote" placeholder="Opcional..."></div>
+    </div>
+    <div style="display:flex;gap:8px">
+      <button class="btn bgn" style="flex:1" onclick="confirmQuickSaving()">Guardar</button>
+      <button class="btn bg" onclick="closeM('mQuickSaving')">Cancelar</button>
+    </div>
+  </div>
+</div>
+
 <div class="mo hid" id="mNewGoal" onclick="overlayClose(event,'mNewGoal')">
   <div class="modal"><div class="mh"></div>
     <div class="mt" id="goalMT">Nuevo bolsillo de ahorro</div>
@@ -1158,10 +1225,10 @@ onAuthStateChanged(auth, (user) => {
       <div class="shval" id="savTot">$0</div>
       <div class="shsub" id="savSub">en tus objetivos</div>
     </div>
+    <div id="savingsProjection" style="margin-bottom:12px"></div>
     <div id="goalList"></div>
     <button class="btn bgn" onclick="openNewGoal()" style="width:100%;margin-top:4px">+ Nuevo bolsillo de ahorro</button>
 
-    <div id="savingsProjection" style="margin-top:16px;border-top:1px solid var(--border);padding-top:16px"></div>
     <div style="margin-top:20px;border-top:1px solid var(--border);padding-top:16px;padding-bottom:32px">
       <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:10px">
         <div style="font-size:10px;font-weight:700;color:var(--text-muted);text-transform:uppercase;letter-spacing:.6px">💸 Deudas</div>
@@ -1226,16 +1293,16 @@ onAuthStateChanged(auth, (user) => {
         <div style="background:rgba(255,255,255,.12);border-radius:10px;padding:10px">
           <div style="font-size:9px;opacity:.7;margin-bottom:3px;text-transform:uppercase">Tengo</div>
           <div style="font-size:15px;font-weight:700" id="casaTengo">—</div>
-          <div style="font-size:9px;opacity:.6">boleto + ahorros</div>
+          <div style="font-size:9px;opacity:.6">boleto + ahorros + padres</div>
         </div>
         <div style="background:rgba(255,255,255,.12);border-radius:10px;padding:10px">
-          <div style="font-size:9px;opacity:.7;margin-bottom:3px;text-transform:uppercase">Pedirle a padres</div>
-          <div style="font-size:15px;font-weight:700" id="casaPadresNecesario">—</div>
-          <div style="font-size:9px;opacity:.6" id="casaPadresLbl">de USD 30,000</div>
+          <div style="font-size:9px;opacity:.7;margin-bottom:3px;text-transform:uppercase">De padres</div>
+          <div style="font-size:15px;font-weight:700" id="casaAportePadresDisp">—</div>
+          <div style="font-size:9px;opacity:.6">recibido en ahorros</div>
         </div>
         <div style="background:rgba(74,222,128,.2);border-radius:10px;padding:10px;border:1px solid rgba(74,222,128,.3)">
           <div style="font-size:9px;opacity:.7;margin-bottom:3px;text-transform:uppercase">Te sobra</div>
-          <div style="font-size:15px;font-weight:700" id="casaRemanente">—</div>
+          <div style="font-size:15px;font-weight:700" id="casaColchon">—</div>
           <div style="font-size:9px;opacity:.6">colchón</div>
         </div>
       </div>
@@ -1284,6 +1351,8 @@ onAuthStateChanged(auth, (user) => {
 <div id="fabMenu" style="display:none;position:fixed;bottom:96px;right:20px;z-index:40;flex-direction:column;gap:8px;align-items:flex-end">
   <button onclick="closeFab();tab('escanear')" style="display:flex;align-items:center;gap:8px;background:var(--white);border:none;border-radius:24px;padding:10px 16px;box-shadow:var(--shm);font-family:inherit;font-size:13px;font-weight:600;cursor:pointer;white-space:nowrap">📸 Escanear recibo</button>
   <button onclick="closeFab();openQuickAdd()" style="display:flex;align-items:center;gap:8px;background:var(--white);border:none;border-radius:24px;padding:10px 16px;box-shadow:var(--shm);font-family:inherit;font-size:13px;font-weight:600;cursor:pointer;white-space:nowrap">✏️ Gasto rápido</button>
+  <button onclick="closeFab();openQuickSaving()" style="display:flex;align-items:center;gap:8px;background:var(--white);border:none;border-radius:24px;padding:10px 16px;box-shadow:var(--shm);font-family:inherit;font-size:13px;font-weight:600;cursor:pointer;white-space:nowrap">💰 Ahorro rápido</button>
+  <button onclick="closeFab();openQuickDebtPay()" style="display:flex;align-items:center;gap:8px;background:var(--white);border:none;border-radius:24px;padding:10px 16px;box-shadow:var(--shm);font-family:inherit;font-size:13px;font-weight:600;cursor:pointer;white-space:nowrap">💸 Pago de deuda</button>
 </div>
 <div id="fabOverlay" style="display:none;position:fixed;inset:0;z-index:39" onclick="closeFab()"></div>
 <button class="fab" id="fabBtn" onclick="toggleFab()" title="Agregar">+</button>
@@ -1555,7 +1624,13 @@ function mGastos(){
     const diff = (CY-firstCuotaYear)*12+(CM-fm);
     if(g.recurring&&inst===1&&diff>=0){
       // Recurring 1-cuota on credit card → treat as debit (subscription/fixed payment)
-      const virtDate=`${CY}-${String(CM+1).padStart(2,'0')}-${String(s.getDate()).padStart(2,'0')}`;
+      // Determine correct billing month: if purchase day > closing day, charge is on NEXT month's bill
+      // So what appears in CM's bill is last month's occurrence
+      const purchaseDay=s.getDate();
+      const closingDayCM=g.payType==='credit'?getClosingDay(g.cardId,CM,CY):31;
+      let vM=CM,vY=CY;
+      if(g.payType==='credit'&&purchaseDay>closingDayCM){vM=CM-1;if(vM<0){vM=11;vY=CY-1;}}
+      const virtDate=`${vY}-${String(vM+1).padStart(2,'0')}-${String(purchaseDay).padStart(2,'0')}`;
       recurringDue.push({...g,date:virtDate,_isRecurring:true,_isCardDebit:true,id:g.id+'_rec_'+CY+'_'+CM});
     } else if(g.recurring&&diff>=0){
       // Recurring multi-cuota credit: show every month from first cuota onwards
@@ -1701,7 +1776,8 @@ function rTxList(){
     const its=grp[key];
     const dateStr=key.startsWith('inst-')?key.slice(5,15):key;
     const d=new Date(dateStr+'T12:00:00');
-    h+=`<div class="txg">${d.toLocaleDateString('es-UY',{weekday:'short',day:'numeric',month:'short'})}</div>`;
+    const _isToday=d.toDateString()===new Date().toDateString();
+    h+=`<div class="txg"${_isToday?' data-today="1"':''}>${d.toLocaleDateString('es-UY',{weekday:'short',day:'numeric',month:'short'})}${_isToday?' <span style="font-size:9px;background:var(--accent);color:#fff;border-radius:4px;padding:1px 5px;margin-left:4px">hoy</span>':''}</div>`;
     its.forEach(g=>{
       const cat=S.categories.find(c=>c.name===g.category);
       const em=cat?cat.emoji:'📦';const col=cat?cat.color:'#6b7280';
@@ -1713,7 +1789,9 @@ function rTxList(){
 
       const card=g.cardId?getCards().find(c=>c.id===g.cardId):null;
       const cardBadge=card?`<span class="bdg" style="background:${card.color}22;color:${card.color};border:1px solid ${card.color}44">${card.emoji} ${card.name}</span>`:'';
-      const badge=g.debtId
+      const badge=g.isDebtPayment
+        ? `<span class="bdg" style="background:#fce7f3;color:#be185d">💸 pago deuda</span>`
+        : g.debtId
         ? `<span class="bdg" style="background:#fce7f3;color:#be185d">💸 deuda</span>`
         : g._isCardDebit
         ? `<span class="bdg" style="background:#dbeafe;color:#2563eb">💳 tarjeta</span>`
@@ -1768,6 +1846,11 @@ function rTxList(){
     });
   });
   h+='</div>';con.innerHTML=h;
+  // Anchor scroll to today
+  requestAnimationFrame(()=>{
+    const todayEl=con.querySelector('[data-today]');
+    if(todayEl)todayEl.scrollIntoView({block:'start',behavior:'instant'});
+  });
 }
 
 
@@ -1914,7 +1997,7 @@ function rCatRows(){
   if(!window._catRowMode)window._catRowMode='debito';
   if(!window._catRowOpen)window._catRowOpen={};
   const mode=window._catRowMode;
-  const debitGs=mGastos().filter(g=>g.payType!=='credit'||g._isCardDebit);
+  const debitGs=mGastos().filter(g=>(g.payType!=='credit'||g._isCardDebit)&&!g.isDebtPayment);
   const creditDueGs=crDue(CM,CY);
   const btnC=document.getElementById('btnCatCredito');
   const btnD=document.getElementById('btnCatDebito');
@@ -2297,7 +2380,7 @@ function rAlerts(){
 
   // Collect categories with budgets and check spend %
   const gs=mGastos();
-  const debitGs=gs.filter(g=>g.payType!=='credit'||g._isCardDebit);
+  const debitGs=gs.filter(g=>(g.payType!=='credit'||g._isCardDebit)&&!g.isDebtPayment);
   const crGs=crDue(CM,CY);
   const allGs=[...debitGs,...crGs];
 
@@ -2410,7 +2493,7 @@ function rSavingsProjection(){
     <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:10px">
       <div style="font-size:10px;font-weight:700;color:var(--text-muted);text-transform:uppercase;letter-spacing:.6px">📈 Proyección de ahorro</div>
     </div>
-    <div style="background:var(--card);border:1px solid var(--border);border-radius:var(--R);padding:14px">
+    <div style="background:var(--white);border:1px solid var(--border);border-radius:var(--R);padding:14px;box-shadow:var(--sh)">
       <div style="display:flex;gap:10px;margin-bottom:14px">
         <div style="flex:1;background:var(--bg);border-radius:10px;padding:10px;text-align:center">
           <div style="font-size:11px;color:var(--text-muted);margin-bottom:2px">Promedio/mes</div>
@@ -2450,6 +2533,100 @@ function rSavingsProjection(){
         Basado en tu promedio de los últimos ${sample.length} meses con ahorro registrado.
       </div>
     </div>`;
+}
+
+function openQuickDebtPay(){
+  const sel=document.getElementById('qdDebtId');
+  if(!sel)return;
+  const activeDebts=(S.debts||[]).filter(d=>{
+    const paid=S.gastos.filter(g=>g.debtId===d.id).reduce((s,g)=>s+(+g.amount),0);
+    return paid<+d.total;
+  });
+  sel.innerHTML='<option value="">— Seleccionar deuda —</option>'+
+    activeDebts.map(d=>{
+      const paid=S.gastos.filter(g=>g.debtId===d.id).reduce((s,g)=>s+(+g.amount),0);
+      const rem=+d.total-paid;
+      return `<option value="${d.id}">${d.desc}${d.person?' ('+d.person+')':''} — ${d.currency} ${rem.toLocaleString('es-UY',{maximumFractionDigits:0})} pendiente</option>`;
+    }).join('');
+  document.getElementById('qdAmount').value='';
+  document.getElementById('qdNote').value='';
+  document.getElementById('qdDate').value=new Date().toISOString().slice(0,10);
+  updDateDisplay('qdDate','qdDateDisp');
+  document.getElementById('qdRemainingRow').style.display='none';
+  openM('mQuickDebtPay');
+}
+
+window.qdUpdateRemaining=function(){
+  const debtId=document.getElementById('qdDebtId').value;
+  const row=document.getElementById('qdRemainingRow');
+  const amtEl=document.getElementById('qdRemainingAmt');
+  if(!debtId){row.style.display='none';return;}
+  const d=(S.debts||[]).find(x=>x.id===debtId);
+  if(!d){row.style.display='none';return;}
+  const paid=S.gastos.filter(g=>g.debtId===d.id).reduce((s,g)=>s+(+g.amount),0);
+  const rem=+d.total-paid;
+  amtEl.textContent=d.currency+' '+rem.toLocaleString('es-UY',{maximumFractionDigits:0});
+  row.style.display='block';
+  // Prefill with remaining amount
+  document.getElementById('qdAmount').value=rem>0?rem.toFixed(0):'';
+};
+
+function confirmQuickDebtPay(){
+  const debtId=document.getElementById('qdDebtId').value;
+  const amt=parseFloat(document.getElementById('qdAmount').value);
+  const date=document.getElementById('qdDate').value;
+  const note=document.getElementById('qdNote').value.trim();
+  if(!debtId){toast('Seleccioná una deuda');return;}
+  if(!amt||isNaN(amt)||amt<=0){toast('Ingresá un monto');return;}
+  if(!date){toast('Ingresá una fecha');return;}
+  const d=(S.debts||[]).find(x=>x.id===debtId);
+  if(!d){toast('Deuda no encontrada');return;}
+  const usdAmt=toUSD(amt,txCur.qdamt||'USD');
+  // Save as gasto with isDebtPayment:true — reduces disponible but NOT budget categories
+  S.gastos.push({
+    id:Date.now()+Math.random().toString(36).substr(2,5),
+    desc:'Pago: '+d.desc,
+    amount:usdAmt,
+    category:'💸 Deudas',
+    date,
+    note,
+    payType:'debit',
+    installments:1,
+    recurring:false,
+    debtId,
+    isDebtPayment:true
+  });
+  save();renderAll();closeM('mQuickDebtPay');
+  toast('Pago registrado ✓');
+}
+
+function openQuickSaving(){
+  // Populate bolsillo selector
+  const sel=document.getElementById('qsGoalIdx');
+  if(!sel)return;
+  sel.innerHTML='<option value="">— Seleccionar bolsillo —</option>'+
+    S.goals.map((g,i)=>`<option value="${i}">${g.emoji||'🎯'} ${g.name}</option>`).join('');
+  document.getElementById('qsAmount').value='';
+  document.getElementById('qsNote').value='';
+  document.getElementById('qsType').value='deposit';
+  openM('mQuickSaving');
+}
+
+function confirmQuickSaving(){
+  const idx=parseInt(document.getElementById('qsGoalIdx').value);
+  const amt=parseFloat(document.getElementById('qsAmount').value);
+  const type=document.getElementById('qsType').value;
+  const note=document.getElementById('qsNote').value.trim();
+  if(isNaN(idx)||isNaN(amt)||!amt){toast('Completá bolsillo y monto');return;}
+  const g=S.goals[idx];
+  if(!g){toast('Bolsillo no encontrado');return;}
+  const usdAmt=toUSD(amt,txCur.qsamt||'USD');
+  const finalAmt=type==='withdrawal'?-Math.abs(usdAmt):Math.abs(usdAmt);
+  if(!g.entries)g.entries=[];
+  g.entries.push({date:new Date().toISOString().slice(0,10),amount:finalAmt,note});
+  g.saved=(+g.saved||0)+finalAmt;
+  save();rSavings();closeM('mQuickSaving');
+  toast(type==='withdrawal'?`Retiro registrado en ${g.name} ✓`:`Ahorro guardado en ${g.name} ✓`);
 }
 
 window.toggleCatRow=function(catId){
@@ -4879,10 +5056,10 @@ function rCasa(){
 
   setEl('casaEnCuenta',fmtUSD(enCuentaPropio));
   setEl('casaEnCuenta2',fmtUSD(enCuentaTotal));
-  setEl('casaTengo',fmtUSD(enCuentaPropio+boletoPagado));
+  setEl('casaTengo',fmtUSD(enCuentaPropio+boletoPagado+padresEnCuenta));
   setEl('casaFaltaSin',fmtUSD(faltaSinEscrituras));
   setEl('casaFaltaCon',fmtUSD(faltaConEscrituras));
-  setEl('casaAportePadresDisp',fmtUSD(aportePadres));
+  setEl('casaAportePadresDisp',fmtUSD(padresEnCuenta));
   setEl('casaColchon',(colchon<0?'-':'')+fmtUSD(colchon));
 
   const progressBar=document.getElementById('casaProgressBar');
