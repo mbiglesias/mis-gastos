@@ -1405,10 +1405,8 @@ function ensureDefaults() {
   if (!S.dismissedAlerts) S.dismissedAlerts = {};
   if (!S.cards) S.cards = [];
   // One-time migration: assign Itaú to credit gastos without cardId
-  if(!S._cardMigrated){
-    (S.gastos||[]).forEach(g=>{if(g.payType==='credit'&&!g.cardId)g.cardId='itau';});
-    S._cardMigrated=true;
-  }
+  // Always ensure credit gastos have a card assigned (idempotent migration)
+  (S.gastos||[]).forEach(g=>{if(g.payType==='credit'&&!g.cardId)g.cardId='itau';});
 }
 
 // ============================================================
@@ -1444,7 +1442,10 @@ function init() {
             if (data.gastos || data.categories || data.salary) {
               Object.assign(S, data);
               ensureDefaults();
-              localStorage.setItem('mg4', json);
+              // Save AFTER ensureDefaults so migration is persisted
+              const migratedJson = JSON.stringify(S);
+              localStorage.setItem('mg4', migratedJson);
+              if(window._fbSave) window._fbSave(migratedJson).catch(e=>console.error('Migration save error:',e));
             }
           }
         } catch(e) { console.error('Cloud load error:', e); }
