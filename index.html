@@ -1902,7 +1902,8 @@ window.goToday=function(){
 function rSummary(){
   const gs=mGastos();
   const debitGs=gs.filter(g=>g.payType!=='credit'||g._isCardDebit);
-  const spent=debitGs.reduce((s,g)=>s+(+g.amount),0);
+  const spent=debitGs.reduce((s,g)=>s+(+g.amount),0); // includes debt payments — reduces disponible
+  const budgetSpent=debitGs.filter(g=>!g.isDebtPayment).reduce((s,g)=>s+(+g.amount),0); // excludes debt payments — for budget comparison
   // In 'consumo' mode, add full credit purchases from this month to "gastado"
   const crMode=S.crMode||'consumo';
   // Gastado = débito only. Crédito se muestra separado en la tab Crédito
@@ -1942,7 +1943,7 @@ function rSummary(){
   document.getElementById('sumLeft').textContent=fmt(Math.abs(left));
   // Potencial ahorro = disponible - presupuesto total (what's left if you stick to budget)
   const budTotAll=S.categories.reduce((s,c)=>s+getBudgetUSD(c),0);
-  const potSav=left-budTotAll;
+  const potSav=(totalIncome-budTotAll-savedThisMonth-creditThisMonth); // what's left if you spend exactly the budget
   const psCard=document.getElementById('potentialSavingsCard');
   const psAmt=document.getElementById('potentialSavingsAmt');
   const psLbl=document.getElementById('potentialSavingsLbl');
@@ -1977,9 +1978,9 @@ function rSummary(){
   if(budBanner){
     if(budTot>0){
       budBanner.style.display='block';
-      document.getElementById('budgetSpent').textContent=fmt(spent);
+      document.getElementById('budgetSpent').textContent=fmt(budgetSpent);
       document.getElementById('budgetTotal').textContent=fmt(budTot);
-      const pct=Math.min((spent/budTot)*100,100);
+      const pct=Math.min((budgetSpent/budTot)*100,100);
       document.getElementById('budgetPct').textContent=Math.round(pct)+'%';
       document.getElementById('budgetPct').style.color=pct>90?'var(--red)':pct>70?'var(--orange)':'var(--text-muted)';
       const f=document.getElementById('progFill');
