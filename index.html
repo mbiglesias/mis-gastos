@@ -894,6 +894,7 @@ onAuthStateChanged(auth, (user) => {
       </div>
     </div>
     <!-- Budget banner -->
+    <div id="alertsContainer"></div>
     <div id="budgetBanner" style="display:none;background:var(--white);border-radius:var(--R);padding:12px 14px;margin-bottom:10px;box-shadow:var(--sh);cursor:pointer" onclick="tab('presupuestos')">
       <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:6px">
         <div style="font-size:11px;font-weight:700;color:var(--text-muted);text-transform:uppercase;letter-spacing:.5px">Presupuesto mensual</div>
@@ -1144,6 +1145,7 @@ onAuthStateChanged(auth, (user) => {
     <div id="goalList"></div>
     <button class="btn bgn" onclick="openNewGoal()" style="width:100%;margin-top:4px">+ Nuevo bolsillo de ahorro</button>
 
+    <div id="savingsProjection" style="margin-top:16px;border-top:1px solid var(--border);padding-top:16px"></div>
     <div style="margin-top:20px;border-top:1px solid var(--border);padding-top:16px;padding-bottom:32px">
       <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:10px">
         <div style="font-size:10px;font-weight:700;color:var(--text-muted);text-transform:uppercase;letter-spacing:.6px">💸 Deudas</div>
@@ -1353,6 +1355,7 @@ function ensureDefaults() {
   if (!S.crMode) S.crMode = 'consumo';
   if (!S.debts) S.debts = [];
   if (!S.analyses) S.analyses = {};
+  if (!S.dismissedAlerts) S.dismissedAlerts = {};
 }
 
 // ============================================================
@@ -1734,7 +1737,7 @@ function renderAll(){
   const btnHoy=document.getElementById('btnHoy');
   if(btnHoy)btnHoy.style.display=(CM===now.getMonth()&&CY===now.getFullYear())?'none':'inline-block';
   const sd2=document.getElementById('salDisp2');if(sd2)sd2.textContent=fmt(S.salary);
-  rSummary();rCatRows();rTxList();rIngresos();rCredit();rSavings();rBudget();rAnual();updCrModeUI();rCasa();popDebtLink();rAnalisis();
+  rSummary();rCatRows();rTxList();rIngresos();rCredit();rSavings();rBudget();rAnual();updCrModeUI();rCasa();popDebtLink();rAnalisis();rAlerts();
 }
 
 window.goToday=function(){
@@ -2203,6 +2206,166 @@ async function generateAnalysis(key,y,m){
 }
 
 
+
+// ============================================================
+// BUDGET ALERTS
+// ============================================================
+function rAlerts(){
+  const con=document.getElementById('alertsContainer');
+  if(!con)return;
+  const monthKey=`${CY}-${String(CM+1).padStart(2,'0')}`;
+  const dismissed=(S.dismissedAlerts&&S.dismissedAlerts[monthKey])||[];
+
+  // Collect categories with budgets and check spend %
+  const gs=mGastos();
+  const debitGs=gs.filter(g=>g.payType!=='credit'||g._isCardDebit);
+  const crGs=crDue(CM,CY);
+  const allGs=[...debitGs,...crGs];
+
+  const alerts=[];
+  S.categories.forEach(cat=>{
+    const bu=getBudgetUSD(cat);
+    if(!bu||bu<=0)return;
+    if(dismissed.includes(cat.name))return;
+    const sp=allGs.filter(g=>g.category===cat.name).reduce((s,g)=>s+(g._cuota||+g.amount),0);
+    const pct=sp/bu;
+    if(pct>=0.8){
+      alerts.push({cat,sp,bu,pct,over:pct>=1});
+    }
+  });
+
+  if(!alerts.length){con.innerHTML='';return;}
+
+  const html=`<div style="margin-bottom:10px">
+    ${alerts.map(({cat,sp,bu,pct,over})=>`
+    <div style="background:${over?'#fef2f2':'#fffbeb'};border:1px solid ${over?'#fca5a5':'#fcd34d'};border-radius:var(--R);padding:12px 14px;margin-bottom:8px">
+      <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:8px">
+        <div style="display:flex;align-items:center;gap:8px">
+          <span style="font-size:18px">${cat.emoji}</span>
+          <div>
+            <div style="font-weight:700;font-size:14px">${cat.name}</div>
+            <div style="font-size:11px;color:${over?'#dc2626':'#b45309'}">
+              ${over?`Excediste en ${fmt(sp-bu)}`:`${Math.round(pct*100)}% del presupuesto usado`}
+            </div>
+          </div>
+        </div>
+        <button onclick="dismissAlert('${monthKey}','${cat.name.replace(/'/g,"\\'")}');event.stopPropagation()"
+          style="background:none;border:none;font-size:16px;cursor:pointer;color:${over?'#dc2626':'#b45309'};padding:4px;line-height:1;flex-shrink:0">✕</button>
+      </div>
+      <div style="display:flex;justify-content:space-between;font-size:12px;color:var(--text-muted);margin-bottom:6px">
+        <span>${fmt(sp)} gastado</span>
+        <span>límite ${fmt(bu)}</span>
+      </div>
+      <div style="background:${over?'#fca5a5':'#fde68a'};border-radius:99px;height:5px">
+        <div style="background:${over?'#dc2626':'#d97706'};height:5px;border-radius:99px;width:${Math.min(pct*100,100)}%;transition:width .4s"></div>
+      </div>
+    </div>`).join('')}
+  </div>`;
+  con.innerHTML=html;
+}
+
+window.dismissAlert=function(monthKey,catName){
+  if(!S.dismissedAlerts)S.dismissedAlerts={};
+  if(!S.dismissedAlerts[monthKey])S.dismissedAlerts[monthKey]=[];
+  if(!S.dismissedAlerts[monthKey].includes(catName))S.dismissedAlerts[monthKey].push(catName);
+  save();rAlerts();
+};
+
+// ============================================================
+// SAVINGS PROJECTION
+// ============================================================
+function rSavingsProjection(){
+  const con=document.getElementById('savingsProjection');
+  if(!con)return;
+
+  // Calculate savedThisMonth for last 6 months
+  const months=[];
+  for(let i=1;i<=6;i++){
+    let d=new Date(CY,CM-i,1);
+    const m=d.getMonth(),y=d.getFullYear();
+    const saved=S.goals.reduce((s,g)=>{
+      if(g.noDisponible)return s;
+      return s+(g.entries||[]).filter(e=>{
+        const ed=new Date(e.date+'T12:00:00');
+        return ed.getMonth()===m&&ed.getFullYear()===y&&+e.amount>0;
+      }).reduce((a,e)=>a+(+e.amount),0);
+    },0);
+    months.push({m,y,saved});
+  }
+
+  const withData=months.filter(m=>m.saved>0);
+  if(withData.length<2){
+    con.innerHTML='';
+    return;
+  }
+
+  // Use last 3 months with data (or fewer if not available)
+  const sample=withData.slice(0,3);
+  const avg=sample.reduce((s,m)=>s+m.saved,0)/sample.length;
+
+  // Trend: compare last month vs average of previous
+  const trend=sample.length>=2?(sample[0].saved-sample[1].saved):0;
+  const trendPct=sample[1]&&sample[1].saved>0?(trend/sample[1].saved*100):0;
+
+  // Current month savings so far
+  const currentSaved=S.goals.reduce((s,g)=>{
+    if(g.noDisponible)return s;
+    return s+(g.entries||[]).filter(e=>{
+      const ed=new Date(e.date+'T12:00:00');
+      return ed.getMonth()===CM&&ed.getFullYear()===CY&&+e.amount>0;
+    }).reduce((a,e)=>a+(+e.amount),0);
+  },0);
+
+  const proj6=avg*6;
+  const proj12=avg*12;
+  const MNAMES=['Ene','Feb','Mar','Abr','May','Jun','Jul','Ago','Sep','Oct','Nov','Dic'];
+
+  con.innerHTML=`
+    <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:10px">
+      <div style="font-size:10px;font-weight:700;color:var(--text-muted);text-transform:uppercase;letter-spacing:.6px">📈 Proyección de ahorro</div>
+    </div>
+    <div style="background:var(--card);border:1px solid var(--border);border-radius:var(--R);padding:14px">
+      <div style="display:flex;gap:10px;margin-bottom:14px">
+        <div style="flex:1;background:var(--bg);border-radius:10px;padding:10px;text-align:center">
+          <div style="font-size:11px;color:var(--text-muted);margin-bottom:2px">Promedio/mes</div>
+          <div style="font-size:17px;font-weight:700;color:var(--green)">${fmt(avg)}</div>
+          <div style="font-size:10px;color:${trend>=0?'var(--green)':'var(--red)'}">
+            ${trend>=0?'▲':'▼'} ${Math.abs(trendPct).toFixed(0)}% vs mes ant.
+          </div>
+        </div>
+        <div style="flex:1;background:var(--bg);border-radius:10px;padding:10px;text-align:center">
+          <div style="font-size:11px;color:var(--text-muted);margin-bottom:2px">Este mes</div>
+          <div style="font-size:17px;font-weight:700">${fmt(currentSaved)}</div>
+          <div style="font-size:10px;color:var(--text-muted)">ahorrado hasta hoy</div>
+        </div>
+      </div>
+      <div style="display:flex;gap:8px;margin-bottom:14px">
+        <div style="flex:1;background:var(--accent)11;border:1px solid var(--accent)33;border-radius:10px;padding:10px;text-align:center">
+          <div style="font-size:10px;color:var(--text-muted);margin-bottom:2px">En 6 meses</div>
+          <div style="font-size:16px;font-weight:700;color:var(--accent)">${fmt(proj6)}</div>
+        </div>
+        <div style="flex:1;background:var(--accent)11;border:1px solid var(--accent)33;border-radius:10px;padding:10px;text-align:center">
+          <div style="font-size:10px;color:var(--text-muted);margin-bottom:2px">En 12 meses</div>
+          <div style="font-size:16px;font-weight:700;color:var(--accent)">${fmt(proj12)}</div>
+        </div>
+      </div>
+      <div style="font-size:11px;color:var(--text-muted);margin-bottom:8px;font-weight:700;text-transform:uppercase;letter-spacing:.4px">Últimos ${sample.length} meses</div>
+      <div style="display:flex;align-items:flex-end;gap:6px;height:48px">
+        ${sample.map(({m,y,saved})=>{
+          const barH=avg>0?Math.round((saved/Math.max(...sample.map(x=>x.saved)))*100):0;
+          return `<div style="flex:1;display:flex;flex-direction:column;align-items:center;gap:2px">
+            <div style="font-size:9px;color:var(--text-muted)">${fmt(saved).replace('USD ','')}</div>
+            <div style="width:100%;background:var(--green);border-radius:4px 4px 0 0;height:${Math.max(barH*0.36,4)}px;opacity:.8"></div>
+            <div style="font-size:9px;color:var(--text-muted)">${MNAMES[m]}</div>
+          </div>`;
+        }).join('')}
+      </div>
+      <div style="font-size:10px;color:var(--text-muted);margin-top:10px;line-height:1.4">
+        Basado en tu promedio de los últimos ${sample.length} meses con ahorro registrado.
+      </div>
+    </div>`;
+}
+
 window.toggleCatRow=function(catId){
   if(!window._catRowOpen)window._catRowOpen={};
   window._catRowOpen[catId]=!window._catRowOpen[catId];
@@ -2326,6 +2489,7 @@ function rSavings(){
   document.getElementById('savTot').textContent=fmt(tot);
   document.getElementById('savSub').textContent=`en ${S.goals.length} bolsillo${S.goals.length!==1?'s':''}`;
   rDebts();
+  rSavingsProjection();
   const con=document.getElementById('goalList');
   if(!S.goals.length){con.innerHTML=`<div class="empty"><div class="ee">🎯</div><div class="et">Sin ahorros todavía</div><div class="es">Creá tu primer objetivo o bolsillo de ahorro</div></div>`;return;}
   con.innerHTML=S.goals.map((g,i)=>{
