@@ -954,12 +954,12 @@ onAuthStateChanged(auth, (user) => {
     <div class="sg">
       <!-- HERO: Disponible -->
       <div class="sc gb tap-card" onclick="tab('ahorros')">
-        <div class="sl li">Disponible este mes</div>
+        <div class="sl li">Lo que te queda hoy</div>
         <div class="sv li" id="sumLeft" style="font-size:26px;letter-spacing:-.5px">$0</div>
-        <div class="ss li" id="sumLeftLbl">libre este mes ›</div>
+        <div class="ss li" id="sumLeftLbl">después de gastos, cuotas y ahorros</div>
       </div>
       <!-- Secondary row -->
-      <div class="sc ab tap-card" onclick="tab('gastos')">
+      <div class="sc ab tap-card" onclick="filt='Todos';cardFilt='';tab('gastos')">
         <div class="sl li">Gastado</div>
         <div class="sv li" id="sumSpent">$0</div>
         <div class="ss li" id="sumCount">ver gastos ›</div>
@@ -970,9 +970,9 @@ onAuthStateChanged(auth, (user) => {
         <div class="ss">ver detalle ›</div>
       </div>
       <div class="sc" id="potentialSavingsCard" style="display:none">
-        <div class="sl">Potencial ahorro</div>
+        <div class="sl">Si cumplís el presupuesto</div>
         <div class="sv" id="potentialSavingsAmt" style="color:var(--green)">$0</div>
-        <div class="ss" id="potentialSavingsLbl">si respetás el presupuesto</div>
+        <div class="ss" id="potentialSavingsLbl">lo que te sobraría este mes</div>
       </div>
     </div>
     <!-- Budget banner -->
@@ -1907,7 +1907,8 @@ function rSummary(){
   // In 'consumo' mode, add full credit purchases from this month to "gastado"
   const crMode=S.crMode||'consumo';
   // Gastado = débito only. Crédito se muestra separado en la tab Crédito
-  const spentDisplay=spent;
+  const debtPaidThisMonth=debitGs.filter(g=>g.isDebtPayment).reduce((s,g)=>s+(+g.amount),0);
+  const spentDisplay=budgetSpent; // show budget-relevant spending (excludes debt payments)
   const budTot=S.categories.reduce((s,c)=>s+getBudgetUSD(c),0);
   const sal=+S.salary||0;
   const extraInc=S.ingresos.filter(i=>{const d=new Date(i.date+'T12:00:00');return d.getMonth()===CM&&d.getFullYear()===CY;}).reduce((s,i)=>s+(+i.amount),0);
@@ -1939,7 +1940,9 @@ function rSummary(){
       crdBox.style.display='none';
     }
   }
-  document.getElementById('sumCount').textContent=`${S.gastos.filter(g=>{const d=new Date(g.date+'T12:00:00');return d.getMonth()===CM&&d.getFullYear()===CY;}).length} gasto${gs.length!==1?'s':''} →`;
+  const gastoCount=debitGs.filter(g=>!g.isDebtPayment).length+crDue(CM,CY).length;
+  const debtNote=debtPaidThisMonth>0?` · +${fmt(debtPaidThisMonth)} deudas`:'';
+  document.getElementById('sumCount').textContent=`${gastoCount} gasto${gastoCount!==1?'s':''}${debtNote} →`;
   document.getElementById('sumLeft').textContent=fmt(Math.abs(left));
   // Potencial ahorro = disponible - presupuesto total (what's left if you stick to budget)
   const budTotAll=S.categories.reduce((s,c)=>s+getBudgetUSD(c),0);
