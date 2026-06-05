@@ -2408,7 +2408,7 @@ function rAlerts(){
     if(dismissed.includes(cat.name))return;
     const sp=allGs.filter(g=>g.category===cat.name).reduce((s,g)=>s+(g._cuota||+g.amount),0);
     const pct=sp/bu;
-    if(sp>bu){
+    if(Math.round(sp*100)>Math.round(bu*100)){
       alerts.push({cat,sp,bu,pct,over:true});
     }
   });
@@ -2450,7 +2450,7 @@ window.dismissAlert=function(monthKey,idx){
   const gs=mGastos();const debitGs=gs.filter(g=>g.payType!=='credit'||g._isCardDebit);const crGs=crDue(CM,CY);const allGs=[...debitGs,...crGs];
   const dismissed=(S.dismissedAlerts&&S.dismissedAlerts[monthKey])||[];
   const alerts=[];
-  S.categories.forEach(cat=>{const bu=getBudgetUSD(cat);if(!bu||bu<=0)return;if(dismissed.includes(cat.name))return;const sp=allGs.filter(g=>g.category===cat.name).reduce((s,g)=>s+(g._cuota||+g.amount),0);if(sp>bu)alerts.push(cat.name);});
+  S.categories.forEach(cat=>{const bu=getBudgetUSD(cat);if(!bu||bu<=0)return;if(dismissed.includes(cat.name))return;const sp=allGs.filter(g=>g.category===cat.name).reduce((s,g)=>s+(g._cuota||+g.amount),0);if(Math.round(sp*100)>Math.round(bu*100))alerts.push(cat.name);});
   const catName=typeof idx==='number'?alerts[idx]:idx;
   if(!catName)return;
   if(!S.dismissedAlerts[monthKey].includes(catName))S.dismissedAlerts[monthKey].push(catName);
