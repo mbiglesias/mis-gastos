@@ -3114,7 +3114,9 @@ function selTxCur(key,cur,btn){
 // GASTO FLOW
 // ============================================================
 function openGastoDetail(id, isInst, instNum, instTotal){
-  const g=S.gastos.find(x=>x.id===id);
+  // Virtual recurring items have id like 'abc123_rec_2026_5' — strip suffix to find original
+  const baseId=id.includes('_rec_')?id.slice(0,id.indexOf('_rec_')):id;
+  const g=S.gastos.find(x=>x.id===baseId)||S.gastos.find(x=>x.id===id);
   if(!g)return;
   const cat=S.categories.find(c=>c.name===g.category);
   const em=cat?cat.emoji:'📦';
