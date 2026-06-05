@@ -1733,10 +1733,22 @@ function rTxList(){
   const isFiltered=filt!=='Todos'||q;
   if(filtTotalEl){
     if(gs.length>0){
-      const total=gs.reduce((s,g)=>s+(g._isInstallment?(g._cuota||0):(+g.amount)),0);
+      const debitTotal=gs.filter(g=>g.payType!=='credit'||g._isCardDebit).reduce((s,g)=>s+(+g.amount),0);
+      const creditTotal=gs.filter(g=>g._isInstallment).reduce((s,g)=>s+(g._cuota||0),0);
+      const total=debitTotal+creditTotal;
       const count=gs.length;
-      const label=q?`"${q}"`:filt!=='Todos'?filt:'Total';
-      filtTotalEl.textContent=`${label}: ${fmt(total)} en ${count} gasto${count!==1?'s':''}`;
+      const label=q?`"${q}"`:filt!=='Todos'&&filt!=='Crédito'?filt:'';
+      let summary='';
+      if(filt==='Todos'&&!q){
+        // Show debit/credit breakdown
+        const parts=[];
+        if(debitTotal>0)parts.push(`${fmt(debitTotal)} débito`);
+        if(creditTotal>0)parts.push(`${fmt(creditTotal)} crédito`);
+        summary=parts.join(' · ')+` — ${count} gasto${count!==1?'s':''}`;
+      } else {
+        summary=`${label?label+': ':''}${fmt(total)} en ${count} gasto${count!==1?'s':''}`;
+      }
+      filtTotalEl.textContent=summary;
       filtTotalEl.style.display='block';
     } else {
       filtTotalEl.style.display='none';
