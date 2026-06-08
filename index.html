@@ -969,11 +969,7 @@ onAuthStateChanged(auth, (user) => {
         <div class="sv" id="sumSalary">$0</div>
         <div class="ss">ver detalle ›</div>
       </div>
-      <div class="sc" id="potentialSavingsCard" style="display:none">
-        <div class="sl">Si cumplís el presupuesto</div>
-        <div class="sv" id="potentialSavingsAmt" style="color:var(--green)">$0</div>
-        <div class="ss" id="potentialSavingsLbl">lo que te sobraría este mes</div>
-      </div>
+
     </div>
     <!-- Budget banner -->
     <div id="alertsContainer"></div>
@@ -1961,18 +1957,7 @@ function rSummary(){
   const debtNote=debtPaidThisMonth>0?` · +${fmt(debtPaidThisMonth)} deudas`:'';
   document.getElementById('sumCount').textContent=`${gastoCount} gasto${gastoCount!==1?'s':''}${debtNote} →`;
   document.getElementById('sumLeft').textContent=fmt(Math.abs(left));
-  // Potencial ahorro = disponible - presupuesto total (what's left if you stick to budget)
-  const budTotAll=S.categories.reduce((s,c)=>s+getBudgetUSD(c),0);
-  const potSav=(totalIncome-budTotAll-savedThisMonth-creditThisMonth); // what's left if you spend exactly the budget
-  const psCard=document.getElementById('potentialSavingsCard');
-  const psAmt=document.getElementById('potentialSavingsAmt');
-  const psLbl=document.getElementById('potentialSavingsLbl');
-  if(psCard&&psAmt&&budTotAll>0){
-    psCard.style.display='';
-    psAmt.textContent=fmt(Math.abs(potSav));
-    psAmt.style.color=potSav>=0?'var(--green)':'var(--red)';
-    if(psLbl)psLbl.textContent=potSav>=0?'si respetás el presupuesto':'ya superaste el disponible';
-  } else if(psCard) psCard.style.display='none';
+
   let leftLbl, heroCard=document.querySelector('.sc.gb.hero');
   if(left<0){
     const leftWithoutSavings=totalIncome-spent-creditThisMonth;
