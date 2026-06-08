@@ -953,27 +953,21 @@ onAuthStateChanged(auth, (user) => {
   <div id="t-resumen">
     <div class="sg">
       <!-- HERO: Disponible -->
-      <div class="sc gb tap-card" onclick="tab('ahorros')">
-        <div class="sl li">Lo que te queda hoy</div>
-        <div class="sv li" id="sumLeft" style="font-size:26px;letter-spacing:-.5px">$0</div>
-        <div class="ss li" id="sumLeftLbl">después de gastos, cuotas y ahorros</div>
-      </div>
-      <!-- Secondary row -->
+      <!-- Row 1: Gastado + Cuotas -->
       <div class="sc ab tap-card" onclick="filt='Todos';cardFilt='';tab('gastos')">
         <div class="sl li">Gastado</div>
         <div class="sv li" id="sumSpent">$0</div>
         <div class="ss li" id="sumCount">ver gastos ›</div>
       </div>
-      <div class="sc tap-card" onclick="tab('ingresos')">
-        <div class="sl" id="sumSalaryLbl">Ingresos</div>
-        <div class="sv" id="sumSalary">$0</div>
-        <div class="ss">ver detalle ›</div>
+      <div class="sc pb tap-card" onclick="tab('credito')">
+        <div class="sl li">Cuotas este mes</div>
+        <div class="sv li" id="sumCredit">$0</div>
+        <div class="ss li">ver crédito ›</div>
       </div>
-
     </div>
-    <!-- Budget banner -->
-    <div id="alertsContainer"></div>
-    <div id="budgetBanner" style="display:none;background:var(--white);border-radius:var(--R);padding:12px 14px;margin-bottom:10px;box-shadow:var(--sh);cursor:pointer" onclick="tab('presupuestos')">
+
+    <!-- Budget progress -->
+    <div id="budgetBanner" style="display:none;background:var(--white);border-radius:var(--R);padding:12px 14px;margin-bottom:8px;box-shadow:var(--sh);cursor:pointer" onclick="tab('presupuestos')">
       <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:6px">
         <div style="font-size:11px;font-weight:700;color:var(--text-muted);text-transform:uppercase;letter-spacing:.5px">Presupuesto mensual</div>
         <div style="font-size:11px;color:var(--text-muted)" id="budgetPct"></div>
@@ -984,6 +978,34 @@ onAuthStateChanged(auth, (user) => {
       </div>
       <div class="pbb"><div class="pbf" id="progFill" style="width:0%"></div></div>
     </div>
+
+    <!-- Hero: Libre este mes -->
+    <div class="sc gb hero" style="margin-bottom:8px">
+      <div class="sl li">Libre este mes</div>
+      <div class="sv li" id="sumLibre">$0</div>
+      <div class="ss li" id="sumLibreSub">ingresos − gastado − cuotas</div>
+    </div>
+
+    <!-- Row 3: Ahorros / Deudas / Sobrante -->
+    <div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:8px;margin-bottom:10px">
+      <div class="sc tap-card" onclick="tab('ahorros')">
+        <div class="sl" style="font-size:9px">AHORROS</div>
+        <div class="sv" id="sumAhorros" style="font-size:17px">$0</div>
+        <div class="ss">este mes</div>
+      </div>
+      <div class="sc" id="sumDeudaCard">
+        <div class="sl" style="font-size:9px">DEUDAS</div>
+        <div class="sv" id="sumDeuda" style="font-size:17px">$0</div>
+        <div class="ss">pagado</div>
+      </div>
+      <div class="sc gb">
+        <div class="sl li" style="font-size:9px">SOBRANTE</div>
+        <div class="sv li" id="sumSobrante" style="font-size:17px">$0</div>
+        <div class="ss li">lo que queda</div>
+      </div>
+    </div>
+
+    <div id="alertsContainer"></div>
     <div class="pw">
       <div style="display:flex;gap:6px;margin-bottom:8px">
         <button onclick="window._catRowMode='debito';rCatRows()" id="btnCatDebito" style="flex:1;padding:5px;border-radius:8px;border:none;font-family:inherit;font-size:11px;font-weight:700;cursor:pointer;background:var(--accent);color:#fff">💳 Débito</button>
@@ -1939,44 +1961,55 @@ function rSummary(){
   },0);
   const left=totalIncome-spent-savedThisMonth-creditThisMonth;
 
+  // ── New Resumen layout ──────────────────────────────────────
+  // Row 1: Gastado + Cuotas
   document.getElementById('sumSpent').textContent=fmt(spentDisplay);
-  const crdBox=document.getElementById('sumCreditBox');
-  const crdAmt=document.getElementById('sumCreditAmt');
-  const crdSub=document.getElementById('sumCreditSub');
-  if(crdBox){
-    if(creditThisMonth>0){
-      crdBox.style.display='flex';
-      if(crdAmt)crdAmt.textContent=fmt(creditThisMonth);
-      const cuotaCount=crDue(CM,CY).length;
-      if(crdSub)crdSub.textContent=`${cuotaCount} cuota${cuotaCount!==1?'s':''} que vencen este mes`;
-    } else {
-      crdBox.style.display='none';
-    }
-  }
-  const gastoCount=debitGs.filter(g=>!g.isDebtPayment).length+crDue(CM,CY).length;
+  const gastoCount=debitGs.filter(g=>!g.isDebtPayment).length;
   const debtNote=debtPaidThisMonth>0?` · +${fmt(debtPaidThisMonth)} deudas`:'';
   document.getElementById('sumCount').textContent=`${gastoCount} gasto${gastoCount!==1?'s':''}${debtNote} →`;
-  document.getElementById('sumLeft').textContent=fmt(Math.abs(left));
+  const sumCreditEl=document.getElementById('sumCredit');
+  if(sumCreditEl)sumCreditEl.textContent=creditThisMonth>0?fmt(creditThisMonth):'—';
 
-  let leftLbl, heroCard=document.querySelector('.sc.gb.hero');
-  if(left<0){
-    const leftWithoutSavings=totalIncome-spent-creditThisMonth;
-    if(leftWithoutSavings>=0){
-      leftLbl='ahorraste más de tu disponible 💚';
-      if(heroCard){heroCard.style.background='';heroCard.classList.add('gb');heroCard.classList.remove('ab');}
-    } else {
-      leftLbl='en exceso ⚠️';
-      if(heroCard){heroCard.style.background='var(--red)';heroCard.classList.remove('gb');}
+  // Hero: Libre = ingresos - gastado - cuotas
+  const libre=totalIncome-budgetSpent-creditThisMonth;
+  const libreEl=document.getElementById('sumLibre');
+  const libreHero=libreEl?.closest('.sc');
+  if(libreEl){
+    libreEl.textContent=fmt(Math.abs(libre));
+    if(libreHero){
+      if(libre<0){libreHero.className='sc ab hero';libreHero.style.background='';}
+      else{libreHero.className='sc gb hero';libreHero.style.background='';}
     }
-  } else {
-    if(heroCard){heroCard.style.background='';heroCard.classList.add('gb');heroCard.classList.remove('ab');}
-    leftLbl=creditThisMonth>0&&savedThisMonth>0?'descontando ahorros y cuotas':(creditThisMonth>0?'descontando cuotas del mes':(savedThisMonth>0?'descontando ahorros':'libre este mes'));
   }
-  document.getElementById('sumLeftLbl').textContent=leftLbl;
-  document.getElementById('sumLeft').className='sv li';
-  document.getElementById('sumSalary').textContent=fmt(totalIncome);
-  document.getElementById('sumSalaryLbl').textContent=extraInc>0?'salario + extras':'ingreso mensual';
-  document.getElementById('salDisp').textContent=fmt(S.salary);
+  const libreSubEl=document.getElementById('sumLibreSub');
+  if(libreSubEl)libreSubEl.textContent=libre<0?'⚠️ gastaste más de tus ingresos':`${fmt(totalIncome)} ingresos − ${fmt(budgetSpent)} gastado − ${fmt(creditThisMonth)} cuotas`;
+
+  // Row 3: Ahorros / Deudas / Sobrante
+  const sobrante=libre-savedThisMonth-debtPaidThisMonth;
+  const sobranteEl=document.getElementById('sumSobrante');
+  const sobranteCard=sobranteEl?.closest('.sc');
+  if(sobranteEl){
+    sobranteEl.textContent=fmt(Math.abs(sobrante));
+    if(sobranteCard){
+      sobranteCard.className=sobrante>=0?'sc gb':'sc';
+      const liLabel=sobranteCard.querySelector('.sl');
+      if(liLabel)liLabel.className=sobrante>=0?'sl li':'sl';
+      const liVal=sobranteCard.querySelector('.sv');
+      if(liVal){liVal.className=sobrante>=0?'sv li':'sv';liVal.style.color=sobrante<0?'var(--red)':'';}
+      const liSub=sobranteCard.querySelector('.ss');
+      if(liSub){liSub.className=sobrante>=0?'ss li':'ss';liSub.textContent=sobrante>=0?'lo que queda':'en déficit';}
+    }
+  }
+  const ahorrosEl=document.getElementById('sumAhorros');
+  if(ahorrosEl)ahorrosEl.textContent=savedThisMonth>0?fmt(savedThisMonth):'—';
+  const deudaEl=document.getElementById('sumDeuda');
+  const deudaCard=document.getElementById('sumDeudaCard');
+  if(deudaEl)deudaEl.textContent=debtPaidThisMonth>0?fmt(debtPaidThisMonth):'—';
+  if(deudaCard)deudaCard.style.display=debtPaidThisMonth>0?'':'';
+
+  // Keep salDisp for settings section
+  const salDispEl=document.getElementById('salDisp');
+  if(salDispEl)salDispEl.textContent=fmt(S.salary);
 
   // Budget banner
   const budBanner=document.getElementById('budgetBanner');
