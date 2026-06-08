@@ -1474,6 +1474,10 @@ function ensureDefaults() {
   if (!S.dismissedAlerts) S.dismissedAlerts = {};
   if (!S.cards) S.cards = [];
   // One-time migration: assign Itaú to credit gastos without cardId
+  // Fix orphaned categories: parentId pointing to a non-existent category
+  const validCatIds=new Set(S.categories.map(c=>c.id||c.name).filter(Boolean));
+  S.categories.forEach(c=>{if(c.parentId&&!validCatIds.has(c.parentId))c.parentId=null;});
+
   // Always ensure credit gastos have a card assigned (idempotent migration)
   (S.gastos||[]).forEach(g=>{if(g.payType==='credit'&&!g.cardId)g.cardId='itau';});
 }
@@ -3615,7 +3619,10 @@ function openEB(i){
   const validParents=S.categories.filter(c=>getCatId(c)!==selfId&&!childIds.has(getCatId(c))&&!c.parentId);
   const parentOpts=validParents.map(p=>`<option value="${getCatId(p)}"${cat.parentId===getCatId(p)?' selected':''}>${p.emoji} ${p.name}</option>`).join('');
   const ebParent=document.getElementById('ebParent');
-  if(ebParent)ebParent.innerHTML=`<option value=""${!cat.parentId?' selected':''}>— Sin padre (categoría principal) —</option>${parentOpts}`;
+  if(ebParent){
+    ebParent.innerHTML=`<option value=""${!cat.parentId?' selected':''}>— Sin padre (categoría principal) —</option>${parentOpts}`;
+    ebParent.value=cat.parentId||'';
+  }
   openM('mEditBudget');
 }
 function saveEditBudget(){
@@ -3626,7 +3633,9 @@ function saveEditBudget(){
   const cat=S.categories[eCatIdx];
   const oldName=cat.name;
   const oldId=getCatId(cat); // may be name if no id
-  const newParentId=document.getElementById('ebParent')?.value||null;
+  const _rawParent=document.getElementById('ebParent')?.value||'';
+  // Validate: parentId must exist in categories and not be self
+  const newParentId=_rawParent&&S.categories.find(c=>getCatId(c)===_rawParent&&getCatId(c)!==getCatId(cat))?_rawParent:null;
 
   // Ensure the category has a real id before saving
   if(!cat.id) cat.id=Date.now().toString();
