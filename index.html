@@ -1967,8 +1967,18 @@ function rSummary(){
   const gastoCount=debitGs.filter(g=>!g.isDebtPayment).length;
   const debtNote=debtPaidThisMonth>0?` · +${fmt(debtPaidThisMonth)} deudas`:'';
   document.getElementById('sumCount').textContent=`${gastoCount} gasto${gastoCount!==1?'s':''}${debtNote} →`;
+  // Card-debits are in Gastado but show as note in Cuotas card
+  const cardDebitThisMonth=mGastos().filter(g=>g._isCardDebit).reduce((s,g)=>s+(+g.amount),0);
   const sumCreditEl=document.getElementById('sumCredit');
   if(sumCreditEl)sumCreditEl.textContent=creditThisMonth>0?fmt(creditThisMonth):'—';
+  const sumCreditSub=document.querySelector('#sumCredit~.ss')||document.getElementById('sumCreditSub2');
+  // Update the subtitle of the Cuotas card
+  const cuotasCard=sumCreditEl?.closest('.sc');
+  const cuotasSub=cuotasCard?.querySelector('.ss');
+  if(cuotasSub){
+    const suscNote=cardDebitThisMonth>0?` · +${fmt(cardDebitThisMonth)} en gastado`:'';
+    cuotasSub.textContent=`cuotas de tarjeta${suscNote}`;
+  }
 
   // Hero: Libre = ingresos - gastado - cuotas
   const libre=totalIncome-budgetSpent-creditThisMonth;
@@ -2710,14 +2720,15 @@ function rCredit(){
   const _allCardDebit=mGastos().filter(g=>g._isCardDebit);
   const crDueItems=S._crCardFilt?_allCrDue.filter(g=>g.cardId===S._crCardFilt):_allCrDue;
   const cardDebitItems=S._crCardFilt?_allCardDebit.filter(g=>g.cardId===S._crCardFilt):_allCardDebit;
-  const thisMon=crDueItems.reduce((s,g)=>s+(g._cuota||+g.amount/(+g.installments||1)),0)
-               +cardDebitItems.reduce((s,g)=>s+(+g.amount),0);
-  const thisMonCount=crDueItems.length+cardDebitItems.length;
+  const thisMon=crDueItems.reduce((s,g)=>s+(g._cuota||+g.amount/(+g.installments||1)),0);
+  const cardDebitTotal=cardDebitItems.reduce((s,g)=>s+(+g.amount),0);
+  const thisMonCount=crDueItems.length;
 
   document.getElementById('crTot').textContent=fmt(totPend);
   document.getElementById('crTotSub').textContent=`${active.length} compra${active.length!==1?'s':''} activa${active.length!==1?'s':''}`;
   document.getElementById('crMon').textContent=fmt(thisMon);
-  document.getElementById('crMonSub').textContent=`${thisMonCount} cobro${thisMonCount!==1?'s':''} en ${MOS[CM]}`;
+  const cardDebitNote=cardDebitTotal>0?` · +${fmt(cardDebitTotal)} suscripciones`:'';
+  document.getElementById('crMonSub').textContent=`${thisMonCount} cuota${thisMonCount!==1?'s':''}${cardDebitNote}`;
 
   // Consumí/Pago summary panel
   const consumiThisMonth=S.gastos.filter(g=>{
