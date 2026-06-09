@@ -979,15 +979,20 @@ onAuthStateChanged(auth, (user) => {
       <div class="pbb"><div class="pbf" id="progFill" style="width:0%"></div></div>
     </div>
 
-    <!-- Hero: Libre este mes -->
+    <!-- Hero: Sobrante -->
     <div class="sc gb hero" style="margin-bottom:8px">
-      <div class="sl li">Libre este mes</div>
-      <div class="sv li" id="sumLibre">$0</div>
-      <div class="ss li" id="sumLibreSub">ingresos − gastado − cuotas</div>
+      <div class="sl li">Sobrante</div>
+      <div class="sv li" id="sumSobrante">$0</div>
+      <div class="ss li">lo que queda después de todo</div>
     </div>
 
-    <!-- Row 3: Ahorros / Deudas / Sobrante -->
+    <!-- Row 3: Libre / Ahorros / Deudas -->
     <div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:8px;margin-bottom:10px">
+      <div class="sc">
+        <div class="sl" style="font-size:9px">LIBRE</div>
+        <div class="sv" id="sumLibre" style="font-size:17px">$0</div>
+        <div class="ss" id="sumLibreSub">antes de ahorros</div>
+      </div>
       <div class="sc tap-card" onclick="tab('ahorros')">
         <div class="sl" style="font-size:9px">AHORROS</div>
         <div class="sv" id="sumAhorros" style="font-size:17px">$0</div>
@@ -997,11 +1002,6 @@ onAuthStateChanged(auth, (user) => {
         <div class="sl" style="font-size:9px">DEUDAS</div>
         <div class="sv" id="sumDeuda" style="font-size:17px">$0</div>
         <div class="ss">pagado</div>
-      </div>
-      <div class="sc gb">
-        <div class="sl li" style="font-size:9px">SOBRANTE</div>
-        <div class="sv li" id="sumSobrante" style="font-size:17px">$0</div>
-        <div class="ss li">lo que queda</div>
       </div>
     </div>
 
@@ -1992,7 +1992,7 @@ function rSummary(){
     }
   }
   const libreSubEl=document.getElementById('sumLibreSub');
-  if(libreSubEl)libreSubEl.textContent=libre<0?'⚠️ gastaste más de tus ingresos':`${fmt(totalIncome)} ingresos − ${fmt(budgetSpent)} gastado − ${fmt(creditThisMonth)} cuotas`;
+  if(libreSubEl)libreSubEl.textContent=libre<0?'⚠️ en déficit':'antes de ahorros y deudas';
 
   // Row 3: Ahorros / Deudas / Sobrante
   const sobrante=libre-savedThisMonth-debtPaidThisMonth;
@@ -2001,13 +2001,9 @@ function rSummary(){
   if(sobranteEl){
     sobranteEl.textContent=fmt(Math.abs(sobrante));
     if(sobranteCard){
-      sobranteCard.className=sobrante>=0?'sc gb':'sc';
-      const liLabel=sobranteCard.querySelector('.sl');
-      if(liLabel)liLabel.className=sobrante>=0?'sl li':'sl';
-      const liVal=sobranteCard.querySelector('.sv');
-      if(liVal){liVal.className=sobrante>=0?'sv li':'sv';liVal.style.color=sobrante<0?'var(--red)':'';}
+      sobranteCard.className=sobrante>=0?'sc gb hero':'sc hero';
       const liSub=sobranteCard.querySelector('.ss');
-      if(liSub){liSub.className=sobrante>=0?'ss li':'ss';liSub.textContent=sobrante>=0?'lo que queda':'en déficit';}
+      if(liSub){liSub.className=sobrante>=0?'ss li':'ss';liSub.style.color=sobrante<0?'var(--red)':'';liSub.textContent=sobrante>=0?'lo que queda después de todo':'en déficit ⚠️';}
     }
   }
   const ahorrosEl=document.getElementById('sumAhorros');
