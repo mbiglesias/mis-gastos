@@ -1233,6 +1233,7 @@ onAuthStateChanged(auth, (user) => {
     <div class="ft" style="margin-bottom:8px">Cuotas activas</div>
     <div id="crModeSummary"></div>
     <div id="crCardFilter"></div>
+    <div id="crDisclaimer" style="display:none"></div>
     <div id="crList"></div>
   </div>
 
@@ -1983,14 +1984,7 @@ function rSummary(){
   // Hero: Libre = ingresos - gastado - cuotas
   const libre=totalIncome-budgetSpent-creditThisMonth;
   const libreEl=document.getElementById('sumLibre');
-  const libreHero=libreEl?.closest('.sc');
-  if(libreEl){
-    libreEl.textContent=fmt(Math.abs(libre));
-    if(libreHero){
-      if(libre<0){libreHero.className='sc ab hero';libreHero.style.background='';}
-      else{libreHero.className='sc gb hero';libreHero.style.background='';}
-    }
-  }
+  if(libreEl)libreEl.textContent=fmt(libre<0?Math.abs(libre):libre);
   const libreSubEl=document.getElementById('sumLibreSub');
   if(libreSubEl)libreSubEl.textContent=libre<0?'⚠️ en déficit':'antes de ahorros y deudas';
 
@@ -2723,8 +2717,7 @@ function rCredit(){
   document.getElementById('crTot').textContent=fmt(totPend);
   document.getElementById('crTotSub').textContent=`${active.length} compra${active.length!==1?'s':''} activa${active.length!==1?'s':''}`;
   document.getElementById('crMon').textContent=fmt(thisMon);
-  const cardDebitNote=cardDebitTotal>0?` · +${fmt(cardDebitTotal)} suscripciones`:'';
-  document.getElementById('crMonSub').textContent=`${thisMonCount} cuota${thisMonCount!==1?'s':''}${cardDebitNote}`;
+  document.getElementById('crMonSub').textContent=`${thisMonCount} cuota${thisMonCount!==1?'s':''} en ${MOS[CM]}`;
 
   // Consumí/Pago summary panel
   const consumiThisMonth=S.gastos.filter(g=>{
@@ -2761,6 +2754,14 @@ function rCredit(){
   }
   const displayActive=S._crCardFilt?active.filter(g=>g.cardId===S._crCardFilt):active;
   const con=document.getElementById('crList');
+  // Disclaimer about tarjeta badge items
+  const disclaimer=document.getElementById('crDisclaimer');
+  if(disclaimer&&cardDebitItems.length>0){
+    disclaimer.style.display='block';
+    disclaimer.innerHTML=`<div style="background:#fffbeb;border:1px solid #fcd34d;border-radius:var(--r);padding:10px 12px;margin-bottom:10px;font-size:12px;color:#92400e;line-height:1.5">
+      💳 Los items con badge <strong>tarjeta</strong> (${cardDebitItems.map(g=>g.desc).slice(0,3).join(', ')}${cardDebitItems.length>3?'…':''}) se cobran mensualmente en tu tarjeta pero <strong>computan como Gastado</strong>, no como cuota.
+    </div>`;
+  } else if(disclaimer) disclaimer.style.display='none';
   if(!displayActive.length){con.innerHTML=`<div class="empty"><div class="ee">✅</div><div class="et">Sin deudas en crédito</div><div class="es">Tus compras en cuotas aparecen acá</div></div>`;return;}
   con.innerHTML=displayActive.map(g=>{
     const inst=+g.installments||1;
