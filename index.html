@@ -1840,7 +1840,7 @@ function rTxList(){
         const payMonth=new Date(start.getFullYear(), start.getMonth()+instNum, 1);
         const payStr=payMonth.toLocaleDateString('es-UY',{day:'numeric',month:'short',year:'numeric'});
         purchaseDateLabel=`<div style="font-size:10px;color:var(--text-muted);margin-top:2px">📅 Cobro esperado: ${payStr}</div>`;
-     
+      }
 
       // Amount to show: for installments, show the cuota amount; for original purchase entry, show total
       const displayAmt=isInst?fmt(cuota):fmt(g.amount);
