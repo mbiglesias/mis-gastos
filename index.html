@@ -1645,16 +1645,16 @@ function mGastos(){
     const fm = ((firstCuotaMonth%12)+12)%12;
     // diff = how many months after first cuota we are
     const diff = (CY-firstCuotaYear)*12+(CM-fm);
-    if(g.recurring&&inst===1&&diff>=0){
+    if(g.recurring&&inst===1&&(diff>=0||diff===-1)){
       // Recurring 1-cuota on credit card → treat as debit (subscription/fixed payment)
-      // Determine correct billing month: if purchase day > closing day, charge is on NEXT month's bill
-      // So what appears in CM's bill is last month's occurrence
       const purchaseDay=s.getDate();
       const closingDayCM=g.payType==='credit'?getClosingDay(g.cardId,CM,CY):31;
       let vM=CM,vY=CY;
       if(g.payType==='credit'&&purchaseDay>closingDayCM){vM=CM-1;if(vM<0){vM=11;vY=CY-1;}}
       const virtDate=`${vY}-${String(vM+1).padStart(2,'0')}-${String(purchaseDay).padStart(2,'0')}`;
-      recurringDue.push({...g,date:virtDate,_isRecurring:true,_isCardDebit:true,id:g.id+'_rec_'+CY+'_'+CM});
+      // diff==-1 means first charge is next month — mark as upcoming, don't count in totals
+      const isUpcoming=diff===-1;
+      recurringDue.push({...g,date:virtDate,_isRecurring:true,_isCardDebit:true,_isUpcoming:isUpcoming,id:g.id+'_rec_'+CY+'_'+CM});
     } else if(g.recurring&&diff>=0){
       // Recurring multi-cuota credit: show every month from first cuota onwards
       const virtDate=`${CY}-${String(CM+1).padStart(2,'0')}-${String(s.getDate()).padStart(2,'0')}`;
@@ -1825,7 +1825,9 @@ function rTxList(){
 
       const card=g.cardId?getCards().find(c=>c.id===g.cardId):null;
       const cardBadge=card?`<span class="bdg" style="background:${card.color}22;color:${card.color};border:1px solid ${card.color}44">${card.emoji} ${card.name}</span>`:'';
-      const badge=g.isDebtPayment
+      const badge=g._isUpcoming
+        ? `<span class="bdg" style="background:#f0fdf4;color:#166534;border:1px solid #86efac">🕐 primer cobro ${new Date(new Date().getFullYear(),new Date().getMonth()+1,1).toLocaleDateString('es-UY',{month:'short'})}</span>`
+        : g.isDebtPayment
         ? `<span class="bdg" style="background:#fce7f3;color:#be185d">💸 pago deuda</span>`
         : g.debtId
         ? `<span class="bdg" style="background:#fce7f3;color:#be185d">💸 deuda</span>`
@@ -1937,7 +1939,7 @@ window.goToday=function(){
 // ============================================================
 function rSummary(){
   const gs=mGastos();
-  const debitGs=gs.filter(g=>g.payType!=='credit'||g._isCardDebit);
+  const debitGs=gs.filter(g=>(g.payType!=='credit'||g._isCardDebit)&&!g._isUpcoming);
   const spent=debitGs.reduce((s,g)=>s+(+g.amount),0); // includes debt payments — reduces disponible
   const budgetSpent=debitGs.filter(g=>!g.isDebtPayment).reduce((s,g)=>s+(+g.amount),0); // excludes debt payments — for budget comparison
   // In 'consumo' mode, add full credit purchases from this month to "gastado"
@@ -2684,10 +2686,11 @@ function rCredit(){
     const firstM=s.getDate()<=getClosingDay(g.cardId,s.getMonth(),s.getFullYear())?s.getMonth():s.getMonth()+1;
     const firstY=s.getFullYear()+Math.floor(firstM/12);
     const fm=((firstM%12)+12)%12;
-    // Recurring card-debits (1 cuota recurrente) → always active from first cuota month
+    // Recurring card-debits (1 cuota recurrente) → show from purchase date onwards
     if(g.recurring&&tot===1){
-      const diff=(CY-firstY)*12+(CM-fm);
-      return diff>=0;
+      const purchaseDate=new Date(g.date+'T12:00:00');
+      const viewDate=new Date(CY,CM,1);
+      return purchaseDate<=new Date(CY,CM+1,0); // show if purchased any time up to end of current month
     }
     const lastM=fm+tot-1;
     const lastY=firstY+Math.floor(lastM/12);
