@@ -1863,7 +1863,7 @@ function rTxList(){
           <div class="txico" style="background:${col}22;flex-shrink:0">${em}</div>
           <div class="txb">
             <div class="txd">${g.desc}</div>
-            <div class="txm">${badge}${cardBadge}<span>${g.category}</span>${g.note?`<span>· ${g.note}</span>`:''}</div>
+            <div class="txm">${badge}${cardBadge}<span>${g.category}</span>${g.note?('<span>· '+g.note+'</span>'):''}</div>
             ${purchaseDateLabel}
           </div>
           <div class="txr" style="flex-shrink:0">
@@ -2858,7 +2858,7 @@ function rSavings(){
       <div class="gh"><div class="ge">${g.emoji}</div><div class="gn">${g.name}${g.noDisponible?'<span style="font-size:10px;background:#f1f5f9;color:var(--text-muted);border-radius:4px;padding:1px 5px;margin-left:4px;vertical-align:middle">no afecta disponible</span>':''}</div>
         <div class="gp">${done?'✅':hasTarget?Math.round(pct)+'%':''}</div>
       </div>
-      ${hasTarget?`<div class="gbb"><div class="gbf" style="width:${pct}%"></div></div>`:''}
+      ${hasTarget?'<div class="gbb"><div class="gbf" style="width:'+pct+'%"></div></div>':''}
       <div class="gam">
         <span class="gas">${fmt(g.saved)}</span>
         <span>${hasTarget?'de '+fmt(g.target):'sin meta'}</span>
@@ -3035,7 +3035,7 @@ function rBudget(){
         <div style="width:36px;height:36px;border-radius:10px;background:${cat.color}22;display:flex;align-items:center;justify-content:center;font-size:18px;flex-shrink:0">${cat.emoji}</div>
         <div style="flex:1;min-width:0">
           <div style="font-weight:700;font-size:14px">${cat.name}</div>
-          <div style="font-size:11px;color:var(--text-muted)">${hasChildren?`${children.length} subcategoría${children.length>1?'s':''}`:bu>0?`Límite: ${fmt(bu)}/mes`:'Sin límite mensual'}</div>
+          <div style="font-size:11px;color:var(--text-muted)">${hasChildren?children.length+' subcategoría'+(children.length>1?'s':''):bu>0?`Límite: ${fmt(bu)}/mes`:'Sin límite mensual'}</div>
         </div>
         <div style="display:flex;gap:6px">
           <button onclick="openEB(${i})" style="width:30px;height:30px;border-radius:8px;border:1px solid var(--border);background:var(--bg);cursor:pointer;font-size:14px">✏️</button>
@@ -3055,7 +3055,7 @@ function rBudget(){
             <div style="width:28px;height:28px;border-radius:8px;background:${child.color}22;display:flex;align-items:center;justify-content:center;font-size:14px;flex-shrink:0">${child.emoji}</div>
             <div style="flex:1;min-width:0">
               <div style="font-weight:600;font-size:13px">${child.name}</div>
-              <div style="font-size:11px;color:var(--text-muted)">${cbu>0?`Límite: ${fmt(cbu)}/mes`:'Sin límite'}</div>
+              <div style="font-size:11px;color:var(--text-muted)">${cbu>0?'Límite: '+fmt(cbu)+'/mes':'Sin límite'}</div>
             </div>
             <div style="display:flex;gap:6px">
               <button onclick="openEB(${ci2})" style="width:28px;height:28px;border-radius:8px;border:1px solid var(--border);background:var(--bg);cursor:pointer;font-size:13px">✏️</button>
