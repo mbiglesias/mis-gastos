@@ -2703,9 +2703,9 @@ function rCredit(){
   const _allCardDebit=mGastos().filter(g=>g._isCardDebit);
   const crDueItems=S._crCardFilt?_allCrDue.filter(g=>g.cardId===S._crCardFilt):_allCrDue;
   const cardDebitItems=S._crCardFilt?_allCardDebit.filter(g=>g.cardId===S._crCardFilt):_allCardDebit;
-  const thisMon=crDueItems.reduce((s,g)=>s+(g._cuota||+g.amount/(+g.installments||1)),0);
   const cardDebitTotal=cardDebitItems.reduce((s,g)=>s+(+g.amount),0);
-  const thisMonCount=crDueItems.length;
+  const thisMon=crDueItems.reduce((s,g)=>s+(g._cuota||+g.amount/(+g.installments||1)),0)+cardDebitTotal;
+  const thisMonCount=crDueItems.length+cardDebitItems.length;
 
   document.getElementById('crTot').textContent=fmt(totPend);
   document.getElementById('crTotSub').textContent=`${active.length} compra${active.length!==1?'s':''} activa${active.length!==1?'s':''}`;
