@@ -1361,6 +1361,25 @@ onAuthStateChanged(auth, (user) => {
   </div>
 
 </div>
+<!-- CREDIT SAVING MODAL -->
+<div class="modal" id="mCreditSaving" style="display:none">
+  <div class="mcard">
+    <div class="mh"><span class="mt">📈 Ahorro en tarjeta</span><button class="mcl" onclick="closeM('mCreditSaving')">✕</button></div>
+    <div style="font-size:12px;color:var(--text-muted);margin-bottom:12px">Se cobra mensualmente en tu tarjeta y se acumula como ahorro. No cuenta como gasto.</div>
+    <label class="lbl">Descripción</label>
+    <input id="csDes" class="inp" placeholder="Ej: Inversión Nobilis" style="margin-bottom:10px">
+    <label class="lbl">Monto mensual (USD)</label>
+    <input id="csAmt" class="inp" type="number" placeholder="500" style="margin-bottom:10px">
+    <label class="lbl">Tarjeta</label>
+    <select id="csCard" class="inp" style="margin-bottom:10px"></select>
+    <label class="lbl">Bolsillo de ahorros</label>
+    <select id="csBolsillo" class="inp" style="margin-bottom:10px"></select>
+    <label class="lbl">Fecha de inicio</label>
+    <input id="csDate" class="inp" type="date" style="margin-bottom:16px">
+    <button class="btn bg" onclick="saveCreditSaving()">Guardar</button>
+  </div>
+</div>
+
 <div class="toast" id="toast"></div>
 
 <!-- FLOATING SCAN BUTTON -->
@@ -1369,6 +1388,7 @@ onAuthStateChanged(auth, (user) => {
   <button onclick="closeFab();openQuickAdd()" style="display:flex;align-items:center;gap:8px;background:var(--white);border:none;border-radius:24px;padding:10px 16px;box-shadow:var(--shm);font-family:inherit;font-size:13px;font-weight:600;cursor:pointer;white-space:nowrap">✏️ Gasto rápido</button>
   <button onclick="closeFab();openQuickSaving()" style="display:flex;align-items:center;gap:8px;background:var(--white);border:none;border-radius:24px;padding:10px 16px;box-shadow:var(--shm);font-family:inherit;font-size:13px;font-weight:600;cursor:pointer;white-space:nowrap">💰 Ahorro rápido</button>
   <button onclick="closeFab();openQuickDebtPay()" style="display:flex;align-items:center;gap:8px;background:var(--white);border:none;border-radius:24px;padding:10px 16px;box-shadow:var(--shm);font-family:inherit;font-size:13px;font-weight:600;cursor:pointer;white-space:nowrap">💸 Pago de deuda</button>
+  <button onclick="closeFab();openCreditSaving()" style="display:flex;align-items:center;gap:8px;background:var(--white);border:none;border-radius:24px;padding:10px 16px;box-shadow:var(--shm);font-family:inherit;font-size:13px;font-weight:600;cursor:pointer;white-space:nowrap">📈 Ahorro en tarjeta</button>
 </div>
 <div id="fabOverlay" style="display:none;position:fixed;inset:0;z-index:39" onclick="closeFab()"></div>
 <button class="fab" id="fabBtn" onclick="toggleFab()" title="Agregar">+</button>
@@ -1645,7 +1665,7 @@ function mGastos(){
     if(g.recurring&&inst===1&&diff>=0){
       // Recurring 1-cuota on credit card → treat as debit (subscription/fixed payment)
       const virtDate=`${CY}-${String(CM+1).padStart(2,'0')}-${String(s.getDate()).padStart(2,'0')}`;
-      recurringDue.push({...g,date:virtDate,_isRecurring:true,_isCardDebit:true,id:g.id+'_rec_'+CY+'_'+CM});
+      recurringDue.push({...g,date:virtDate,_isRecurring:true,_isCardDebit:true,_isSaving:g.isSaving||false,id:g.id+'_rec_'+CY+'_'+CM});
     } else if(g.recurring&&diff>=0){
       // Recurring multi-cuota credit: show every month from first cuota onwards
       const virtDate=`${CY}-${String(CM+1).padStart(2,'0')}-${String(s.getDate()).padStart(2,'0')}`;
@@ -1816,7 +1836,9 @@ function rTxList(){
 
       const card=g.cardId?getCards().find(c=>c.id===g.cardId):null;
       const cardBadge=card?`<span class="bdg" style="background:${card.color}22;color:${card.color};border:1px solid ${card.color}44">${card.emoji} ${card.name}</span>`:'';
-      const badge=g.isDebtPayment
+      const badge=g._isSaving
+        ? `<span class="bdg" style="background:#d1fae5;color:#065f46">📈 ahorro</span>`
+        : g.isDebtPayment
         ? `<span class="bdg" style="background:#fce7f3;color:#be185d">💸 pago deuda</span>`
         : g.debtId
         ? `<span class="bdg" style="background:#fce7f3;color:#be185d">💸 deuda</span>`
@@ -1990,8 +2012,10 @@ function rSummary(){
       if(liSub){liSub.className=sobrante>=0?'ss li':'ss';liSub.style.color=sobrante<0?'var(--red)':'';liSub.textContent=sobrante>=0?'lo que queda después de todo':'en déficit ⚠️';}
     }
   }
+  const creditSavingsAmt=gs.filter(g=>g._isCardDebit&&g._isSaving).reduce((s,g)=>s+(+g.amount),0);
   const ahorrosEl=document.getElementById('sumAhorros');
-  if(ahorrosEl)ahorrosEl.textContent=savedThisMonth>0?fmt(savedThisMonth):'—';
+  const totalAhorros=savedThisMonth+creditSavingsAmt;
+  if(ahorrosEl)ahorrosEl.textContent=totalAhorros>0?fmt(totalAhorros):'—';
   const deudaEl=document.getElementById('sumDeuda');
   const deudaCard=document.getElementById('sumDeudaCard');
   if(deudaEl)deudaEl.textContent=debtPaidThisMonthCalc>0?fmt(debtPaidThisMonthCalc):'—';
@@ -2025,7 +2049,7 @@ function rSummary(){
 function rCatRows(){
   if(!window._catRowOpen)window._catRowOpen={};
   // Unified: debit + credit installments due this month, both under their original category
-  const debitGs=mGastos().filter(g=>(g.payType!=='credit'||g._isCardDebit)&&!g.isDebtPayment);
+  const debitGs=mGastos().filter(g=>(g.payType!=='credit'||g._isCardDebit)&&!g.isDebtPayment&&!g._isSaving);
   const creditDueGs=crDue(CM,CY);
 
   function calcSpend(catName){
@@ -3661,6 +3685,63 @@ function saveEditBudget(){
   save();popCats();renderAll();closeM('mEditBudget');toast('Categoría actualizada');
 }
 function delCat(i){if(!confirm(`¿Eliminar "${S.categories[i].name}"?`))return;S.categories.splice(i,1);save();popCats();renderAll();toast('Categoría eliminada');}
+
+// ============================================================
+// CREDIT SAVING
+// ============================================================
+function openCreditSaving(){
+  // Populate card select
+  const cardSel=document.getElementById('csCard');
+  if(cardSel){
+    cardSel.innerHTML=getCards().map(c=>'<option value="'+c.id+'">'+c.emoji+' '+c.name+'</option>').join('');
+  }
+  // Populate bolsillo select
+  const bolSel=document.getElementById('csBolsillo');
+  if(bolSel){
+    bolSel.innerHTML='<option value="">Sin bolsillo</option>'+(S.goals||[]).map((g,i)=>'<option value="'+i+'">'+g.emoji+' '+g.name+'</option>').join('');
+  }
+  // Default date = today
+  const dateEl=document.getElementById('csDate');
+  if(dateEl){const today=new Date();dateEl.value=today.toISOString().split('T')[0];}
+  openM('mCreditSaving');
+}
+
+function saveCreditSaving(){
+  const desc=document.getElementById('csDes').value.trim();
+  const amt=parseFloat(document.getElementById('csAmt').value);
+  const cardId=document.getElementById('csCard').value;
+  const date=document.getElementById('csDate').value;
+  const bolsilloIdx=document.getElementById('csBolsillo').value;
+  if(!desc){toast('Ingresá una descripción');return;}
+  if(!amt||amt<=0){toast('Ingresá un monto válido');return;}
+  if(!date){toast('Seleccioná una fecha');return;}
+  // Save as recurring 1-cuota credit gasto with isSaving flag
+  const g={
+    id:Date.now()+Math.random().toString(36).substr(2,5),
+    desc,amount:amt,
+    category:'Ahorro',
+    date,note:'',
+    payType:'credit',installments:1,recurring:true,
+    cardId,isSaving:true,
+    origAmount:amt,origCur:'USD'
+  };
+  S.gastos.push(g);
+  // Optionally add to bolsillo
+  if(bolsilloIdx!==''&&S.goals[+bolsilloIdx]){
+    if(!S.goals[+bolsilloIdx].entries)S.goals[+bolsilloIdx].entries=[];
+    S.goals[+bolsilloIdx].entries.push({id:Date.now().toString(),date,amount:amt,type:'deposit',note:'Ahorro automático tarjeta'});
+  }
+  // Check if first charge is next month
+  const d=new Date(date+'T12:00:00');
+  const cd=getClosingDay(cardId,d.getMonth(),d.getFullYear());
+  let toastMsg='Ahorro en tarjeta guardado ✓';
+  if(d.getDate()>cd){
+    const nm=new Date(d.getFullYear(),d.getMonth()+1,1);
+    toastMsg='Guardado ✓ — primer cobro en '+nm.toLocaleDateString('es-UY',{month:'long'});
+  }
+  save();renderAll();closeM('mCreditSaving');toast(toastMsg);
+  document.getElementById('csDes').value='';document.getElementById('csAmt').value='';
+}
 
 // ============================================================
 // API KEY
