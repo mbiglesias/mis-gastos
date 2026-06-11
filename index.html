@@ -1928,14 +1928,15 @@ window.goToday=function(){
 // ============================================================
 function rSummary(){
   const gs=mGastos();
-  const debitGs=gs.filter(g=>(g.payType!=='credit'||g._isCardDebit));
-  const spent=debitGs.reduce((s,g)=>s+(+g.amount),0); // includes debt payments — reduces disponible
-  const budgetSpent=debitGs.filter(g=>!g.isDebtPayment).reduce((s,g)=>s+(+g.amount),0); // excludes debt payments — for budget comparison
+  const debitGs=gs.filter(g=>g.payType!=='credit'); // pure debit only (card-debits move to cuotas)
+  const cardDebitGs=gs.filter(g=>g._isCardDebit); // suscripciones — now counted in cuotas
+  const spent=debitGs.reduce((s,g)=>s+(+g.amount),0);
+  const budgetSpent=debitGs.filter(g=>!g.isDebtPayment).reduce((s,g)=>s+(+g.amount),0);
+  const debtPaidThisMonthCalc=debitGs.filter(g=>g.isDebtPayment).reduce((s,g)=>s+(+g.amount),0);
   // In 'consumo' mode, add full credit purchases from this month to "gastado"
   const crMode=S.crMode||'consumo';
   // Gastado = débito only. Crédito se muestra separado en la tab Crédito
-  const debtPaidThisMonth=debitGs.filter(g=>g.isDebtPayment).reduce((s,g)=>s+(+g.amount),0);
-  const spentDisplay=budgetSpent; // show budget-relevant spending (excludes debt payments)
+  const spentDisplay=budgetSpent;
   const budTot=S.categories.reduce((s,c)=>s+getBudgetUSD(c),0);
   const sal=+S.salary||0;
   const extraInc=S.ingresos.filter(i=>{const d=new Date(i.date+'T12:00:00');return d.getMonth()===CM&&d.getFullYear()===CY;}).reduce((s,i)=>s+(+i.amount),0);
@@ -1943,7 +1944,8 @@ function rSummary(){
   const totalSaved=S.goals.reduce((s,g)=>s+(+g.saved||0),0);
   // Credit does NOT reduce disponible (paid later) — shown separately
   // creditThisMonth = sum of cuotas due this month (same as Gastos/Crédito filter)
-  const creditThisMonth=crDue(CM,CY).reduce((s,g)=>s+(g._cuota||g.amount/(+g.installments||1)),0);
+  const cardDebitThisMonth=cardDebitGs.reduce((s,g)=>s+(+g.amount),0);
+  const creditThisMonth=crDue(CM,CY).reduce((s,g)=>s+(g._cuota||g.amount/(+g.installments||1)),0)+cardDebitThisMonth;
   // Only savings added THIS month from YOUR bolsillos reduce disponible
   // Bolsillos de padres (nombre contiene "padres") no salen de tu ingreso
   const savedThisMonth=S.goals.reduce((s,g)=>{
@@ -1955,12 +1957,12 @@ function rSummary(){
 
   // ── New Resumen layout ──────────────────────────────────────
   // Row 1: Gastado + Cuotas
-  document.getElementById('sumSpent').textContent=fmt(spentDisplay);
+  const totalSalida=budgetSpent+debtPaidThisMonthCalc;
+  document.getElementById('sumSpent').textContent=fmt(totalSalida);
   const gastoCount=debitGs.filter(g=>!g.isDebtPayment).length;
-  const debtNote=debtPaidThisMonth>0?` · +${fmt(debtPaidThisMonth)} deudas`:'';
-  document.getElementById('sumCount').textContent=`${gastoCount} gasto${gastoCount!==1?'s':''}${debtNote} →`;
+  const debtNote=debtPaidThisMonthCalc>0?` · ${fmt(budgetSpent)} gastos + ${fmt(debtPaidThisMonthCalc)} deudas`:`${gastoCount} gasto${gastoCount!==1?'s':''}`;
+  document.getElementById('sumCount').textContent=(debtPaidThisMonthCalc>0?debtNote:`${gastoCount} gasto${gastoCount!==1?'s':''}`)+' →';
   // Card-debits are in Gastado but show as note in Cuotas card
-  const cardDebitThisMonth=mGastos().filter(g=>g._isCardDebit).reduce((s,g)=>s+(+g.amount),0);
   const sumCreditEl=document.getElementById('sumCredit');
   if(sumCreditEl)sumCreditEl.textContent=creditThisMonth>0?fmt(creditThisMonth):'—';
   const sumCreditSub=document.querySelector('#sumCredit~.ss')||document.getElementById('sumCreditSub2');
@@ -1980,7 +1982,7 @@ function rSummary(){
   if(libreSubEl)libreSubEl.textContent=libre<0?'⚠️ en déficit':'antes de ahorros y deudas';
 
   // Row 3: Ahorros / Deudas / Sobrante
-  const sobrante=libre-savedThisMonth-debtPaidThisMonth;
+  const sobrante=libre-savedThisMonth-debtPaidThisMonthCalc;
   const sobranteEl=document.getElementById('sumSobrante');
   const sobranteCard=sobranteEl?.closest('.sc');
   if(sobranteEl){
@@ -1995,8 +1997,8 @@ function rSummary(){
   if(ahorrosEl)ahorrosEl.textContent=savedThisMonth>0?fmt(savedThisMonth):'—';
   const deudaEl=document.getElementById('sumDeuda');
   const deudaCard=document.getElementById('sumDeudaCard');
-  if(deudaEl)deudaEl.textContent=debtPaidThisMonth>0?fmt(debtPaidThisMonth):'—';
-  if(deudaCard)deudaCard.style.display=debtPaidThisMonth>0?'':'';
+  if(deudaEl)deudaEl.textContent=debtPaidThisMonthCalc>0?fmt(debtPaidThisMonthCalc):'—';
+  if(deudaCard)deudaCard.style.display=debtPaidThisMonthCalc>0?'':'';
 
   // Keep salDisp for settings section
   const salDispEl=document.getElementById('salDisp');
