@@ -1969,10 +1969,7 @@ function rSummary(){
   // Update the subtitle of the Cuotas card
   const cuotasCard=sumCreditEl?.closest('.sc');
   const cuotasSub=cuotasCard?.querySelector('.ss');
-  if(cuotasSub){
-    const suscNote=cardDebitThisMonth>0?` · +${fmt(cardDebitThisMonth)} en gastado`:'';
-    cuotasSub.textContent=`cuotas de tarjeta${suscNote}`;
-  }
+  if(cuotasSub) cuotasSub.textContent='cuotas de tarjeta';
 
   // Hero: Libre = ingresos - gastado - cuotas
   const libre=totalIncome-budgetSpent-creditThisMonth;
