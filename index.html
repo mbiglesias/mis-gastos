@@ -2830,59 +2830,58 @@ function rSavings(){
   rSavingsProjection();
   const con=document.getElementById('goalList');
   if(!S.goals.length){con.innerHTML=`<div class="empty"><div class="ee">🎯</div><div class="et">Sin ahorros todavía</div><div class="es">Creá tu primer objetivo o bolsillo de ahorro</div></div>`;return;}
-  // Credit savings section
+  // Credit savings section — same UI as bolsillos
   const creditSavingGs=S.gastos.filter(g=>g.payType==='credit'&&g.isSaving&&g.recurring);
   function buildCreditSavingHistory(g){
-    // Build list of months this saving has been charged (diff>=0)
     var d=new Date(g.date+'T12:00:00');
     var cd=getClosingDay(g.cardId,d.getMonth(),d.getFullYear());
     var billM=d.getDate()>cd?d.getMonth()+1:d.getMonth();
     var billY=d.getFullYear()+Math.floor(billM/12);
-    var fm=((billM%12)+12)%12;
+    var fm=((billM%12)+12)%12; billY=d.getFullYear()+Math.floor((d.getMonth()+1+(d.getDate()>cd?1:0))/12);
+    // Recalculate properly
+    var startM=d.getDate()>cd?d.getMonth()+1:d.getMonth();
+    var startY=d.getFullYear();
+    if(startM>11){startM=0;startY++;}
+    var now=new Date(); var nowM=now.getMonth(); var nowY=now.getFullYear();
     var history=[];
-    var now=new Date();
-    var nowM=now.getMonth(); var nowY=now.getFullYear();
-    for(var y=billY;y<=nowY+1;y++){
-      for(var m=(y===billY?fm:0);m<12;m++){
-        var diff=(y-billY)*12+(m-fm);
-        if(diff<0)continue;
-        if(y>nowY||(y===nowY&&m>nowM))break;
-        history.push({m:m,y:y});
-      }
+    var y=startY; var m=startM;
+    while(y<nowY||(y===nowY&&m<=nowM)){
+      history.push({m:m,y:y});
+      m++; if(m>11){m=0;y++;}
     }
     return history;
   }
-  const creditSavingSection=creditSavingGs.length>0
-    ?'<div style="margin-bottom:16px"><div style="font-size:11px;font-weight:700;color:var(--text-muted);text-transform:uppercase;letter-spacing:.5px;margin-bottom:8px">📈 Ahorros automáticos en tarjeta</div>'
-      +creditSavingGs.map(function(g){
-        var card=getCards().find(function(c){return c.id===g.cardId;})||{emoji:'💳',name:'Tarjeta'};
-        var history=buildCreditSavingHistory(g);
-        var histHtml=history.length>0
-          ?'<div style="margin-top:10px;border-top:1px solid var(--border);padding-top:8px">'
-            +'<div style="font-size:11px;font-weight:600;color:var(--text-muted);margin-bottom:6px">HISTORIAL ('+history.length+')</div>'
-            +history.slice().reverse().map(function(h){
-              return '<div style="display:flex;justify-content:space-between;align-items:center;padding:4px 0;font-size:12px">'
-                +'<span style="color:var(--text-muted)">🔁 '+new Date(h.y,h.m,1).toLocaleDateString('es-UY',{month:'long',year:'numeric'})+'</span>'
-                +'<span style="color:var(--green);font-weight:600">+'+fmt(g.amount)+'</span>'
-                +'</div>';
-            }).join('')
+  const creditSavingSection=creditSavingGs.map(function(g){
+    var card=getCards().find(function(c){return c.id===g.cardId;})||{emoji:'💳',name:'Tarjeta'};
+    var history=buildCreditSavingHistory(g);
+    var totalSaved=history.length*(+g.amount);
+    var entriesHTML=history.length
+      ?'<div style="margin-top:10px;border-top:1px solid var(--border);padding-top:8px">'
+        +'<div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:6px">'
+        +'<div style="font-size:10px;font-weight:700;color:var(--text-muted);text-transform:uppercase;letter-spacing:.5px">Historial ('+history.length+')</div>'
+        +'</div>'
+        +history.slice().reverse().map(function(h){
+          var label=new Date(h.y,h.m,1).toLocaleDateString('es-UY',{day:'numeric',month:'short',year:'numeric'});
+          return '<div style="display:flex;align-items:center;gap:8px;padding:8px 0;border-bottom:1px solid var(--border-light)">'
+            +'<div style="flex:1">'
+            +'<div style="font-size:12px;font-weight:700;color:var(--green)">+'+fmt(g.amount)+'</div>'
+            +'<div style="font-size:10px;color:var(--text-muted)">🟢 Depósito · '+label+' · automático</div>'
             +'</div>'
-          :'';
-        return '<div style="background:var(--white);border-radius:var(--R);padding:14px;box-shadow:var(--sh);margin-bottom:10px">'
-          +'<div style="display:flex;justify-content:space-between;align-items:flex-start">'
-          +'<div><div style="font-weight:700;font-size:15px">'+g.desc+'</div>'
-          +'<div style="font-size:11px;color:var(--text-muted);margin-top:2px">'+card.emoji+' '+card.name+' &middot; mensual</div></div>'
-          +'<div style="font-weight:700;color:var(--green);font-size:15px">+'+fmt(g.amount)+'/mes</div>'
-          +'</div>'
-          +'<div style="display:flex;gap:8px;margin-top:10px">'
-          +'<button data-csid="'+g.id+'" onclick="openEditCreditSaving(this.dataset.csid)" style="flex:1;padding:6px;border:1px solid var(--border);border-radius:var(--r);background:var(--bg);font-family:inherit;font-size:12px;cursor:pointer">✏️ Editar</button>'
-          +'<button data-csid="'+g.id+'" onclick="deleteCreditSaving(this.dataset.csid)" style="flex:1;padding:6px;border:1px solid #fecaca;border-radius:var(--r);background:#fff5f5;color:var(--red);font-family:inherit;font-size:12px;cursor:pointer">✕ Eliminar</button>'
-          +'</div>'
-          +histHtml
-          +'</div>';
-      }).join('')+'</div>'
-    :'';
-
+            +'</div>';
+        }).join('')
+        +'</div>'
+      :'<div style="font-size:11px;color:var(--text-muted);margin-top:8px;text-align:center">El primer cobro aún no ocurrió</div>';
+    return '<div class="goal-card">'
+      +'<div class="gh"><div class="ge">📈</div><div class="gn">'+g.desc+'<span style="font-size:10px;background:#f0fdf4;color:var(--green);border-radius:4px;padding:1px 5px;margin-left:6px;vertical-align:middle">🔁 tarjeta</span></div>'
+      +'<div class="gp"></div></div>'
+      +'<div class="gam"><span class="gas">'+fmt(totalSaved)+'</span><span>'+card.emoji+' '+card.name+' · '+fmt(g.amount)+'/mes</span></div>'
+      +'<div class="gacts">'
+      +'<button class="gab gab-e" data-csid="'+g.id+'" onclick="openEditCreditSaving(this.dataset.csid)">Editar</button>'
+      +'<button class="gab gab-d" data-csid="'+g.id+'" onclick="deleteCreditSaving(this.dataset.csid)">Eliminar</button>'
+      +'</div>'
+      +entriesHTML
+      +'</div>';
+  }).join('');
   con.innerHTML=creditSavingSection+S.goals.map((g,i)=>{
     const hasTarget=g.target>0;
     const pct=hasTarget?Math.min((g.saved/g.target)*100,100):0;
