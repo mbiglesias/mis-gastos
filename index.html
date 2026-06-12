@@ -1376,18 +1376,18 @@ onAuthStateChanged(auth, (user) => {
         <input type="number" class="fi" id="csAmt" placeholder="500">
       </div>
       <div class="fld"><div class="fl">Tarjeta</div>
-        <select class="fi" id="csCard"></select>
+        <select class="fi" id="csCard" onchange="updateCsPrimerCobro()"></select>
       </div>
     </div>
     <div class="fr f1" style="margin-bottom:16px">
       <div class="fld"><div class="fl">Fecha de inicio</div>
         <div class="date-wrap" onclick="this.querySelector('input[type=date]').showPicker?this.querySelector('input[type=date]').showPicker():this.querySelector('input[type=date]').click()">
-          <input type="date" class="fi" id="csDate" onchange="updDateDisplay('csDate','csDateDisp')">
+          <input type="date" class="fi" id="csDate" onchange="updDateDisplay('csDate','csDateDisp');updateCsPrimerCobro()">
           <div class="date-display" id="csDateDisp"><span>DD/MM/AAAA</span></div>
         </div>
       </div>
     </div>
-    <div style="display:flex;align-items:center;gap:6px;margin-bottom:14px;padding:8px 12px;background:var(--bg);border-radius:var(--r);font-size:12px;color:var(--text-muted)">🔁 <span>Se cobra automáticamente todos los meses</span></div>
+    <div id="csPrimerCobro" style="margin-bottom:14px;padding:8px 12px;background:var(--bg);border-radius:var(--r);font-size:12px;color:var(--text-muted)">🔁 Se cobra automáticamente todos los meses</div>
     <button class="btn bg" onclick="saveCreditSaving()">Guardar</button>
   </div>
 </div>
@@ -1669,7 +1669,7 @@ function mGastos(){
     const s=new Date(g.date+'T12:00:00');
     const inst=+g.installments||1;
     // Cierre día 6: compra el 1-6 → cobra ese mismo mes; compra el 7+ → cobra mes siguiente
-    const firstCuotaMonth = s.getDate()<=getClosingDay(g.cardId,s.getMonth(),s.getFullYear()) ? s.getMonth() : s.getMonth()+1;
+    const firstCuotaMonth = (function(d,s){var cd=getClosingDay(d,s.getMonth(),s.getFullYear());var eom=cd>=28;return s.getDate()<=cd?(eom?s.getMonth()+1:s.getMonth()):(eom?s.getMonth()+2:s.getMonth()+1);})(g.cardId,s);
     const firstCuotaYear = s.getFullYear() + Math.floor(firstCuotaMonth/12);
     const fm = ((firstCuotaMonth%12)+12)%12;
     // diff = how many months after first cuota we are
@@ -1928,7 +1928,7 @@ function crDue(m,y){
     const s=new Date(g.date+'T12:00:00');
     const inst=+g.installments||1;
     // Cierre día 6: compra 1-6 → cobra ese mes; compra 7+ → cobra mes siguiente
-    const firstM=s.getDate()<=getClosingDay(g.cardId,s.getMonth(),s.getFullYear())?s.getMonth():s.getMonth()+1;
+    const firstM=(function(d,s){var cd=getClosingDay(d,s.getMonth(),s.getFullYear());var eom=cd>=28;return s.getDate()<=cd?(eom?s.getMonth()+1:s.getMonth()):(eom?s.getMonth()+2:s.getMonth()+1);})(g.cardId,s);
     const firstY=s.getFullYear()+Math.floor(firstM/12);
     const fm=((firstM%12)+12)%12;
     const diff=(y-firstY)*12+(m-fm);
@@ -2698,7 +2698,7 @@ function rCredit(){
   const active=crGs.filter(g=>{
     const s=new Date(g.date+'T12:00:00');
     const tot=+g.installments||1;
-    const firstM=s.getDate()<=getClosingDay(g.cardId,s.getMonth(),s.getFullYear())?s.getMonth():s.getMonth()+1;
+    const firstM=(function(d,s){var cd=getClosingDay(d,s.getMonth(),s.getFullYear());var eom=cd>=28;return s.getDate()<=cd?(eom?s.getMonth()+1:s.getMonth()):(eom?s.getMonth()+2:s.getMonth()+1);})(g.cardId,s);
     const firstY=s.getFullYear()+Math.floor(firstM/12);
     const fm=((firstM%12)+12)%12;
     // Recurring card-debits (1 cuota recurrente) → always active from first cuota month
@@ -2785,7 +2785,7 @@ function rCredit(){
     const cuota=g.amount/inst;
     const s=new Date(g.date+'T12:00:00');
     // Day-6 cutoff: purchases on or before the 6th → first cuota same month
-    const firstM=s.getDate()<=getClosingDay(g.cardId,s.getMonth(),s.getFullYear())?s.getMonth():s.getMonth()+1;
+    const firstM=(function(d,s){var cd=getClosingDay(d,s.getMonth(),s.getFullYear());var eom=cd>=28;return s.getDate()<=cd?(eom?s.getMonth()+1:s.getMonth()):(eom?s.getMonth()+2:s.getMonth()+1);})(g.cardId,s);
     const firstY=s.getFullYear()+Math.floor(firstM/12);
     const fm=((firstM%12)+12)%12;
     const fy=firstY;
@@ -2830,21 +2830,19 @@ function rSavings(){
   rSavingsProjection();
   const con=document.getElementById('goalList');
   if(!S.goals.length){con.innerHTML=`<div class="empty"><div class="ee">🎯</div><div class="et">Sin ahorros todavía</div><div class="es">Creá tu primer objetivo o bolsillo de ahorro</div></div>`;return;}
-  // Credit savings section — same UI as bolsillos
+  // Credit savings section — identical UI to bolsillos
   const creditSavingGs=S.gastos.filter(g=>g.payType==='credit'&&g.isSaving&&g.recurring);
   function buildCreditSavingHistory(g){
     var d=new Date(g.date+'T12:00:00');
-    var cd=getClosingDay(g.cardId,d.getMonth(),d.getFullYear());
-    var billM=d.getDate()>cd?d.getMonth()+1:d.getMonth();
-    var billY=d.getFullYear()+Math.floor(billM/12);
-    var fm=((billM%12)+12)%12; billY=d.getFullYear()+Math.floor((d.getMonth()+1+(d.getDate()>cd?1:0))/12);
-    // Recalculate properly
-    var startM=d.getDate()>cd?d.getMonth()+1:d.getMonth();
-    var startY=d.getFullYear();
-    if(startM>11){startM=0;startY++;}
+    var startM=d.getMonth(); var startY=d.getFullYear();
+    var cd=getClosingDay(g.cardId,startM,startY);
+    var eom=cd>=28;
+    // First billing month: same logic as crDue
+    if(d.getDate()<=cd){ if(eom){startM++;} }
+    else { startM+=(eom?2:1); }
+    if(startM>11){startM-=12;startY++;}
     var now=new Date(); var nowM=now.getMonth(); var nowY=now.getFullYear();
-    var history=[];
-    var y=startY; var m=startM;
+    var history=[]; var m=startM; var y=startY;
     while(y<nowY||(y===nowY&&m<=nowM)){
       history.push({m:m,y:y});
       m++; if(m>11){m=0;y++;}
@@ -2864,7 +2862,7 @@ function rSavings(){
           var label=new Date(h.y,h.m,1).toLocaleDateString('es-UY',{day:'numeric',month:'short',year:'numeric'});
           return '<div style="display:flex;align-items:center;gap:8px;padding:8px 0;border-bottom:1px solid var(--border-light)">'
             +'<div style="flex:1">'
-            +'<div style="font-size:12px;font-weight:700;color:var(--green)">+'+fmt(g.amount)+'</div>'
+            +'<div style="font-size:12px;font-weight:700;color:var(--green)">+ '+fmt(g.amount)+'</div>'
             +'<div style="font-size:10px;color:var(--text-muted)">🟢 Depósito · '+label+' · automático</div>'
             +'</div>'
             +'</div>';
@@ -2872,9 +2870,11 @@ function rSavings(){
         +'</div>'
       :'<div style="font-size:11px;color:var(--text-muted);margin-top:8px;text-align:center">El primer cobro aún no ocurrió</div>';
     return '<div class="goal-card">'
-      +'<div class="gh"><div class="ge">📈</div><div class="gn">'+g.desc+'<span style="font-size:10px;background:#f0fdf4;color:var(--green);border-radius:4px;padding:1px 5px;margin-left:6px;vertical-align:middle">🔁 tarjeta</span></div>'
-      +'<div class="gp"></div></div>'
-      +'<div class="gam"><span class="gas">'+fmt(totalSaved)+'</span><span>'+card.emoji+' '+card.name+' · '+fmt(g.amount)+'/mes</span></div>'
+      +'<div class="gh"><div class="ge">📈</div>'
+      +'<div class="gn">'+g.desc+'</div>'
+      +'<div class="gp">🔄</div></div>'
+      +'<div class="gam"><span class="gas">'+fmt(totalSaved)+'</span>'
+      +'<span>'+card.emoji+' '+card.name+' · automático</span></div>'
       +'<div class="gacts">'
       +'<button class="gab gab-e" data-csid="'+g.id+'" onclick="openEditCreditSaving(this.dataset.csid)">Editar</button>'
       +'<button class="gab gab-d" data-csid="'+g.id+'" onclick="deleteCreditSaving(this.dataset.csid)">Eliminar</button>'
@@ -3792,6 +3792,21 @@ function openCreditSaving(){
   const dateEl=document.getElementById('csDate');
   if(dateEl){const today=new Date();dateEl.value=today.toISOString().split('T')[0];}
   openM('mCreditSaving');
+  updateCsPrimerCobro();
+}
+
+function updateCsPrimerCobro(){
+  const el=document.getElementById('csPrimerCobro');
+  if(!el)return;
+  const dateVal=document.getElementById('csDate').value;
+  const cardId=document.getElementById('csCard').value;
+  if(!dateVal||!cardId){el.textContent='🔁 Se cobra automáticamente todos los meses';return;}
+  const d=new Date(dateVal+'T12:00:00');
+  const cd=getClosingDay(cardId,d.getMonth(),d.getFullYear());
+  const billM=d.getDate()<=cd?d.getMonth():d.getMonth()+1;
+  const billY=billM>11?d.getFullYear()+1:d.getFullYear();
+  const billDate=new Date(billY,billM%12,1).toLocaleDateString('es-UY',{month:'long',year:'numeric'});
+  el.innerHTML='🔁 Mensual · <strong>Primer cobro: '+billDate+'</strong>';
 }
 
 function saveCreditSaving(){
