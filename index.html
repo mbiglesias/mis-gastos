@@ -3743,7 +3743,6 @@ function saveCreditSaving(){
   const amt=parseFloat(document.getElementById('csAmt').value);
   const cardId=document.getElementById('csCard').value;
   const date=document.getElementById('csDate').value;
-  const bolsilloIdx=document.getElementById('csBolsillo').value;
   if(!desc){toast('Ingresá una descripción');return;}
   if(!amt||amt<=0){toast('Ingresá un monto válido');return;}
   if(!date){toast('Seleccioná una fecha');return;}
