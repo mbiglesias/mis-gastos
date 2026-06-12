@@ -1363,16 +1363,31 @@ onAuthStateChanged(auth, (user) => {
 </div>
 <!-- CREDIT SAVING MODAL -->
 <div class="mo hid" id="mCreditSaving" onclick="overlayClose(event,'mCreditSaving')">
-  <div class="modal">
-    <div class="mh"><span>📈 Ahorro en tarjeta</span><button class="mcl" onclick="closeM('mCreditSaving')">✕</button></div>
-    <p style="font-size:12px;color:var(--text-muted);margin:0 0 14px">Se cobra mensualmente en tu tarjeta y cuenta como ahorro. No afecta el presupuesto.</p>
-    <div style="display:flex;flex-direction:column;gap:10px">
-      <div><div class="lbl">Descripción</div><input id="csDes" class="inp" placeholder="Ej: Inversión Nobilis"></div>
-      <div><div class="lbl">Monto mensual (USD)</div><input id="csAmt" class="inp" type="number" placeholder="500"></div>
-      <div><div class="lbl">Tarjeta</div><select id="csCard" class="inp"></select></div>
-      <div><div class="lbl">Fecha de inicio</div><input id="csDate" class="inp" type="date"></div>
+  <div class="modal"><div class="mh"></div>
+    <div class="mt">📈 Ahorro en tarjeta</div>
+    <div style="font-size:12px;color:var(--text-muted);margin-bottom:12px">Se cobra mensualmente en tu tarjeta y cuenta como ahorro. No afecta el presupuesto.</div>
+    <div class="fr f1" style="margin-bottom:8px">
+      <div class="fld"><div class="fl">Descripción</div>
+        <input class="fi" id="csDes" placeholder="Ej: Inversión Nobilis">
+      </div>
     </div>
-    <button class="btn bg" style="margin-top:16px;width:100%" onclick="saveCreditSaving()">Guardar</button>
+    <div class="fr" style="margin-bottom:8px">
+      <div class="fld"><div class="fl">Monto mensual (USD)</div>
+        <input type="number" class="fi" id="csAmt" placeholder="500">
+      </div>
+      <div class="fld"><div class="fl">Tarjeta</div>
+        <select class="fi" id="csCard"></select>
+      </div>
+    </div>
+    <div class="fr f1" style="margin-bottom:16px">
+      <div class="fld"><div class="fl">Fecha de inicio</div>
+        <div class="date-wrap" onclick="this.querySelector('input[type=date]').showPicker?this.querySelector('input[type=date]').showPicker():this.querySelector('input[type=date]').click()">
+          <input type="date" class="fi" id="csDate" onchange="updDateDisplay('csDate','csDateDisp')">
+          <div class="date-display" id="csDateDisp"><span>DD/MM/AAAA</span></div>
+        </div>
+      </div>
+    </div>
+    <button class="btn bg" onclick="saveCreditSaving()">Guardar</button>
   </div>
 </div>
 
