@@ -1297,72 +1297,78 @@ onAuthStateChanged(auth, (user) => {
 
   <!-- CASA -->
   <div id="t-casa" style="display:none">
-    <div style="background:linear-gradient(135deg,#1a3a5c,#2563eb);border-radius:var(--RL);padding:18px 16px;margin-bottom:12px;color:#fff">
-      <div style="font-size:11px;font-weight:700;opacity:.7;text-transform:uppercase;letter-spacing:.5px;margin-bottom:10px">🏠 Tracker — Casa Nueva</div>
-      <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-bottom:14px">
-        <div>
-          <div style="font-size:10px;opacity:.7;margin-bottom:2px">Precio casa</div>
-          <div style="font-size:20px;font-weight:700;letter-spacing:-.5px">USD 295,000</div>
-        </div>
-        <div>
-          <div style="font-size:10px;opacity:.7;margin-bottom:2px">Gasto total estimado</div>
-          <div style="font-size:20px;font-weight:700;letter-spacing:-.5px" id="casaTotal">—</div>
-        </div>
+    <!-- Top cards: Con/Sin escrituras -->
+    <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-bottom:12px">
+      <div style="border-radius:var(--R);padding:14px;box-shadow:var(--sh)" id="casaCardCon">
+        <div style="font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:.5px;opacity:.7;margin-bottom:4px">Con escrituras</div>
+        <div style="font-size:22px;font-weight:800;letter-spacing:-.5px" id="casaDifCon">—</div>
+        <div style="font-size:10px;opacity:.6;margin-top:2px">tengo − necesito</div>
       </div>
-      <div style="background:rgba(255,255,255,.2);border-radius:4px;height:6px;margin-bottom:4px">
-        <div id="casaProgressBar" style="height:100%;border-radius:4px;background:#4ade80;transition:width .5s;width:0%"></div>
+      <div style="border-radius:var(--R);padding:14px;box-shadow:var(--sh)" id="casaCardSin">
+        <div style="font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:.5px;opacity:.7;margin-bottom:4px">Sin escrituras</div>
+        <div style="font-size:22px;font-weight:800;letter-spacing:-.5px" id="casaDifSin">—</div>
+        <div style="font-size:10px;opacity:.6;margin-top:2px">tengo − necesito</div>
       </div>
-      <div id="casaCoverage" style="font-size:11px;opacity:.8;text-align:right;margin-bottom:8px">0%</div>
-      <div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:8px">
-        <div style="background:rgba(255,255,255,.12);border-radius:10px;padding:10px">
-          <div style="font-size:9px;opacity:.7;margin-bottom:3px;text-transform:uppercase">Tengo</div>
-          <div style="font-size:15px;font-weight:700" id="casaTengo">—</div>
-          <div style="font-size:9px;opacity:.6">boleto + ahorros + padres</div>
+    </div>
+
+    <!-- Tabs: Tengo / Necesito -->
+    <div style="display:flex;gap:0;margin-bottom:12px;background:var(--bg);border-radius:var(--R);padding:3px">
+      <button id="casaTabTengo" onclick="setCasaTab('tengo')" style="flex:1;padding:8px;border:none;border-radius:calc(var(--R) - 2px);font-family:inherit;font-size:13px;font-weight:700;cursor:pointer;background:var(--white);color:var(--accent);box-shadow:var(--sh)">Lo que tengo</button>
+      <button id="casaTabNecesito" onclick="setCasaTab('necesito')" style="flex:1;padding:8px;border:none;border-radius:calc(var(--R) - 2px);font-family:inherit;font-size:13px;font-weight:700;cursor:pointer;background:transparent;color:var(--text-muted)">Lo que necesito</button>
+    </div>
+
+    <!-- Tengo -->
+    <div id="casaPanelTengo">
+      <div style="background:var(--white);border-radius:var(--R);box-shadow:var(--sh);overflow:hidden;margin-bottom:8px">
+        <div style="padding:10px 14px;border-bottom:1px solid var(--border);display:flex;justify-content:space-between">
+          <span style="font-size:12px;color:var(--text-muted)">Total</span>
+          <span style="font-size:13px;font-weight:700;color:var(--green)" id="casaTotalTengo">—</span>
         </div>
-        <div style="background:rgba(255,255,255,.12);border-radius:10px;padding:10px">
-          <div style="font-size:9px;opacity:.7;margin-bottom:3px;text-transform:uppercase">De padres</div>
-          <div style="font-size:15px;font-weight:700" id="casaAportePadresDisp">—</div>
-          <div style="font-size:9px;opacity:.6">recibido en ahorros</div>
-        </div>
-        <div style="background:rgba(74,222,128,.2);border-radius:10px;padding:10px;border:1px solid rgba(74,222,128,.3)">
-          <div style="font-size:9px;opacity:.7;margin-bottom:3px;text-transform:uppercase">Te sobra</div>
-          <div style="font-size:15px;font-weight:700" id="casaColchon">—</div>
-          <div style="font-size:9px;opacity:.6">colchón</div>
+        <div style="padding:12px 14px;display:flex;flex-direction:column;gap:12px">
+          <div>
+            <div style="font-size:11px;color:var(--text-muted);margin-bottom:4px">Boleto de reserva (USD)</div>
+            <input type="number" class="fi" id="casaBoleto" oninput="saveCasaConfig();rCasa()">
+          </div>
+          <div>
+            <div style="font-size:11px;color:var(--text-muted);margin-bottom:4px">Ahorros propios (USD) <span style="font-size:9px;background:var(--green-light);color:var(--green);border-radius:4px;padding:1px 5px">🔄 live</span></div>
+            <div style="padding:10px 12px;background:var(--bg);border-radius:var(--r);font-size:14px;font-weight:700;color:var(--green)" id="casaAhorrosLive">—</div>
+          </div>
+          <div>
+            <div style="font-size:11px;color:var(--text-muted);margin-bottom:4px">Préstamo padres (USD)</div>
+            <input type="number" class="fi" id="casaPrestamoPadres" oninput="saveCasaConfig();rCasa()">
+          </div>
         </div>
       </div>
     </div>
 
-    <!-- En la cuenta — live from savings -->
-    <div style="background:var(--green-light);border:1.5px solid var(--green);border-radius:var(--R);padding:12px 14px;margin-bottom:12px;display:flex;align-items:center;gap:10px;cursor:pointer" onclick="tab('ahorros')">
-      <div style="font-size:20px">🎯</div>
-      <div style="flex:1">
-        <div style="font-size:13px;font-weight:700;color:var(--green)">En la cuenta (ahorros actuales)</div>
-        <div style="font-size:11px;color:var(--text-muted)">Suma de todos tus bolsillos</div>
-      </div>
-      <div style="font-size:17px;font-weight:700;color:var(--green)" id="casaEnCuenta">—</div>
-      <div style="color:var(--green)">›</div>
-    </div>
-
-    <!-- Concepts -->
-    <div style="background:var(--white);border-radius:var(--R);box-shadow:var(--sh);overflow:hidden;margin-bottom:12px">
-      <div style="padding:11px 14px;border-bottom:1px solid var(--border);display:flex;justify-content:space-between;align-items:center">
-        <div style="font-size:13px;font-weight:700">Conceptos</div>
-        <div style="font-size:11px;color:var(--text-muted)" id="casaPagadoCount">—</div>
-      </div>
-      <div id="casaConceptos"></div>
-    </div>
-
-    <!-- Config -->
-    <div style="background:var(--white);border-radius:var(--R);box-shadow:var(--sh);padding:14px;margin-bottom:14px">
-      <div style="font-size:11px;font-weight:700;color:var(--text-muted);text-transform:uppercase;letter-spacing:.5px;margin-bottom:10px">Configurar</div>
-      <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px">
-        <div>
-          <div style="font-size:11px;color:var(--text-muted);margin-bottom:4px">Aporte padres (USD)</div>
-          <input type="number" class="fi" id="casaAportePadres" style="font-size:13px" oninput="saveCasaConfig();rCasa()">
+    <!-- Necesito -->
+    <div id="casaPanelNecesito" style="display:none">
+      <div style="background:var(--white);border-radius:var(--R);box-shadow:var(--sh);overflow:hidden;margin-bottom:8px">
+        <div style="padding:10px 14px;border-bottom:1px solid var(--border);display:flex;justify-content:space-between">
+          <span style="font-size:12px;color:var(--text-muted)">Total con escrituras</span>
+          <span style="font-size:13px;font-weight:700" id="casaTotalNecesito">—</span>
         </div>
-        <div>
-          <div style="font-size:11px;color:var(--text-muted);margin-bottom:4px">Boleto pagado (USD)</div>
-          <input type="number" class="fi" id="casaBoleto" style="font-size:13px" oninput="saveCasaConfig();rCasa()">
+        <div style="padding:12px 14px;display:flex;flex-direction:column;gap:12px">
+          <div>
+            <div style="font-size:11px;color:var(--text-muted);margin-bottom:4px">Líquido para hipoteca (USD)</div>
+            <input type="number" class="fi" id="casaHipoteca" oninput="saveCasaConfig();rCasa()">
+          </div>
+          <div>
+            <div style="font-size:11px;color:var(--text-muted);margin-bottom:4px">Comisión inmobiliaria (USD)</div>
+            <input type="number" class="fi" id="casaComision" oninput="saveCasaConfig();rCasa()">
+          </div>
+          <div>
+            <div style="font-size:11px;color:var(--text-muted);margin-bottom:4px">Conexiones (USD)</div>
+            <input type="number" class="fi" id="casaConexiones" oninput="saveCasaConfig();rCasa()">
+          </div>
+          <div>
+            <div style="font-size:11px;color:var(--text-muted);margin-bottom:4px">Gastos notariales (USD)</div>
+            <input type="number" class="fi" id="casaNotariales" oninput="saveCasaConfig();rCasa()">
+          </div>
+          <div>
+            <div style="font-size:11px;color:var(--text-muted);margin-bottom:4px">Gastos escrituras (USD) <span style="font-size:9px;background:#fef3c7;color:#d97706;border-radius:4px;padding:1px 5px">excluido en "sin escrituras"</span></div>
+            <input type="number" class="fi" id="casaEscrituras" oninput="saveCasaConfig();rCasa()">
+          </div>
         </div>
       </div>
     </div>
@@ -5238,127 +5244,74 @@ function getCasaState(){
 function saveCasaState(state){localStorage.setItem('mg_casa',JSON.stringify(state));}
 function saveCasaConfig(){
   const state=getCasaState();
-  state.aportePadres=parseFloat(document.getElementById('casaAportePadres').value)||35000;
-  state.boleto=parseFloat(document.getElementById('casaBoleto').value)||29500;
-  saveCasaState(state);
+  const cn=getCasaState();
+  cn.boleto=parseFloat(document.getElementById('casaBoleto')?.value)||29500;
+  cn.prestamoPadres=parseFloat(document.getElementById('casaPrestamoPadres')?.value)||35000;
+  cn.hipoteca=parseFloat(document.getElementById('casaHipoteca')?.value)||81493;
+  cn.comision=parseFloat(document.getElementById('casaComision')?.value)||9726;
+  cn.conexiones=parseFloat(document.getElementById('casaConexiones')?.value)||5900;
+  cn.notariales=parseFloat(document.getElementById('casaNotariales')?.value)||6000;
+  cn.escrituras=parseFloat(document.getElementById('casaEscrituras')?.value)||6000;
+  saveCasaState(cn);
+}
+
+function setCasaTab(tab){
+  document.getElementById('casaPanelTengo').style.display=tab==='tengo'?'':'none';
+  document.getElementById('casaPanelNecesito').style.display=tab==='necesito'?'':'none';
+  const btnT=document.getElementById('casaTabTengo');
+  const btnN=document.getElementById('casaTabNecesito');
+  if(btnT){btnT.style.background=tab==='tengo'?'var(--white)':'transparent';btnT.style.color=tab==='tengo'?'var(--accent)':'var(--text-muted)';btnT.style.boxShadow=tab==='tengo'?'var(--sh)':'none';}
+  if(btnN){btnN.style.background=tab==='necesito'?'var(--white)':'transparent';btnN.style.color=tab==='necesito'?'var(--accent)':'var(--text-muted)';btnN.style.boxShadow=tab==='necesito'?'var(--sh)':'none';}
 }
 
 function rCasa(){
-  const state=getCasaState();
-  const aportePadres=state.aportePadres||35000;
-  const boletoPagado=state.boleto||29500;
-  const apEl=document.getElementById('casaAportePadres');
-  const boEl=document.getElementById('casaBoleto');
-  if(apEl&&!apEl.matches(':focus'))apEl.value=aportePadres;
-  if(boEl&&!boEl.matches(':focus'))boEl.value=boletoPagado;
+  const cn=getCasaState();
+  const boleto=cn.boleto||29500;
+  const prestamoPadres=cn.prestamoPadres||35000;
+  const hipoteca=cn.hipoteca||81493;
+  const comision=cn.comision||9726;
+  const conexiones=cn.conexiones||5900;
+  const notariales=cn.notariales||6000;
+  const escrituras=cn.escrituras||6000;
 
-  // DYNAMIC: separate your savings from padres savings
-  const padresEnCuenta=S.goals.reduce((s,g)=>{
-    if(g.name&&g.name.toLowerCase().includes('padres'))return s+(+g.saved||0);
-    return s;
-  },0);
-  const enCuentaPropio=S.goals.reduce((s,g)=>{
+  // Populate inputs without stealing focus
+  const setInput=(id,v)=>{const el=document.getElementById(id);if(el&&!el.matches(':focus'))el.value=v;};
+  setInput('casaBoleto',boleto);
+  setInput('casaPrestamoPadres',prestamoPadres);
+  setInput('casaHipoteca',hipoteca);
+  setInput('casaComision',comision);
+  setInput('casaConexiones',conexiones);
+  setInput('casaNotariales',notariales);
+  setInput('casaEscrituras',escrituras);
+
+  // Ahorros propios: sum of all bolsillos (not padres)
+  const ahorrosPropios=S.goals.reduce((s,g)=>{
     if(g.name&&g.name.toLowerCase().includes('padres'))return s;
     return s+(+g.saved||0);
   },0);
-  const enCuenta=enCuentaPropio; // tracker uses only YOUR savings for "falta de mí"
-  const enCuentaTotal=enCuentaPropio+padresEnCuenta; // total for display
 
-  // FIXED
-  const PRECIO_CASA=295000;
-  const PRENDA=213507;
-  const COMISION=9726;
-  const CONEXIONES=5900;
-  const NOTARIALES=6000;
-  const ESCRITURAS=6000;
+  // Lo que tengo
+  const tengo=boleto+ahorrosPropios+prestamoPadres;
+  // Lo que necesito
+  const necesitoCon=hipoteca+comision+conexiones+notariales+escrituras;
+  const necesitaSin=hipoteca+comision+conexiones+notariales;
+  // Diferencia
+  const difCon=tengo-necesitoCon;
+  const difSin=tengo-necesitaSin;
 
-  // Formulas matching spreadsheet
-  const necesitaBanco=PRECIO_CASA-PRENDA; // 81493
-  const faltaDeMi=Math.max(0, necesitaBanco-enCuenta-boletoPagado);
-  const faltaSinEscrituras=faltaDeMi+COMISION+CONEXIONES+NOTARIALES;
-  const faltaConEscrituras=faltaSinEscrituras+ESCRITURAS;
-  const colchon=aportePadres-faltaSinEscrituras;
-  const pctHipoteca=Math.min(100,((enCuenta+boletoPagado)/necesitaBanco)*100);
+  const fmtC=v=>(v<0?'-':'+')+' USD '+Math.abs(Math.round(v)).toLocaleString('en-US');
+  const fmtP=v=>'USD '+Math.round(v).toLocaleString('en-US');
+  const setEl=(id,v)=>{const el=document.getElementById(id);if(el)el.textContent=v;};
 
-  const fmtUSD=v=>`USD ${Math.abs(Math.round(v)).toLocaleString('en-US')}`;
-  const setEl=(id,val)=>{const el=document.getElementById(id);if(el)el.textContent=val;};
+  // Cards
+  const conCard=document.getElementById('casaCardCon');
+  const sinCard=document.getElementById('casaCardSin');
+  if(conCard){conCard.style.background=difCon>=0?'var(--green-light)':'var(--red-light)';conCard.style.color=difCon>=0?'var(--green)':'var(--red)';}
+  if(sinCard){sinCard.style.background=difSin>=0?'var(--green-light)':'var(--red-light)';sinCard.style.color=difSin>=0?'var(--green)':'var(--red)';}
+  setEl('casaDifCon',fmtC(difCon));
+  setEl('casaDifSin',fmtC(difSin));
 
-  setEl('casaEnCuenta',fmtUSD(enCuentaPropio));
-  setEl('casaEnCuenta2',fmtUSD(enCuentaTotal));
-  setEl('casaTengo',fmtUSD(enCuentaPropio+boletoPagado+padresEnCuenta));
-  setEl('casaFaltaSin',fmtUSD(faltaSinEscrituras));
-  setEl('casaFaltaCon',fmtUSD(faltaConEscrituras));
-  setEl('casaAportePadresDisp',fmtUSD(padresEnCuenta));
-  setEl('casaColchon',(colchon<0?'-':'')+fmtUSD(colchon));
-
-  const progressBar=document.getElementById('casaProgressBar');
-  if(progressBar){
-    progressBar.style.width=Math.min(100,pctHipoteca)+'%';
-    progressBar.style.background=pctHipoteca>=100?'#fbbf24':'#4ade80';
-  }
-  const coverageEl=document.getElementById('casaCoverage');
-  if(coverageEl){
-    coverageEl.textContent=pctHipoteca>=100?'✅ ¡Hipoteca cubierta!':`${Math.round(pctHipoteca)}% cubierto`;
-  }
-
-  const PRECIO_CASA_V=295000;
-  const rows=[
-    {label:'Boleto que ya pagué',monto:boletoPagado,quien:'Mío',color:'var(--accent)',pagado:true},
-    {label:'Mis ahorros 🔄',monto:enCuentaPropio,quien:'Mío',color:'var(--accent)'},
-    {label:'Recibido de padres 🔄',monto:padresEnCuenta,quien:'Padres',color:'var(--green)'},
-    {label:'Lo que necesita el banco (hipoteca)',monto:necesitaBanco,quien:'Banco',color:'var(--purple)',isTotal:true},
-    {label:'Lo que falta de mí 🔄',monto:faltaDeMi,quien:'Padres',color:'var(--green)'},
-    {label:'Comisión inmobiliaria',monto:COMISION,quien:'Padres',color:'var(--green)'},
-    {label:'Conexiones',monto:CONEXIONES,quien:'Padres',color:'var(--green)'},
-    {label:'Gastos notariales',monto:NOTARIALES,quien:'Padres',color:'var(--green)'},
-    {label:'Gastos escrituras',monto:ESCRITURAS,quien:'?',color:'var(--text-muted)'},
-  ];
-
-  const con=document.getElementById('casaConceptos');
-  if(!con)return;
-  con.innerHTML=rows.map(r=>`
-    <div style="display:flex;align-items:center;gap:10px;padding:11px 14px;border-bottom:1px solid var(--border);${r.pagado?'background:var(--green-light)':''}${r.isTotal?';background:var(--bg)':''}">
-      <div style="flex:1;min-width:0">
-        <div style="font-size:13px;font-weight:${r.isTotal?'700':'600'};${r.pagado?'text-decoration:line-through;color:var(--text-muted)':''}">${r.label}</div>
-      </div>
-      <div style="text-align:right;flex-shrink:0">
-        <div style="font-size:13px;font-weight:700;color:${r.isTotal?'var(--purple)':'var(--text)'}">${fmtUSD(r.monto)}</div>
-        <div style="font-size:10px;font-weight:600;color:${r.color}">${r.quien}</div>
-      </div>
-    </div>`).join('')+`
-    <div style="border-top:2px solid var(--border);margin-top:4px">
-      <div style="padding:12px 14px;border-bottom:1px solid var(--border)">
-        <div style="font-size:10px;font-weight:700;color:var(--text-muted);text-transform:uppercase;letter-spacing:.5px;margin-bottom:8px">Resumen — Pedirle a Padres</div>
-        <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:6px">
-          <span style="font-size:13px;color:var(--text-mid)">Sin escrituras</span>
-          <span style="font-size:15px;font-weight:700;color:var(--green)">${fmtUSD(faltaSinEscrituras)}</span>
-        </div>
-        <div style="display:flex;justify-content:space-between;align-items:center">
-          <span style="font-size:13px;color:var(--text-mid)">Con escrituras</span>
-          <span style="font-size:15px;font-weight:700;color:var(--green)">${fmtUSD(faltaConEscrituras)}</span>
-        </div>
-      </div>
-      <div style="padding:12px 14px;background:${colchon>=0?'var(--green-light)':'var(--red-light)'}">
-        <div style="display:flex;justify-content:space-between;align-items:center">
-          <div>
-            <div style="font-size:13px;font-weight:700;color:${colchon>=0?'var(--green)':'var(--red)'}">Colchón</div>
-            <div style="font-size:11px;color:var(--text-muted)">De los USD 35,000 que aportan</div>
-          </div>
-          <div style="font-size:22px;font-weight:700;color:${colchon>=0?'var(--green)':'var(--red)'}">${(colchon<0?'-':'')+fmtUSD(colchon)}</div>
-        </div>
-      </div>
-    </div>`;
-}
-
-function toggleCasaPagado(i){
-  const state=getCasaState();
-  state.conceptos[i].pagado=!state.conceptos[i].pagado;
-  saveCasaState(state);
-  rCasa();
-}
-
-
-init();
-</script>
-</body>
-</html>
+  // Totals
+  setEl('casaTotalTengo',fmtP(tengo));
+  setEl('casaTotalNecesito',fmtP(necesitoCon));
+  setEl('casaAhorrosLive',fmtP(ahorrosPropios));
