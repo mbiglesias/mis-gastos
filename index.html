@@ -1026,8 +1026,8 @@ onAuthStateChanged(auth, (user) => {
     <div id="budgetBanner" class="r-card tap" style="display:none" onclick="tab('presupuestos')">
       <div class="r-row" style="align-items:center;margin-bottom:10px">
         <div style="font-size:13px;font-weight:600;color:var(--text)">Presupuesto mensual</div>
-        <div id="budgetAlertIcon" class="r-icon r-icon-red" style="display:none">
-          <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="#ef4444" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="12"/><line x1="12" y1="16" x2="12.01" y2="16"/></svg>
+        <div id="budgetAlertIcon" class="r-icon r-icon-gray">
+          <svg id="budgetAlertSvg" width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="#888" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><rect x="2" y="7" width="20" height="14" rx="2"/><path d="M16 7V5a2 2 0 0 0-2-2h-4a2 2 0 0 0-2 2v2"/><line x1="12" y1="12" x2="12" y2="16"/><line x1="10" y1="14" x2="14" y2="14"/></svg>
         </div>
       </div>
       <div style="display:flex;align-items:baseline;gap:6px;margin-bottom:12px">
@@ -2139,7 +2139,16 @@ function rSummary(){
       document.getElementById('budgetTotal').textContent=fmt(budTot);
       const pct=Math.min(((budgetSpent+creditThisMonth)/budTot)*100,100);
       const alertIcon=document.getElementById('budgetAlertIcon');
-    if(alertIcon)alertIcon.style.display=pct>=100?'flex':'none';
+    const alertSvg=document.getElementById('budgetAlertSvg');
+    if(alertIcon){
+      if(pct>=100){
+        alertIcon.className='r-icon r-icon-red';
+        if(alertSvg){alertSvg.setAttribute('stroke','#ef4444');alertSvg.innerHTML='<circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="12"/><line x1="12" y1="16" x2="12.01" y2="16"/>';}
+      } else {
+        alertIcon.className='r-icon r-icon-gray';
+        if(alertSvg){alertSvg.setAttribute('stroke','#888');alertSvg.innerHTML='<rect x="2" y="7" width="20" height="14" rx="2"/><path d="M16 7V5a2 2 0 0 0-2-2h-4a2 2 0 0 0-2 2v2"/><line x1="12" y1="12" x2="12" y2="16"/><line x1="10" y1="14" x2="14" y2="14"/>';}
+      }
+    }
       // budgetPct display removed from new design
       const f=document.getElementById('progFill');
       if(f){f.style.width=pct+'%';f.className='pbf'+(pct>90?' ov':pct>70?' wa':'');}
@@ -2184,58 +2193,64 @@ function rCatRows(){
     const isEmpty=sp===0;
     const dimStyle=isEmpty?'opacity:.45':'';
 
+    const svgChevR='<svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="9 18 15 12 9 6"/></svg>';
+    const svgChevD='<svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="6 9 12 15 18 9"/></svg>';
+
+    const catDot=(color,size)=>'<div style="width:'+(size||28)+'px;height:'+(size||28)+'px;border-radius:7px;background:'+color+'22;border:1.5px solid '+color+'44;flex-shrink:0"></div>';
+
     // Parent row
     if(hasChildren){
-      // Tapping the row opens children toggle; separate › goes to Gastos
-      html+=`<div style="${dimStyle}">
-        <div class="cr" style="cursor:pointer" onclick="toggleCatRow('${catId}')">
-          <div class="ci" style="background:${cat.color}22">${cat.emoji}</div>
-          <div style="flex:1">
-            <div class="cn">${cat.name} <span style="font-size:10px;color:var(--text-muted)">${children.length} sub</span></div>
-            <div class="cbw"><div class="cbf" style="width:${pct}%;background:${col}"></div></div>
-          </div>
-          <div>
-            <div class="ca" style="color:inherit">${isEmpty?'–':fmt(sp)}</div>
-            <div class="cbl">${bu>0?'de '+fmt(bu):'sin límite'}</div>
-          </div>
-          <div style="color:var(--text-muted);font-size:13px;transition:transform .2s;transform:rotate(${isOpen?'90deg':'0deg'})">${isOpen?'▾':'▸'}</div>
-        </div>
-        ${isOpen?`<div style="padding-left:12px;border-left:2px solid ${cat.color}33;margin-left:24px;margin-bottom:4px">
-          ${children.map(child=>{
-            const csp=calcSpend(child.name);
-            const cbu=getBudgetUSD(child);
-            const cpct=cbu>0?Math.min((csp/cbu)*100,100):0;
-            const cov=csp>cbu&&cbu>0;
-            const ccol=cov?'var(--red)':(cpct>=100?'var(--accent)':child.color);
-            const cempty=csp===0;
-            return `<div class="cr" style="cursor:pointer;opacity:${cempty?.5:1}" onclick="setF('${child.name}');tab('gastos')">
-              <div class="ci" style="background:${child.color}22;width:28px;height:28px;font-size:14px">${child.emoji}</div>
-              <div style="flex:1">
-                <div class="cn" style="font-size:12px">${child.name}</div>
-                <div class="cbw"><div class="cbf" style="width:${cpct}%;background:${ccol}"></div></div>
-              </div>
-              <div>
-                <div class="ca" style="font-size:13px;color:inherit">${cempty?'–':fmt(csp)}</div>
-                <div class="cbl">${cbu>0?'de '+fmt(cbu):'sin límite'}</div>
-              </div>
-              <div style="color:var(--text-muted);font-size:13px">›</div>
-            </div>`;
-          }).join('')}
-        </div>`:''}
-      </div>`;
+      html+='<div style="'+dimStyle+'">'
+        +'<div class="cr" style="cursor:pointer" onclick="toggleCatRow(&apos;'+catId+'&apos;)">'
+          +catDot(cat.color)
+          +'<div style="flex:1">'
+            +'<div class="cn">'+cat.name+' <span style="font-size:10px;color:var(--text-muted)">'+children.length+' sub</span></div>'
+            +'<div class="cbw"><div class="cbf" style="width:'+pct+'%;background:'+col+'"></div></div>'
+          +'</div>'
+          +'<div>'
+            +'<div class="ca" style="color:inherit">'+(isEmpty?'–':fmt(sp))+'</div>'
+            +'<div class="cbl">'+(bu>0?'de '+fmt(bu):'sin límite')+'</div>'
+          +'</div>'
+          +'<div style="color:var(--text-muted);display:flex;align-items:center;transition:transform .2s;transform:rotate('+(isOpen?'90deg':'0deg')+')">'+(isOpen?svgChevD:svgChevR)+'</div>'
+        +'</div>';
+      if(isOpen){
+        html+='<div style="padding-left:12px;border-left:2px solid '+cat.color+'33;margin-left:24px;margin-bottom:4px">';
+        children.forEach(child=>{
+          const csp=calcSpend(child.name);
+          const cbu=getBudgetUSD(child);
+          const cpct=cbu>0?Math.min((csp/cbu)*100,100):0;
+          const cov=csp>cbu&&cbu>0;
+          const ccol=cov?'var(--red)':(cpct>=100?'var(--accent)':child.color);
+          const cempty=csp===0;
+          html+='<div class="cr" style="cursor:pointer;opacity:'+(cempty?.5:1)+'" onclick="setF(&apos;'+child.name+'&apos;);tab(\'gastos\')">'
+            +catDot(child.color,24)
+            +'<div style="flex:1">'
+              +'<div class="cn" style="font-size:12px">'+child.name+'</div>'
+              +'<div class="cbw"><div class="cbf" style="width:'+cpct+'%;background:'+ccol+'"></div></div>'
+            +'</div>'
+            +'<div>'
+              +'<div class="ca" style="font-size:11px;color:inherit">'+(cempty?'–':fmt(csp))+'</div>'
+              +'<div class="cbl">'+(cbu>0?'de '+fmt(cbu):'sin límite')+'</div>'
+            +'</div>'
+            +'<div style="color:var(--text-muted);display:flex;align-items:center">'+svgChevR+'</div>'
+          +'</div>';
+        });
+        html+='</div>';
+      }
+      html+='</div>';
     } else {
-      html+=`<div class="cr" style="cursor:pointer;${dimStyle}" onclick="setF('${cat.name}');tab('gastos')">
-        <div class="ci" style="background:${cat.color}22">${cat.emoji}</div>
-        <div style="flex:1">
-          <div class="cn">${cat.name}</div>
-          <div class="cbw"><div class="cbf" style="width:${pct}%;background:${col}"></div></div>
-        </div>
-        <div>
-          <div class="ca" style="color:inherit">${isEmpty?'–':fmt(sp)}</div>
-          <div class="cbl">${bu>0?'de '+fmt(bu):'sin límite'}</div>
-        </div>
-        <div style="color:var(--text-muted);font-size:13px">›</div>
-      </div>`;
+      html+='<div class="cr" style="cursor:pointer;'+dimStyle+'" onclick="setF(&apos;'+cat.name+'&apos;);tab(\'gastos\')">'
+        +catDot(cat.color)
+        +'<div style="flex:1">'
+          +'<div class="cn">'+cat.name+'</div>'
+          +'<div class="cbw"><div class="cbf" style="width:'+pct+'%;background:'+col+'"></div></div>'
+        +'</div>'
+        +'<div>'
+          +'<div class="ca" style="color:inherit">'+(isEmpty?'–':fmt(sp))+'</div>'
+          +'<div class="cbl">'+(bu>0?'de '+fmt(bu):'sin límite')+'</div>'
+        +'</div>'
+        +'<div style="color:var(--text-muted);display:flex;align-items:center">'+svgChevR+'</div>'
+      +'</div>';
     }
   });
 
