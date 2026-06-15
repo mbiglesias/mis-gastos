@@ -1557,7 +1557,7 @@ function init() {
   updCurUI();
   updCurLabels();
   fetchTC().catch(() => {});
-  renderAll();
+  try{renderAll();}catch(e){console.error('renderAll init error:',e);}
 
   // 2. React to Firebase auth (fired by module script)
   window.addEventListener('fb-auth', async (evt) => {
@@ -1585,7 +1585,7 @@ function init() {
           }
         } catch(e) { console.error('Cloud load error:', e); }
       }
-      popCats(); updCurUI(); updCurLabels(); renderAll();
+      popCats(); updCurUI(); updCurLabels(); try{renderAll();}catch(e){console.error('renderAll auth error:',e);}
       // API key
       if (!S.apiKey) {
         openM('mApiKey');
@@ -5315,3 +5315,18 @@ function rCasa(){
   setEl('casaTotalTengo',fmtP(tengo));
   setEl('casaTotalNecesito',fmtP(necesitoCon));
   setEl('casaAhorrosLive',fmtP(ahorrosPropios));
+}
+
+function toggleCasaPagado(i){
+  const state=getCasaState();
+  state.conceptos[i].pagado=!state.conceptos[i].pagado;
+  saveCasaState(state);
+  rCasa();
+}
+
+
+init();
+
+</script>
+</body>
+</html>
