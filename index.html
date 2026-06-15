@@ -151,8 +151,7 @@ onAuthStateChanged(auth, (user) => {
   .hdr-mnav{display:flex;align-items:center;justify-content:space-between;padding:6px 0 8px}
   .hdr-mnav .marr{width:32px;height:32px;border-radius:50%;border:1px solid var(--border);background:none;cursor:pointer;font-size:16px;color:var(--text-mid);display:flex;align-items:center;justify-content:center;transition:all .15s}
   .hdr-mnav .marr:hover{background:var(--accent-light);border-color:var(--accent);color:var(--accent)}
-  .hdr-top{display:flex;align-items:center;justify-content:space-between;margin-bottom:8px}
-  .app-title{font-size:17px;font-weight:700;letter-spacing:-.3px}
+  .hdr-top{display:flex;align-items:center;justify-content:space-between;margin-bottom:12px;padding-top:4px}
   .hdr-right{display:flex;gap:6px;align-items:center}
   .cur-toggle{display:flex;background:var(--bg);border-radius:20px;padding:2px;border:1px solid var(--border)}
   .cur-btn{padding:4px 10px;border-radius:16px;border:none;font-family:inherit;font-size:11px;font-weight:700;cursor:pointer;background:transparent;color:var(--text-muted);transition:all .15s}
@@ -477,7 +476,7 @@ onAuthStateChanged(auth, (user) => {
 <!-- MODALS -->
 <div class="mo hid" id="mApiKey" onclick="overlayClose(event,'mApiKey')">
   <div class="modal"><div class="mh"></div>
-    <div class="mt">🔑 API Key de Anthropic</div>
+    <div class="mt">API Key de Anthropic</div>
     <div class="ms">Para escanear recibos con IA. Conseguila en <a href="https://console.anthropic.com" target="_blank" class="link">console.anthropic.com</a>. Solo se guarda en tu dispositivo.</div>
     <div class="fld" style="margin-bottom:14px"><div class="fl">API Key</div><input type="password" class="fi" id="apiKeyInput" placeholder="sk-ant-..."></div>
     <div style="display:flex;gap:8px">
@@ -489,7 +488,7 @@ onAuthStateChanged(auth, (user) => {
 
 <div class="mo hid" id="mSalary" onclick="overlayClose(event,'mSalary')">
   <div class="modal"><div class="mh"></div>
-    <div class="mt">💼 Salario mensual</div>
+    <div class="mt">Salario mensual</div>
     <div class="ms">Se usa para calcular tu disponible.</div>
     <div class="fld" style="margin-bottom:14px"><div class="fl cur-lbl">Monto (USD)</div><input type="number" class="fi" id="salaryInput" placeholder="6300"></div>
     <div style="display:flex;gap:8px">
@@ -513,8 +512,8 @@ onAuthStateChanged(auth, (user) => {
     <div class="mt">¿Cómo pagaste?</div>
     <div class="ms" id="ptDesc"></div>
     <div class="pt-row">
-      <button class="pt-btn" id="btnDb" onclick="selPay('debit')">💳 Débito</button>
-      <button class="pt-btn" id="btnCr" onclick="selPay('credit')">🟣 Crédito</button>
+      <button class="pt-btn" id="btnDb" onclick="selPay('debit')">Débito</button>
+      <button class="pt-btn" id="btnCr" onclick="selPay('credit')">Crédito</button>
     </div>
     <div class="inst-row" id="instRow">
       <div class="fld"><div class="fl">¿En cuántas cuotas?</div>
@@ -600,8 +599,8 @@ onAuthStateChanged(auth, (user) => {
     <div class="fr" style="margin-bottom:8px">
       <div class="fld"><div class="fl">Tipo de pago</div>
         <select class="fi" id="egPayType" onchange="toggleEgInstall()">
-          <option value="debit">💳 Débito</option>
-          <option value="credit">🟣 Crédito</option>
+          <option value="debit">Débito</option>
+          <option value="credit">Crédito</option>
         </select>
       </div>
       <div class="fld" id="egInstallField">
@@ -714,7 +713,7 @@ onAuthStateChanged(auth, (user) => {
 
 <div class="mo hid" id="mQuickDebtPay" onclick="overlayClose(event,'mQuickDebtPay')">
   <div class="modal"><div class="mh"></div>
-    <div class="mt">💸 Pago de deuda</div>
+    <div class="mt">Pago de deuda</div>
     <div class="fr f1" style="margin-bottom:8px">
       <div class="fld"><div class="fl">Deuda</div>
         <select class="fi" id="qdDebtId" onchange="qdUpdateRemaining()">
@@ -945,14 +944,18 @@ onAuthStateChanged(auth, (user) => {
 <!-- APP -->
 <div class="hdr">
   <div class="hdr-top">
-    <div class="app-title" onclick="tab('resumen')" style="cursor:pointer">💰 Mis Gastos</div>
+    <div style="display:flex;align-items:center;gap:10px">
+      <span id="userInfo" style="display:flex;align-items:center;cursor:pointer;flex-shrink:0" onclick="openMas()"></span>
+      <div id="userGreeting" style="font-size:17px;font-weight:700;letter-spacing:-.3px">Mis Gastos</div>
+    </div>
     <div class="hdr-right">
-      <button onclick="openSearch()" style="background:none;border:none;cursor:pointer;padding:4px 6px;color:var(--text-mid);font-size:18px;line-height:1" title="Buscar">🔍</button>
       <div class="cur-toggle">
         <button class="cur-btn on" id="btnUSD" onclick="setCur('USD')">USD</button>
         <button class="cur-btn" id="btnUYU" onclick="setCur('UYU')">UYU</button>
       </div>
-      <span id="userInfo" style="display:flex;align-items:center;cursor:pointer" onclick="openMas()"></span>
+      <button onclick="openSearch()" style="width:32px;height:32px;background:none;border:none;cursor:pointer;display:flex;align-items:center;justify-content:center;border-radius:50%;color:var(--text-mid);transition:background .15s" title="Buscar">
+        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="11" cy="11" r="8"/><path d="m21 21-4.35-4.35"/></svg>
+      </button>
     </div>
   </div>
 
@@ -966,8 +969,8 @@ onAuthStateChanged(auth, (user) => {
   <div class="hdr-mnav" id="globalMonthNav">
     <button class="marr" onclick="chM(-1)">‹</button>
     <div style="display:flex;align-items:center;gap:8px">
-      <div class="mlbl" id="mlbl" style="font-size:15px;font-weight:700"></div>
-      <button id="btnHoy" onclick="goToday()" style="display:none;font-size:10px;font-weight:700;padding:2px 8px;border-radius:10px;border:1.5px solid var(--accent);background:var(--accent-light);color:var(--accent);cursor:pointer;font-family:inherit;line-height:1.4">Hoy</button>
+      <div class="mlbl" id="mlbl"></div>
+      <button id="btnHoy" onclick="goToday()" style="display:none;font-size:10px;font-weight:700;padding:2px 8px;border-radius:10px;border:1px solid var(--accent);background:var(--accent-light);color:var(--accent);cursor:pointer;font-family:inherit;line-height:1.4">Hoy</button>
     </div>
     <button class="marr" onclick="chM(1)">›</button>
   </div>
@@ -977,57 +980,76 @@ onAuthStateChanged(auth, (user) => {
 
   <!-- RESUMEN -->
   <div id="t-resumen">
-    <div class="sg">
-      <!-- HERO: Disponible -->
-      <!-- Row 1: Gastado + Cuotas -->
-      <div class="sc ab tap-card" onclick="filt='Todos';cardFilt='';tab('gastos')">
-        <div class="sl li">Gastado</div>
-        <div class="sv li" id="sumSpent">$0</div>
-        <div class="ss li" id="sumCount">ver gastos ›</div>
+    <!-- Row 1: Gastado + Cuotas -->
+    <div class="sg" style="margin-bottom:8px">
+      <div class="sc ab tap-card" onclick="filt='Todos';cardFilt='';tab('gastos')" style="position:relative;padding:16px">
+        <div style="display:flex;align-items:flex-start;justify-content:space-between;margin-bottom:8px">
+          <div class="sl" style="color:var(--text-muted)">Gastado</div>
+          <div style="width:28px;height:28px;border-radius:8px;background:rgba(71,114,250,.08);display:flex;align-items:center;justify-content:center;flex-shrink:0">
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#4772fa" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="7 17 17 7"/><polyline points="7 7 17 7 17 17"/></svg>
+          </div>
+        </div>
+        <div class="sv" id="sumSpent" style="font-size:24px;font-weight:800;letter-spacing:-.5px;color:var(--text)">$0</div>
+        <div class="ss" id="sumCount" style="margin-top:4px;color:var(--text-muted)">ver gastos</div>
       </div>
-      <div class="sc pb tap-card" onclick="tab('credito')">
-        <div class="sl li">Cuotas este mes</div>
-        <div class="sv li" id="sumCredit">$0</div>
-        <div class="ss li">ver crédito ›</div>
+      <div class="sc pb tap-card" onclick="tab('credito')" style="position:relative;padding:16px">
+        <div style="display:flex;align-items:flex-start;justify-content:space-between;margin-bottom:8px">
+          <div class="sl" style="color:var(--text-muted)">Cuotas de este mes</div>
+          <div style="width:28px;height:28px;border-radius:8px;background:rgba(109,40,217,.08);display:flex;align-items:center;justify-content:center;flex-shrink:0">
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#7c3aed" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="4" width="18" height="18" rx="2" ry="2"/><line x1="16" y1="2" x2="16" y2="6"/><line x1="8" y1="2" x2="8" y2="6"/><line x1="3" y1="10" x2="21" y2="10"/></svg>
+          </div>
+        </div>
+        <div class="sv" id="sumCredit" style="font-size:24px;font-weight:800;letter-spacing:-.5px;color:var(--text)">$0</div>
+        <div class="ss" id="sumCreditSub" style="margin-top:4px;color:var(--text-muted)">cuotas de tarjeta</div>
       </div>
     </div>
 
     <!-- Budget progress -->
-    <div id="budgetBanner" style="display:none;background:var(--white);border-radius:var(--R);padding:12px 14px;margin-bottom:8px;box-shadow:var(--sh);cursor:pointer" onclick="tab('presupuestos')">
-      <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:6px">
-        <div style="font-size:11px;font-weight:700;color:var(--text-muted);text-transform:uppercase;letter-spacing:.5px">Presupuesto mensual</div>
-        <div style="font-size:11px;color:var(--text-muted)" id="budgetPct"></div>
+    <div id="budgetBanner" style="display:none;background:var(--white);border-radius:var(--R);padding:16px;margin-bottom:8px;border:1px solid var(--border);cursor:pointer" onclick="tab('presupuestos')">
+      <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:10px">
+        <div style="font-size:13px;font-weight:600;color:var(--text)">Presupuesto mensual</div>
+        <div style="display:flex;align-items:center;gap:8px">
+          <div style="font-size:13px;font-weight:700;color:var(--text-muted)" id="budgetPct"></div>
+          <div id="budgetAlertIcon" style="display:none;width:28px;height:28px;border-radius:8px;background:rgba(239,68,68,.08);display:flex;align-items:center;justify-content:center">
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#ef4444" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="12"/><line x1="12" y1="16" x2="12.01" y2="16"/></svg>
+          </div>
+        </div>
       </div>
-      <div style="display:flex;align-items:baseline;gap:4px;margin-bottom:8px">
-        <span style="font-size:22px;font-weight:700" id="budgetSpent"></span>
+      <div style="display:flex;align-items:baseline;gap:6px;margin-bottom:10px">
+        <span style="font-size:24px;font-weight:800;letter-spacing:-.5px;color:var(--text)" id="budgetSpent"></span>
         <span style="font-size:13px;color:var(--text-muted)">/ <span id="budgetTotal"></span></span>
       </div>
       <div class="pbb"><div class="pbf" id="progFill" style="width:0%"></div></div>
     </div>
 
     <!-- Hero: Sobrante -->
-    <div class="sc gb hero" style="margin-bottom:8px">
-      <div class="sl li">Sobrante</div>
-      <div class="sv li" id="sumSobrante">$0</div>
-      <div class="ss li">lo que queda después de todo</div>
+    <div class="sc gb hero" style="margin-bottom:8px;padding:20px 16px;position:relative">
+      <div style="display:flex;align-items:flex-start;justify-content:space-between;margin-bottom:8px">
+        <div class="sl" style="color:var(--text-muted)">Sobrante</div>
+        <div style="width:28px;height:28px;border-radius:8px;background:rgba(34,197,94,.1);display:flex;align-items:center;justify-content:center;flex-shrink:0" id="sobranteIcon">
+          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#16a34a" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 12 20 22 4 22 4 12"/><rect x="2" y="7" width="20" height="5"/><path d="M12 22V7"/><path d="M12 7H7.5a2.5 2.5 0 0 1 0-5C11 2 12 7 12 7z"/><path d="M12 7h4.5a2.5 2.5 0 0 0 0-5C13 2 12 7 12 7z"/></svg>
+        </div>
+      </div>
+      <div class="sv" id="sumSobrante" style="font-size:32px;font-weight:800;letter-spacing:-.5px;color:var(--text)">$0</div>
+      <div class="ss" id="sumSobranteSub" style="margin-top:4px;color:var(--text-muted)">Lo que queda despues de todo</div>
     </div>
 
-    <!-- Row 3: Libre / Ahorros / Deudas -->
-    <div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:8px;margin-bottom:10px">
-      <div class="sc">
-        <div class="sl" style="font-size:9px">LIBRE</div>
-        <div class="sv" id="sumLibre" style="font-size:17px">$0</div>
-        <div class="ss" id="sumLibreSub">antes de ahorros</div>
+    <!-- Row 3: Libre / Ahorros / Deudas — unified card with dividers -->
+    <div style="background:var(--white);border:1px solid var(--border);border-radius:var(--R);display:grid;grid-template-columns:1fr 1fr 1fr;margin-bottom:10px;overflow:hidden">
+      <div style="padding:14px 12px">
+        <div class="sl" style="font-size:9px;margin-bottom:6px">Libre</div>
+        <div id="sumLibre" style="font-size:16px;font-weight:700;color:var(--text);letter-spacing:-.3px">$0</div>
+        <div class="ss" id="sumLibreSub" style="margin-top:2px">Antes de ah. y deu</div>
       </div>
-      <div class="sc tap-card" onclick="tab('ahorros')">
-        <div class="sl" style="font-size:9px">AHORROS</div>
-        <div class="sv" id="sumAhorros" style="font-size:17px">$0</div>
-        <div class="ss">este mes</div>
+      <div class="tap-card" onclick="tab('ahorros')" style="padding:14px 12px;border-left:1px solid var(--border);border-right:1px solid var(--border)">
+        <div class="sl" style="font-size:9px;margin-bottom:6px">Ahorros</div>
+        <div id="sumAhorros" style="font-size:16px;font-weight:700;color:var(--text);letter-spacing:-.3px">$0</div>
+        <div class="ss" style="margin-top:2px">Este mes</div>
       </div>
-      <div class="sc" id="sumDeudaCard">
-        <div class="sl" style="font-size:9px">DEUDAS</div>
-        <div class="sv" id="sumDeuda" style="font-size:17px">$0</div>
-        <div class="ss">pagado</div>
+      <div style="padding:14px 12px" id="sumDeudaCard">
+        <div class="sl" style="font-size:9px;margin-bottom:6px">Deudas</div>
+        <div id="sumDeuda" style="font-size:16px;font-weight:700;color:var(--text);letter-spacing:-.3px">$0</div>
+        <div class="ss" style="margin-top:2px">Pagado</div>
       </div>
     </div>
 
@@ -1132,7 +1154,7 @@ onAuthStateChanged(auth, (user) => {
           🔁 Pago recurrente (se repite cada mes)
         </label>
         <div id="debtLinkRow" style="display:none;margin-bottom:8px">
-          <div class="fl" style="margin-bottom:4px">💸 Pago de deuda</div>
+          <div class="fl" style="margin-bottom:4px">Pago de deuda</div>
           <select class="fi" id="mDebtLink" style="width:100%">
             <option value="">— No vincular —</option>
           </select>
@@ -1291,7 +1313,7 @@ onAuthStateChanged(auth, (user) => {
     </div>
 
     <!-- SECCIÓN: Crédito -->
-    <div style="font-size:10px;font-weight:700;color:var(--text-muted);text-transform:uppercase;letter-spacing:.6px;margin-bottom:6px">🟣 Crédito</div>
+    <div style="font-size:10px;font-weight:700;color:var(--text-muted);text-transform:uppercase;letter-spacing:.6px;margin-bottom:6px">Crédito</div>
     <div style="background:var(--white);border-radius:var(--R);padding:14px;margin-bottom:16px;box-shadow:var(--sh)">
       <div style="font-size:13px;font-weight:600;margin-bottom:2px">¿En qué mes cuento el crédito?</div>
       <div style="font-size:11px;color:var(--text-muted);margin-bottom:12px">Afecta cómo se muestra el gasto por categoría en Resumen.</div>
@@ -1396,7 +1418,7 @@ onAuthStateChanged(auth, (user) => {
 <!-- CREDIT SAVING MODAL -->
 <div class="mo hid" id="mCreditSaving" onclick="overlayClose(event,'mCreditSaving')">
   <div class="modal"><div class="mh"></div>
-    <div class="mt">📈 Ahorro en tarjeta</div>
+    <div class="mt">Ahorro en tarjeta</div>
     <div style="font-size:12px;color:var(--text-muted);margin-bottom:12px">Se cobra mensualmente en tu tarjeta y cuenta como ahorro. No afecta el presupuesto.</div>
     <div class="fr f1" style="margin-bottom:8px">
       <div class="fld"><div class="fl">Descripción</div>
@@ -1430,9 +1452,9 @@ onAuthStateChanged(auth, (user) => {
 <div id="fabMenu" style="display:none;position:fixed;bottom:96px;right:20px;z-index:40;flex-direction:column;gap:8px;align-items:flex-end">
   <button onclick="closeFab();tab('escanear')" style="display:flex;align-items:center;gap:8px;background:var(--white);border:1px solid var(--border);border-radius:24px;padding:10px 16px;font-family:inherit;font-size:13px;font-weight:600;cursor:pointer;white-space:nowrap">📸 Escanear recibo</button>
   <button onclick="closeFab();openQuickAdd()" style="display:flex;align-items:center;gap:8px;background:var(--white);border:1px solid var(--border);border-radius:24px;padding:10px 16px;font-family:inherit;font-size:13px;font-weight:600;cursor:pointer;white-space:nowrap">✏️ Gasto rápido</button>
-  <button onclick="closeFab();openQuickSaving()" style="display:flex;align-items:center;gap:8px;background:var(--white);border:1px solid var(--border);border-radius:24px;padding:10px 16px;font-family:inherit;font-size:13px;font-weight:600;cursor:pointer;white-space:nowrap">💰 Ahorro rápido</button>
-  <button onclick="closeFab();openQuickDebtPay()" style="display:flex;align-items:center;gap:8px;background:var(--white);border:1px solid var(--border);border-radius:24px;padding:10px 16px;font-family:inherit;font-size:13px;font-weight:600;cursor:pointer;white-space:nowrap">💸 Pago de deuda</button>
-  <button onclick="closeFab();openCreditSaving()" style="display:flex;align-items:center;gap:8px;background:var(--white);border:1px solid var(--border);border-radius:24px;padding:10px 16px;font-family:inherit;font-size:13px;font-weight:600;cursor:pointer;white-space:nowrap">📈 Ahorro en tarjeta</button>
+  <button onclick="closeFab();openQuickSaving()" style="display:flex;align-items:center;gap:8px;background:var(--white);border:1px solid var(--border);border-radius:24px;padding:10px 16px;font-family:inherit;font-size:13px;font-weight:600;cursor:pointer;white-space:nowrap">Ahorro rápido</button>
+  <button onclick="closeFab();openQuickDebtPay()" style="display:flex;align-items:center;gap:8px;background:var(--white);border:1px solid var(--border);border-radius:24px;padding:10px 16px;font-family:inherit;font-size:13px;font-weight:600;cursor:pointer;white-space:nowrap">Pago de deuda</button>
+  <button onclick="closeFab();openCreditSaving()" style="display:flex;align-items:center;gap:8px;background:var(--white);border:1px solid var(--border);border-radius:24px;padding:10px 16px;font-family:inherit;font-size:13px;font-weight:600;cursor:pointer;white-space:nowrap">Ahorro en tarjeta</button>
 </div>
 <div id="fabOverlay" style="display:none;position:fixed;inset:0;z-index:39" onclick="closeFab()"></div>
 <button class="fab" id="fabBtn" onclick="toggleFab()" title="Agregar">+</button>
@@ -1584,7 +1606,12 @@ function init() {
     const uInfo = document.getElementById('userInfo');
     if (user) {
       if (overlay) overlay.style.display = 'none';
-      if (uInfo) uInfo.innerHTML = `<img src="${user.photoURL}" style="width:28px;height:28px;border-radius:50%;object-fit:cover">`;
+      if (uInfo) uInfo.innerHTML = `<img src="${user.photoURL}" style="width:32px;height:32px;border-radius:50%;object-fit:cover;border:1.5px solid var(--border)">`;
+      const greeting = document.getElementById('userGreeting');
+      if (greeting) {
+        const firstName = user.displayName ? user.displayName.split(' ')[0] : '';
+        greeting.textContent = firstName ? 'Hi ' + firstName + '!' : 'Mis Gastos';
+      }
       // Load from cloud, merge into S
       if (window._fbLoad) {
         try {
@@ -1761,7 +1788,7 @@ function rTxList(){
       mainRow+=`<button class="chip${isActive?' on':''}" onclick="setF('${p.name}')">${p.emoji} ${p.name}</button>`;
     }
   });
-  mainRow+=`<button class="chip${filt==='Crédito'?' on':''}" onclick="setF('Crédito')">🟣 Crédito</button>`;
+  mainRow+=`<button class="chip${filt==='Crédito'?' on':''}" onclick="setF('Crédito')">Crédito</button>`;
   mainRow+=`</div>`;
 
   // Sub row (only if a parent with children is open)
@@ -1897,10 +1924,10 @@ function rTxList(){
         : isCr
           ? isInst
             ? `<span class="bdg bdg-cr">🟣 Cuota ${instNum}/${inst}</span>`
-            : `<span class="bdg bdg-cr">🟣 Crédito — ${inst} cuota${inst>1?'s':''}</span>`
+            : `<span class="bdg bdg-cr">Crédito — ${inst} cuota${inst>1?'s':''}</span>`
           : g._isRecurring
             ? `<span class="bdg" style="background:rgba(249,115,22,.1);color:var(--orange)">🔁 Recurrente</span>`
-            : `<span class="bdg bdg-db">💳 Débito</span>`;
+            : `<span class="bdg bdg-db">Débito</span>`;
 
       // Cobro date label for installment cards (purchase date already shown in group header)
       let purchaseDateLabel='';
@@ -2059,7 +2086,12 @@ function rSummary(){
   if(sobranteEl){
     sobranteEl.textContent=fmt(Math.abs(sobrante));
     if(sobranteCard){
-      sobranteCard.className=sobrante>=0?'sc gb hero':'sc hero';sobranteCard.style.borderColor=sobrante>=0?'rgba(34,197,94,.25)':'rgba(239,68,68,.25)';sobranteCard.style.background=sobrante>=0?'rgba(34,197,94,.05)':'rgba(239,68,68,.05)';
+      sobranteCard.className=sobrante>=0?'sc gb hero':'sc hero';
+      const sobIcon=document.getElementById('sobranteIcon');
+      if(sobIcon){
+        sobIcon.style.background=sobrante>=0?'rgba(34,197,94,.1)':'rgba(239,68,68,.1)';
+        sobIcon.querySelector('svg').style.stroke=sobrante>=0?'#16a34a':'#ef4444';
+      }sobranteCard.style.borderColor=sobrante>=0?'rgba(34,197,94,.25)':'rgba(239,68,68,.25)';sobranteCard.style.background=sobrante>=0?'rgba(34,197,94,.05)':'rgba(239,68,68,.05)';
       const liSub=sobranteCard.querySelector('.ss');
       if(liSub){liSub.className=sobrante>=0?'ss li':'ss';liSub.style.color='';liSub.textContent=sobrante>=0?'lo que queda después de todo':'en déficit ⚠️';}
     }
@@ -2084,6 +2116,8 @@ function rSummary(){
       document.getElementById('budgetTotal').textContent=fmt(budTot);
       const pct=Math.min(((budgetSpent+creditThisMonth)/budTot)*100,100);
       document.getElementById('budgetPct').textContent=Math.round(pct)+'%';
+    const alertIcon=document.getElementById('budgetAlertIcon');
+    if(alertIcon)alertIcon.style.display=pct>=100?'flex':'none';
       document.getElementById('budgetPct').style.color=pct>90?'var(--red)':pct>70?'var(--orange)':'var(--text-muted)';
       const f=document.getElementById('progFill');
       if(f){f.style.width=pct+'%';f.className='pbf'+(pct>90?' ov':pct>70?' wa':'');}
@@ -3325,7 +3359,7 @@ function openGastoDetail(id, isInst, instNum, instTotal){
       </div>
       <div class="detail-row">
         <span class="detail-lbl">Forma de pago</span>
-        <span class="detail-val">${isCr?'🟣 Crédito':'💳 Débito'}</span>
+        <span class="detail-val">${isCr?'Crédito':'Débito'}</span>
       </div>
       ${g.recurring?'<div class="detail-row"><span class="detail-lbl">Recurrencia</span><span class="detail-val">🔁 Mensual</span></div>':''}
       ${payInfo}
@@ -4212,8 +4246,8 @@ function renderBulk(){
       </div>
       <div style="display:flex;gap:8px;margin-top:6px;align-items:center;flex-wrap:wrap">
         <div style="display:flex;gap:4px">
-          <button class="mini-cur-btn${tx.payType!=='credit'?' on':''}" style="border-radius:6px;padding:3px 8px" onclick="bulkTxs[${i}].payType='debit';bulkTxs[${i}].installments=1;this.className='mini-cur-btn on';this.nextElementSibling.className='mini-cur-btn';document.getElementById('bulk-inst-${i}').style.display='none'">💳 Débito</button>
-          <button class="mini-cur-btn${tx.payType==='credit'?' on':''}" style="border-radius:6px;padding:3px 8px" onclick="bulkTxs[${i}].payType='credit';this.className='mini-cur-btn on';this.previousElementSibling.className='mini-cur-btn';document.getElementById('bulk-inst-${i}').style.display='flex'">🟣 Crédito</button>
+          <button class="mini-cur-btn${tx.payType!=='credit'?' on':''}" style="border-radius:6px;padding:3px 8px" onclick="bulkTxs[${i}].payType='debit';bulkTxs[${i}].installments=1;this.className='mini-cur-btn on';this.nextElementSibling.className='mini-cur-btn';document.getElementById('bulk-inst-${i}').style.display='none'">Débito</button>
+          <button class="mini-cur-btn${tx.payType==='credit'?' on':''}" style="border-radius:6px;padding:3px 8px" onclick="bulkTxs[${i}].payType='credit';this.className='mini-cur-btn on';this.previousElementSibling.className='mini-cur-btn';document.getElementById('bulk-inst-${i}').style.display='flex'">Crédito</button>
         </div>
         <div id="bulk-inst-${i}" style="display:${tx.payType==='credit'?'flex':'none'};align-items:center;gap:4px">
           <span style="font-size:10px;color:var(--text-muted);font-weight:700">CUOTAS</span>
