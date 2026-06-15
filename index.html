@@ -206,6 +206,21 @@ onAuthStateChanged(auth, (user) => {
   .date-display span{color:var(--text-muted)}
   input[type=date].fi{opacity:0;position:relative;z-index:1}
 
+  /* RESUMEN CARDS */
+  .r-card{background:var(--white);border-radius:14px;border:1px solid var(--border);padding:16px;margin-bottom:8px;cursor:default}
+  .r-card.tap{cursor:pointer;transition:opacity .12s}.r-card.tap:active{opacity:.75}
+  .r-label{font-size:11px;font-weight:600;color:var(--text-muted);letter-spacing:.1px}
+  .r-value{font-size:26px;font-weight:800;color:var(--text);letter-spacing:-.5px;line-height:1.1;margin-top:10px}
+  .r-value.hero-val{font-size:38px;letter-spacing:-.8px}
+  .r-sub{font-size:11px;color:var(--text-muted);margin-top:4px;line-height:1.4}
+  .r-icon{width:30px;height:30px;border-radius:8px;display:flex;align-items:center;justify-content:center;flex-shrink:0}
+  .r-icon-gray{background:#f0f0f0}
+  .r-icon-blue{background:rgba(71,114,250,.1)}
+  .r-icon-green{background:rgba(34,197,94,.1)}
+  .r-icon-red{background:rgba(239,68,68,.1)}
+  .r-icon-purple{background:rgba(109,40,217,.1)}
+  .r-row{display:flex;align-items:flex-start;justify-content:space-between;margin-bottom:2px}
+
   /* PROGRESS */
   .pw{background:var(--white);border-radius:var(--R);padding:13px 14px;border:1px solid var(--border);margin-bottom:10px}
   .ph{display:flex;justify-content:space-between;align-items:center;margin-bottom:8px}
@@ -981,76 +996,84 @@ onAuthStateChanged(auth, (user) => {
   <!-- RESUMEN -->
   <div id="t-resumen">
     <!-- Row 1: Gastado + Cuotas -->
-    <div class="sg" style="margin-bottom:8px">
-      <div class="sc ab tap-card" onclick="filt='Todos';cardFilt='';tab('gastos')" style="position:relative;padding:16px">
-        <div style="display:flex;align-items:flex-start;justify-content:space-between;margin-bottom:8px">
-          <div class="sl" style="color:var(--text-muted)">Gastado</div>
-          <div style="width:28px;height:28px;border-radius:8px;background:rgba(71,114,250,.08);display:flex;align-items:center;justify-content:center;flex-shrink:0">
-            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#4772fa" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="7 17 17 7"/><polyline points="7 7 17 7 17 17"/></svg>
+    <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-bottom:8px">
+
+      <div class="r-card tap" onclick="filt='Todos';cardFilt='';tab('gastos')">
+        <div class="r-row">
+          <div class="r-label">Gastado</div>
+          <div class="r-icon r-icon-gray">
+            <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="#666" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="7 17 17 7"/><polyline points="7 7 17 7 17 17"/></svg>
           </div>
         </div>
-        <div class="sv" id="sumSpent" style="font-size:24px;font-weight:800;letter-spacing:-.5px;color:var(--text)">$0</div>
-        <div class="ss" id="sumCount" style="margin-top:4px;color:var(--text-muted)">ver gastos</div>
+        <div class="r-value" id="sumSpent">$0</div>
+        <div class="r-sub" id="sumCount">ver gastos</div>
       </div>
-      <div class="sc pb tap-card" onclick="tab('credito')" style="position:relative;padding:16px">
-        <div style="display:flex;align-items:flex-start;justify-content:space-between;margin-bottom:8px">
-          <div class="sl" style="color:var(--text-muted)">Cuotas de este mes</div>
-          <div style="width:28px;height:28px;border-radius:8px;background:rgba(109,40,217,.08);display:flex;align-items:center;justify-content:center;flex-shrink:0">
-            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#7c3aed" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="4" width="18" height="18" rx="2" ry="2"/><line x1="16" y1="2" x2="16" y2="6"/><line x1="8" y1="2" x2="8" y2="6"/><line x1="3" y1="10" x2="21" y2="10"/></svg>
+
+      <div class="r-card tap" onclick="tab('credito')">
+        <div class="r-row">
+          <div class="r-label">Cuotas de este mes</div>
+          <div class="r-icon r-icon-blue">
+            <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="#4772fa" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="4" width="18" height="18" rx="2"/><line x1="16" y1="2" x2="16" y2="6"/><line x1="8" y1="2" x2="8" y2="6"/><line x1="3" y1="10" x2="21" y2="10"/></svg>
           </div>
         </div>
-        <div class="sv" id="sumCredit" style="font-size:24px;font-weight:800;letter-spacing:-.5px;color:var(--text)">$0</div>
-        <div class="ss" id="sumCreditSub" style="margin-top:4px;color:var(--text-muted)">cuotas de tarjeta</div>
+        <div class="r-value" id="sumCredit">$0</div>
+        <div class="r-sub" id="sumCreditSub">cuotas de tarjeta</div>
       </div>
+
     </div>
 
     <!-- Budget progress -->
-    <div id="budgetBanner" style="display:none;background:var(--white);border-radius:var(--R);padding:16px;margin-bottom:8px;border:1px solid var(--border);cursor:pointer" onclick="tab('presupuestos')">
-      <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:10px">
+    <div id="budgetBanner" class="r-card tap" style="display:none" onclick="tab('presupuestos')">
+      <div class="r-row" style="align-items:center;margin-bottom:10px">
         <div style="font-size:13px;font-weight:600;color:var(--text)">Presupuesto mensual</div>
-        <div style="display:flex;align-items:center;gap:8px">
-          <div style="font-size:13px;font-weight:700;color:var(--text-muted)" id="budgetPct"></div>
-          <div id="budgetAlertIcon" style="display:none;width:28px;height:28px;border-radius:8px;background:rgba(239,68,68,.08);display:flex;align-items:center;justify-content:center">
-            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#ef4444" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="12"/><line x1="12" y1="16" x2="12.01" y2="16"/></svg>
-          </div>
+        <div id="budgetAlertIcon" class="r-icon r-icon-red" style="display:none">
+          <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="#ef4444" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="12"/><line x1="12" y1="16" x2="12.01" y2="16"/></svg>
         </div>
       </div>
-      <div style="display:flex;align-items:baseline;gap:6px;margin-bottom:10px">
-        <span style="font-size:24px;font-weight:800;letter-spacing:-.5px;color:var(--text)" id="budgetSpent"></span>
+      <div style="display:flex;align-items:baseline;gap:6px;margin-bottom:12px">
+        <span style="font-size:26px;font-weight:800;letter-spacing:-.5px;color:var(--text)" id="budgetSpent"></span>
         <span style="font-size:13px;color:var(--text-muted)">/ <span id="budgetTotal"></span></span>
       </div>
-      <div class="pbb"><div class="pbf" id="progFill" style="width:0%"></div></div>
+      <div class="pbb" style="margin-bottom:0"><div class="pbf" id="progFill" style="width:0%"></div></div>
     </div>
 
-    <!-- Hero: Sobrante -->
-    <div class="sc gb hero" style="margin-bottom:8px;padding:20px 16px;position:relative">
-      <div style="display:flex;align-items:flex-start;justify-content:space-between;margin-bottom:8px">
-        <div class="sl" style="color:var(--text-muted)">Sobrante</div>
-        <div style="width:28px;height:28px;border-radius:8px;background:rgba(34,197,94,.1);display:flex;align-items:center;justify-content:center;flex-shrink:0" id="sobranteIcon">
-          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#16a34a" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 12 20 22 4 22 4 12"/><rect x="2" y="7" width="20" height="5"/><path d="M12 22V7"/><path d="M12 7H7.5a2.5 2.5 0 0 1 0-5C11 2 12 7 12 7z"/><path d="M12 7h4.5a2.5 2.5 0 0 0 0-5C13 2 12 7 12 7z"/></svg>
+    <!-- Sobrante + Libre/Ahorros/Deudas — UNA sola card unificada -->
+    <div class="r-card" style="padding:0;overflow:hidden;margin-bottom:8px" id="sobranteCard">
+
+      <!-- Sobrante -->
+      <div style="padding:18px 16px 16px">
+        <div class="r-row" style="margin-bottom:4px">
+          <div class="r-label">Sobrante</div>
+          <div class="r-icon r-icon-green" id="sobranteIcon">
+            <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="#16a34a" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 12 20 22 4 22 4 12"/><rect x="2" y="7" width="20" height="5"/><path d="M12 22V7"/><path d="M12 7H7.5a2.5 2.5 0 0 1 0-5C11 2 12 7 12 7z"/><path d="M12 7h4.5a2.5 2.5 0 0 0 0-5C13 2 12 7 12 7z"/></svg>
+          </div>
+        </div>
+        <div class="r-value hero-val" id="sumSobrante">$0</div>
+        <div class="r-sub" id="sumSobranteSub" style="margin-top:6px">Lo que queda despues de todo</div>
+      </div>
+
+      <!-- Horizontal divider -->
+      <div style="height:1px;background:var(--border)"></div>
+
+      <!-- Libre / Ahorros / Deudas -->
+      <div style="display:grid;grid-template-columns:1fr 1fr 1fr">
+        <div style="padding:14px 16px">
+          <div class="r-label" style="margin-bottom:6px">Libre</div>
+          <div id="sumLibre" style="font-size:16px;font-weight:700;color:var(--text);letter-spacing:-.3px;line-height:1.2">$0</div>
+          <div class="r-sub" id="sumLibreSub" style="margin-top:3px">Antes de ah. y deu</div>
+        </div>
+        <div class="tap" onclick="tab('ahorros')" style="padding:14px 12px;border-left:1px solid var(--border);border-right:1px solid var(--border);cursor:pointer">
+          <div class="r-label" style="margin-bottom:6px">Ahorros</div>
+          <div id="sumAhorros" style="font-size:16px;font-weight:700;color:var(--text);letter-spacing:-.3px;line-height:1.2">$0</div>
+          <div class="r-sub" style="margin-top:3px">Este mes</div>
+        </div>
+        <div style="padding:14px 16px" id="sumDeudaCard">
+          <div class="r-label" style="margin-bottom:6px">Deudas</div>
+          <div id="sumDeuda" style="font-size:16px;font-weight:700;color:var(--text);letter-spacing:-.3px;line-height:1.2">$0</div>
+          <div class="r-sub" style="margin-top:3px">Pagado</div>
         </div>
       </div>
-      <div class="sv" id="sumSobrante" style="font-size:32px;font-weight:800;letter-spacing:-.5px;color:var(--text)">$0</div>
-      <div class="ss" id="sumSobranteSub" style="margin-top:4px;color:var(--text-muted)">Lo que queda despues de todo</div>
-    </div>
 
-    <!-- Row 3: Libre / Ahorros / Deudas — unified card with dividers -->
-    <div style="background:var(--white);border:1px solid var(--border);border-radius:var(--R);display:grid;grid-template-columns:1fr 1fr 1fr;margin-bottom:10px;overflow:hidden">
-      <div style="padding:14px 12px">
-        <div class="sl" style="font-size:9px;margin-bottom:6px">Libre</div>
-        <div id="sumLibre" style="font-size:16px;font-weight:700;color:var(--text);letter-spacing:-.3px">$0</div>
-        <div class="ss" id="sumLibreSub" style="margin-top:2px">Antes de ah. y deu</div>
-      </div>
-      <div class="tap-card" onclick="tab('ahorros')" style="padding:14px 12px;border-left:1px solid var(--border);border-right:1px solid var(--border)">
-        <div class="sl" style="font-size:9px;margin-bottom:6px">Ahorros</div>
-        <div id="sumAhorros" style="font-size:16px;font-weight:700;color:var(--text);letter-spacing:-.3px">$0</div>
-        <div class="ss" style="margin-top:2px">Este mes</div>
-      </div>
-      <div style="padding:14px 12px" id="sumDeudaCard">
-        <div class="sl" style="font-size:9px;margin-bottom:6px">Deudas</div>
-        <div id="sumDeuda" style="font-size:16px;font-weight:700;color:var(--text);letter-spacing:-.3px">$0</div>
-        <div class="ss" style="margin-top:2px">Pagado</div>
-      </div>
     </div>
 
     <div id="alertsContainer"></div>
@@ -2067,8 +2090,8 @@ function rSummary(){
   if(sumCreditEl)sumCreditEl.textContent=creditThisMonth>0?fmt(creditThisMonth):'—';
   const sumCreditSub=document.querySelector('#sumCredit~.ss')||document.getElementById('sumCreditSub2');
   // Update the subtitle of the Cuotas card
-  const cuotasCard=sumCreditEl?.closest('.sc');
-  const cuotasSub=cuotasCard?.querySelector('.ss');
+  const cuotasCard=sumCreditEl?.closest('.r-card');
+  const cuotasSub=document.getElementById('sumCreditSub');
   if(cuotasSub) cuotasSub.textContent='cuotas de tarjeta';
 
   // Hero: Libre = ingresos - gastado - cuotas
@@ -2082,19 +2105,19 @@ function rSummary(){
   // Row 3: Ahorros / Deudas / Sobrante
   const sobrante=libre-savedWithCreditSavings-debtPaidThisMonthCalc;
   const sobranteEl=document.getElementById('sumSobrante');
-  const sobranteCard=sobranteEl?.closest('.sc');
   if(sobranteEl){
     sobranteEl.textContent=fmt(Math.abs(sobrante));
-    if(sobranteCard){
-      sobranteCard.className=sobrante>=0?'sc gb hero':'sc hero';
-      const sobIcon=document.getElementById('sobranteIcon');
-      if(sobIcon){
-        sobIcon.style.background=sobrante>=0?'rgba(34,197,94,.1)':'rgba(239,68,68,.1)';
-        sobIcon.querySelector('svg').style.stroke=sobrante>=0?'#16a34a':'#ef4444';
-      }sobranteCard.style.borderColor=sobrante>=0?'rgba(34,197,94,.25)':'rgba(239,68,68,.25)';sobranteCard.style.background=sobrante>=0?'rgba(34,197,94,.05)':'rgba(239,68,68,.05)';
-      const liSub=sobranteCard.querySelector('.ss');
-      if(liSub){liSub.className=sobrante>=0?'ss li':'ss';liSub.style.color='';liSub.textContent=sobrante>=0?'lo que queda después de todo':'en déficit ⚠️';}
+    sobranteEl.style.color=sobrante<0?'var(--red)':'var(--text)';
+    // Icon color
+    const sobIcon=document.getElementById('sobranteIcon');
+    if(sobIcon){
+      sobIcon.className='r-icon '+(sobrante>=0?'r-icon-green':'r-icon-red');
+      const svg=sobIcon.querySelector('svg');
+      if(svg)svg.setAttribute('stroke',sobrante>=0?'#16a34a':'#ef4444');
     }
+    // Sub text
+    const sobSub=document.getElementById('sumSobranteSub');
+    if(sobSub)sobSub.textContent=sobrante>=0?'Lo que queda despues de todo':'En déficit este mes';
   }
   const ahorrosEl=document.getElementById('sumAhorros');
   if(ahorrosEl)ahorrosEl.textContent=savedWithCreditSavings>0?fmt(savedWithCreditSavings):'—';
@@ -2115,8 +2138,7 @@ function rSummary(){
       document.getElementById('budgetSpent').textContent=fmt(budgetSpent+creditThisMonth);
       document.getElementById('budgetTotal').textContent=fmt(budTot);
       const pct=Math.min(((budgetSpent+creditThisMonth)/budTot)*100,100);
-      document.getElementById('budgetPct').textContent=Math.round(pct)+'%';
-    const alertIcon=document.getElementById('budgetAlertIcon');
+      const alertIcon=document.getElementById('budgetAlertIcon');
     if(alertIcon)alertIcon.style.display=pct>=100?'flex':'none';
       document.getElementById('budgetPct').style.color=pct>90?'var(--red)':pct>70?'var(--orange)':'var(--text-muted)';
       const f=document.getElementById('progFill');
