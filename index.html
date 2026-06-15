@@ -619,9 +619,17 @@ onAuthStateChanged(auth, (user) => {
       <div class="fl" style="margin-bottom:4px">Tarjeta</div>
       <select class="fi" id="egCardId" style="width:100%"><option value="">— Sin tarjeta —</option></select>
     </div>
-    <div style="display:flex;align-items:center;gap:10px;margin-bottom:14px;padding:10px 12px;background:var(--bg);border-radius:var(--r)">
-      <input type="checkbox" id="egRecurring" style="width:18px;height:18px;cursor:pointer;accent-color:var(--accent)">
+    <div style="display:flex;align-items:center;gap:10px;margin-bottom:8px;padding:10px 12px;background:var(--bg);border-radius:var(--r)">
+      <input type="checkbox" id="egRecurring" style="width:18px;height:18px;cursor:pointer;accent-color:var(--accent)" onchange="document.getElementById('egEndDateRow').style.display=this.checked?'':'none'">
       <label for="egRecurring" style="font-size:13px;font-weight:600;cursor:pointer">🔁 Pago recurrente (se repite cada mes)</label>
+    </div>
+    <div id="egEndDateRow" style="display:none;margin-bottom:14px">
+      <div class="fld"><div class="fl">Fecha de fin (opcional — dejar vacío si sigue activo)</div>
+        <div class="date-wrap" onclick="this.querySelector('input[type=date]').showPicker?this.querySelector('input[type=date]').showPicker():this.querySelector('input[type=date]').click()">
+          <input type="date" class="fi" id="egEndDate" onchange="updDateDisplay('egEndDate','egEndDateDisp')">
+          <div class="date-display" id="egEndDateDisp"><span>DD/MM/AAAA</span></div>
+        </div>
+      </div>
     </div>
     <div style="display:flex;gap:8px">
       <button class="btn bp" onclick="saveEditGasto()">Guardar</button>
@@ -1674,7 +1682,7 @@ function mGastos(){
     const fm = ((firstCuotaMonth%12)+12)%12;
     // diff = how many months after first cuota we are
     const diff = (CY-firstCuotaYear)*12+(CM-fm);
-    if(g.recurring&&inst===1&&diff>=0){
+    if(g.recurring&&inst===1&&diff>=0&&(!g.endDate||(()=>{const ed=new Date(g.endDate+'T12:00:00');return CY<ed.getFullYear()||(CY===ed.getFullYear()&&CM<=ed.getMonth());})()))  {
       // Recurring 1-cuota on credit card → treat as debit (subscription/fixed payment)
       const virtDate=`${CY}-${String(CM+1).padStart(2,'0')}-${String(s.getDate()).padStart(2,'0')}`;
       if(g.isSaving){
@@ -3610,6 +3618,10 @@ function openEditGasto(id){
   }
   const egRec=document.getElementById('egRecurring');
   if(egRec)egRec.checked=!!g.recurring;
+  const egEndDateRow=document.getElementById('egEndDateRow');
+  if(egEndDateRow)egEndDateRow.style.display=g.recurring?'':'none';
+  const egEndDateEl=document.getElementById('egEndDate');
+  if(egEndDateEl){egEndDateEl.value=g.endDate||'';updDateDisplay('egEndDate','egEndDateDisp');}
   toggleEgInstall();
   popCats();
   const catSel=document.getElementById('egCat');
@@ -3650,6 +3662,7 @@ function saveEditGasto(){
   g.payType=payType;
   g.installments=payType==='credit'?inst:1;
   g.recurring=document.getElementById('egRecurring')?.checked||false;
+  g.endDate=document.getElementById('egEndDate')?.value||null;
   const egCS=document.getElementById('egCardId');
   if(g.payType==='credit'&&egCS&&egCS.value)g.cardId=egCS.value;
   else if(g.payType!=='credit')g.cardId=undefined;
