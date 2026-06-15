@@ -2088,7 +2088,7 @@ function rSummary(){
   // Card-debits are in Gastado but show as note in Cuotas card
   const sumCreditEl=document.getElementById('sumCredit');
   if(sumCreditEl)sumCreditEl.textContent=creditThisMonth>0?fmt(creditThisMonth):'—';
-  const sumCreditSub=document.querySelector('#sumCredit~.ss')||document.getElementById('sumCreditSub2');
+  // sumCreditSub handled via sumCreditSub id directly
   // Update the subtitle of the Cuotas card
   const cuotasCard=sumCreditEl?.closest('.r-card');
   const cuotasSub=document.getElementById('sumCreditSub');
@@ -2140,7 +2140,7 @@ function rSummary(){
       const pct=Math.min(((budgetSpent+creditThisMonth)/budTot)*100,100);
       const alertIcon=document.getElementById('budgetAlertIcon');
     if(alertIcon)alertIcon.style.display=pct>=100?'flex':'none';
-      document.getElementById('budgetPct').style.color=pct>90?'var(--red)':pct>70?'var(--orange)':'var(--text-muted)';
+      // budgetPct display removed from new design
       const f=document.getElementById('progFill');
       if(f){f.style.width=pct+'%';f.className='pbf'+(pct>90?' ov':pct>70?' wa':'');}
     } else {
