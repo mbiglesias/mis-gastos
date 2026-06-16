@@ -89,7 +89,7 @@ window.addEventListener('load', () => {
             const msg = document.createElement('div');
             msg.id = 'standaloneMsg';
             msg.style.cssText = 'margin-top:16px;background:rgba(255,255,255,.12);border-radius:12px;padding:14px 16px;font-size:13px;line-height:1.7;color:rgba(255,255,255,.9)';
-            msg.innerHTML = `<strong>💡 Para iniciar sesión:</strong><br>
+            msg.innerHTML = `<strong>Para iniciar sesión:</strong><br>
               Abrí <strong>mbiglesias.github.io/mis-gastos</strong> en Chrome o Safari, iniciá sesión ahí, y la próxima vez que abras la app desde tu pantalla de inicio ya estarás conectada.`;
             const btn = overlay.querySelector('.auth-btn');
             if (btn) btn.insertAdjacentElement('afterend', msg);
@@ -142,6 +142,11 @@ onAuthStateChanged(auth, (user) => {
     --r:8px;--R:10px;--RL:14px;
     --sh:0 1px 3px rgba(0,0,0,.05);
     --shm:0 4px 16px rgba(0,0,0,.08);
+    --red-light:rgba(239,68,68,.08);
+    --green-light:rgba(34,197,94,.08);
+    --purple-light:rgba(109,40,217,.08);
+    --accent-light:#eef1ff;
+    --card:#ffffff;
   }
   *{box-sizing:border-box;margin:0;padding:0;-webkit-tap-highlight-color:transparent}
   body{background:var(--bg);color:var(--text);font-family:'Plus Jakarta Sans',sans-serif;font-size:14px;min-height:100vh;max-width:480px;margin:0 auto}
@@ -703,7 +708,7 @@ onAuthStateChanged(auth, (user) => {
     <div style="display:flex;gap:8px">
       <button class="btn bp" onclick="saveEditGasto()">Guardar</button>
       <button class="btn bg" onclick="closeM('mEditGasto')">Cancelar</button>
-      <button class="btn" style="background:var(--red-light);color:var(--red)" onclick="deleteFromEdit()">Eliminar</button>
+      <button class="btn bg" style="color:var(--red);border-color:rgba(239,68,68,.2)" onclick="deleteFromEdit()">Eliminar</button>
     </div>
   </div>
 </div>
@@ -758,7 +763,7 @@ onAuthStateChanged(auth, (user) => {
       <div class="fld"><div class="fl">Nota</div><input class="fi" id="debtNote" placeholder="Opcional..."></div>
     </div>
     <div style="display:flex;gap:8px">
-      <button class="btn bgn" style="flex:1" onclick="confirmNewDebt()">Guardar deuda</button>
+      <button class="btn bp" style="flex:1" onclick="confirmNewDebt()">Guardar deuda</button>
       <button class="btn bg" onclick="closeM('mNewDebt')">Cancelar</button>
     </div>
   </div>
@@ -793,7 +798,7 @@ onAuthStateChanged(auth, (user) => {
       <div class="fld"><div class="fl">Nota</div><input class="fi" id="qdNote" placeholder="Opcional..."></div>
     </div>
     <div style="display:flex;gap:8px">
-      <button class="btn bgn" style="flex:1" onclick="confirmQuickDebtPay()">Registrar pago</button>
+      <button class="btn bp" style="flex:1" onclick="confirmQuickDebtPay()">Registrar pago</button>
       <button class="btn bg" onclick="closeM('mQuickDebtPay')">Cancelar</button>
     </div>
   </div>
@@ -816,7 +821,7 @@ onAuthStateChanged(auth, (user) => {
       </div>
       <div class="fld"><div class="fl">Tipo</div>
         <select class="fi" id="qsType">
-          <option value="deposit">💚 Depósito</option>
+          <option value="deposit">Depósito</option>
           <option value="withdrawal">Retiro</option>
         </select>
       </div>
@@ -825,7 +830,7 @@ onAuthStateChanged(auth, (user) => {
       <div class="fld"><div class="fl">Nota</div><input class="fi" id="qsNote" placeholder="Opcional..."></div>
     </div>
     <div style="display:flex;gap:8px">
-      <button class="btn bgn" style="flex:1" onclick="confirmQuickSaving()">Guardar</button>
+      <button class="btn bp" style="flex:1" onclick="confirmQuickSaving()">Guardar</button>
       <button class="btn bg" onclick="closeM('mQuickSaving')">Cancelar</button>
     </div>
   </div>
@@ -842,7 +847,7 @@ onAuthStateChanged(auth, (user) => {
           <div class="emoji-sel-display" id="gEmojiDisplay" onclick="toggleEmojiPicker('g')">🎯 <span style="font-size:11px;color:var(--text-muted)">tocá para cambiar</span></div>
           <div class="emoji-grid-wrap hid" id="gEmojiGrid"></div>
         </div>
-        <input type="hidden" id="gEmoji" value="🎯">
+        <input type="hidden" id="gEmoji" value="">
       </div>
     </div>
     <div class="fr" style="margin-bottom:14px">
@@ -867,7 +872,7 @@ onAuthStateChanged(auth, (user) => {
       <span style="font-size:11px;color:var(--text-muted)">(ej: plata de terceros)</span>
     </label>
     <div style="display:flex;gap:8px">
-      <button class="btn bgn" onclick="saveGoal()">Guardar</button>
+      <button class="btn bp" onclick="saveGoal()">Guardar</button>
       <button class="btn bg" onclick="closeM('mNewGoal')">Cancelar</button>
     </div>
   </div>
@@ -888,7 +893,7 @@ onAuthStateChanged(auth, (user) => {
       <input type="text" class="fi" id="eeNote" placeholder="Ej: Retiro de emergencia">
     </div>
     <div style="display:flex;gap:8px">
-      <button class="btn bgn" onclick="saveEditGoalEntry()">Guardar</button>
+      <button class="btn bp" onclick="saveEditGoalEntry()">Guardar</button>
       <button class="btn bg" onclick="closeM('mEditGoalEntry')">Cancelar</button>
     </div>
   </div>
@@ -910,7 +915,7 @@ onAuthStateChanged(auth, (user) => {
       <input type="text" class="fi" id="agNote" placeholder="Ej: Transferencia de sueldo">
     </div>
     <div style="display:flex;gap:8px">
-      <button class="btn bgn" onclick="confirmAddGoal()">Agregar</button>
+      <button class="btn bp" onclick="confirmAddGoal()">Agregar</button>
       <button class="btn bg" onclick="closeM('mAddGoal')">Cancelar</button>
     </div>
   </div>
@@ -928,7 +933,7 @@ onAuthStateChanged(auth, (user) => {
     <div class="mh"></div>
     <div style="padding:0 0 12px">
       <div style="display:flex;align-items:center;gap:8px;background:var(--bg);border-radius:var(--R);padding:10px 12px">
-        <span style="font-size:16px;color:var(--text-muted)">🔍</span>
+        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="var(--text-muted)" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><circle cx="11" cy="11" r="8"/><path d="m21 21-4.35-4.35"/></svg>
         <input type="text" id="searchInput" class="fi" placeholder="Buscar gastos, categorías, ingresos..."
           style="border:none;background:transparent;padding:0;font-size:15px;flex:1;outline:none"
           oninput="runSearch(this.value)"
@@ -976,7 +981,7 @@ onAuthStateChanged(auth, (user) => {
         <div class="fl" style="margin-bottom:4px">ID del Sheet (opcional — dejá vacío para crear uno nuevo)</div>
         <input type="text" class="fi" id="sheetsIdInput" placeholder="1BxiMVs0XRA5nFMdKvBdBZjgmUUqptlbs74OgVE2upms">
       </div>
-      <button id="sheetSyncBtn" class="btn bg" style="width:100%;margin-bottom:8px;display:none" onclick="syncToSheets()">🔄 Sincronizar ahora</button>
+      <button id="sheetSyncBtn" class="btn bg" style="width:100%;margin-bottom:8px;display:none" onclick="syncToSheets()">Sincronizar ahora</button>
       <button id="sheetDisconnectBtn" class="btn bg" style="width:100%;color:var(--red);display:none" onclick="disconnectSheets()">Desconectar</button>
     </div>
   </div>
@@ -1172,8 +1177,8 @@ onAuthStateChanged(auth, (user) => {
 
     <!-- MODE TOGGLE -->
     <div style="display:flex;gap:8px;margin-bottom:14px" id="modeToggle">
-      <button class="btn" id="modeRecibo" onclick="setMode('recibo')" style="flex:1;background:var(--accent);color:#fff;font-size:12px">📸 Foto de ticket</button>
-      <button class="btn bg" id="modeEstado" onclick="setMode('estado')" style="flex:1;font-size:12px">🏦 Estado bancario</button>
+      <button class="btn bp" id="modeRecibo" onclick="setMode('recibo')" style="flex:1;font-size:12px;display:flex;align-items:center;justify-content:center;gap:6px"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="3" width="18" height="18" rx="2"/><circle cx="8.5" cy="8.5" r="1.5"/><polyline points="21 15 16 10 5 21"/></svg> Foto de ticket</button>
+      <button class="btn bg" id="modeEstado" onclick="setMode('estado')" style="flex:1;font-size:12px;display:flex;align-items:center;justify-content:center;gap:6px"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><line x1="3" y1="22" x2="21" y2="22"/><line x1="6" y1="18" x2="6" y2="11"/><line x1="10" y1="18" x2="10" y2="11"/><line x1="14" y1="18" x2="14" y2="11"/><line x1="18" y1="18" x2="18" y2="11"/><polygon points="12 2 20 7 4 7"/></svg> Estado bancario</button>
     </div>
 
     <!-- SINGLE RECEIPT MODE -->
@@ -1251,7 +1256,7 @@ onAuthStateChanged(auth, (user) => {
           readonly></textarea>
         <div class="scan-area" style="pointer-events:none;min-height:110px">
           <input type="file" id="fiEstado" accept="image/*,application/pdf" onchange="handleEstado(this.files[0])" style="display:none">
-          <div class="scan-emoji">🏦</div>
+          <div class="scan-emoji" style="color:var(--text-muted)"><svg width="34" height="34" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><line x1="3" y1="22" x2="21" y2="22"/><line x1="6" y1="18" x2="6" y2="11"/><line x1="10" y1="18" x2="10" y2="11"/><line x1="14" y1="18" x2="14" y2="11"/><line x1="18" y1="18" x2="18" y2="11"/><polygon points="12 2 20 7 4 7"/></svg></div>
           <div class="scan-lbl">Subí tu estado de cuenta</div>
           <div class="scan-sub">En iOS: <strong>mantené presionado → Pegar</strong><br>En desktop: <strong>⌘V</strong> arrastrá la imagen</div>
         </div>
@@ -1283,7 +1288,7 @@ onAuthStateChanged(auth, (user) => {
       <div class="fr f1" style="margin-bottom:10px">
         <div class="fld"><div class="fl">Nota</div><input type="text" class="fi" id="in2" placeholder="Opcional..."></div>
       </div>
-      <button class="btn bgn" onclick="addIngreso()" style="width:100%">+ Agregar ingreso</button>
+      <button class="btn bp" onclick="addIngreso()" style="width:100%">+ Agregar ingreso</button>
     </div>
     <div id="ingresoList"></div>
   </div>
@@ -1455,13 +1460,19 @@ onAuthStateChanged(auth, (user) => {
     <!-- Top cards: Con/Sin escrituras -->
     <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-bottom:12px">
       <div class="r-card" style="padding:16px" id="casaCardCon">
-        <div class="r-label" style="margin-bottom:6px">Con escrituras</div>
-        <div style="font-size:24px;font-weight:800;color:var(--text);letter-spacing:-.5px;line-height:1" id="casaDifCon">—</div>
+        <div class="r-row" style="margin-bottom:8px">
+          <div class="r-label">Con escrituras</div>
+          <div class="r-icon" id="casaIconCon" style="width:28px;height:28px;border-radius:7px;background:#16a34a15;border:1px solid #16a34a25;display:flex;align-items:center;justify-content:center"><svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="#16a34a" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg></div>
+        </div>
+        <div style="font-size:24px;font-weight:800;letter-spacing:-.5px;line-height:1" id="casaDifCon">—</div>
         <div style="font-size:10px;color:var(--text-muted);margin-top:4px">tengo − necesito</div>
       </div>
       <div class="r-card" style="padding:16px" id="casaCardSin">
-        <div class="r-label" style="margin-bottom:6px">Sin escrituras</div>
-        <div style="font-size:24px;font-weight:800;color:var(--text);letter-spacing:-.5px;line-height:1" id="casaDifSin">—</div>
+        <div class="r-row" style="margin-bottom:8px">
+          <div class="r-label">Sin escrituras</div>
+          <div class="r-icon" id="casaIconSin" style="width:28px;height:28px;border-radius:7px;background:#16a34a15;border:1px solid #16a34a25;display:flex;align-items:center;justify-content:center"><svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="#16a34a" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg></div>
+        </div>
+        <div style="font-size:24px;font-weight:800;letter-spacing:-.5px;line-height:1" id="casaDifSin">—</div>
         <div style="font-size:10px;color:var(--text-muted);margin-top:4px">tengo − necesito</div>
       </div>
     </div>
@@ -1485,7 +1496,7 @@ onAuthStateChanged(auth, (user) => {
             <input type="number" class="fi" id="casaBoleto" oninput="saveCasaConfig();rCasa()">
           </div>
           <div>
-            <div style="font-size:11px;color:var(--text-muted);margin-bottom:4px">Ahorros propios (USD) <span style="font-size:9px;background:var(--green-light);color:var(--green);border-radius:4px;padding:1px 5px">🔄 live</span></div>
+            <div style="font-size:11px;color:var(--text-muted);margin-bottom:4px">Ahorros propios (USD) <span style="font-size:9px;background:rgba(34,197,94,.08);color:#16a34a;border-radius:4px;padding:1px 5px;font-weight:700">live</span></div>
             <div style="padding:10px 12px;background:var(--bg);border-radius:var(--r);font-size:14px;font-weight:700;color:var(--green)" id="casaAhorrosLive">—</div>
           </div>
           <div>
@@ -1556,7 +1567,7 @@ onAuthStateChanged(auth, (user) => {
         </div>
       </div>
     </div>
-    <div id="csPrimerCobro" style="margin-bottom:14px;padding:8px 12px;background:var(--bg);border-radius:var(--r);font-size:12px;color:var(--text-muted)">🔁 Se cobra automáticamente todos los meses</div>
+    <div id="csPrimerCobro" style="margin-bottom:14px;padding:8px 12px;background:var(--bg);border-radius:var(--r);font-size:12px;color:var(--text-muted)">Se cobra automáticamente todos los meses</div>
     <button class="btn bg" onclick="saveCreditSaving()">Guardar</button>
   </div>
 </div>
@@ -1565,11 +1576,11 @@ onAuthStateChanged(auth, (user) => {
 
 <!-- FLOATING SCAN BUTTON -->
 <div id="fabMenu" style="display:none;position:fixed;bottom:96px;right:20px;z-index:40;flex-direction:column;gap:8px;align-items:flex-end">
-  <button onclick="closeFab();tab('escanear')" style="display:flex;align-items:center;gap:10px;background:var(--white);border:1px solid var(--border);border-radius:24px;padding:9px 16px 9px 12px;font-family:inherit;font-size:13px;font-weight:600;cursor:pointer;white-space:nowrap;color:var(--text);box-shadow:0 2px 8px rgba(0,0,0,.08)"><div style="width:26px;height:26px;border-radius:8px;background:#4b556315;display:flex;align-items:center;justify-content:center;flex-shrink:0"><svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="#4b5563" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="3" width="18" height="18" rx="2"/><circle cx="8.5" cy="8.5" r="1.5"/><polyline points="21 15 16 10 5 21"/></svg></div><span>Escanear recibo</span></button>
-  <button onclick="closeFab();openQuickAdd()" style="display:flex;align-items:center;gap:10px;background:var(--white);border:1px solid var(--border);border-radius:24px;padding:9px 16px 9px 12px;font-family:inherit;font-size:13px;font-weight:600;cursor:pointer;white-space:nowrap;color:var(--text);box-shadow:0 2px 8px rgba(0,0,0,.08)"><div style="width:26px;height:26px;border-radius:8px;background:#4772fa15;display:flex;align-items:center;justify-content:center;flex-shrink:0"><svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="#4772fa" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg></div><span>Gasto rápido</span></button>
-  <button onclick="closeFab();openQuickSaving()" style="display:flex;align-items:center;gap:10px;background:var(--white);border:1px solid var(--border);border-radius:24px;padding:9px 16px 9px 12px;font-family:inherit;font-size:13px;font-weight:600;cursor:pointer;white-space:nowrap;color:var(--text);box-shadow:0 2px 8px rgba(0,0,0,.08)"><div style="width:26px;height:26px;border-radius:8px;background:#16a34a15;display:flex;align-items:center;justify-content:center;flex-shrink:0"><svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="#16a34a" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M19 5c-1.5 0-2.8 1.4-3 2-3.5-1.5-11-.3-11 5 0 1.8 0 3 2 4.5V20h4v-2h3v2h4v-4c1-.5 1.7-1 2-2h2v-4h-2c0-1-.5-1.5-1-2h0V5z"/></svg></div><span>Ahorro rápido</span></button>
-  <button onclick="closeFab();openQuickDebtPay()" style="display:flex;align-items:center;gap:10px;background:var(--white);border:1px solid var(--border);border-radius:24px;padding:9px 16px 9px 12px;font-family:inherit;font-size:13px;font-weight:600;cursor:pointer;white-space:nowrap;color:var(--text);box-shadow:0 2px 8px rgba(0,0,0,.08)"><div style="width:26px;height:26px;border-radius:8px;background:#ef444415;display:flex;align-items:center;justify-content:center;flex-shrink:0"><svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="#ef4444" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="23 4 23 10 17 10"/><polyline points="1 20 1 14 7 14"/><path d="M3.51 9a9 9 0 0 1 14.85-3.36L23 10M1 14l4.64 4.36A9 9 0 0 0 20.49 15"/></svg></div><span>Pago de deuda</span></button>
-  <button onclick="closeFab();openCreditSaving()" style="display:flex;align-items:center;gap:10px;background:var(--white);border:1px solid var(--border);border-radius:24px;padding:9px 16px 9px 12px;font-family:inherit;font-size:13px;font-weight:600;cursor:pointer;white-space:nowrap;color:var(--text);box-shadow:0 2px 8px rgba(0,0,0,.08)"><div style="width:26px;height:26px;border-radius:8px;background:#7c3aed15;display:flex;align-items:center;justify-content:center;flex-shrink:0"><svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="#7c3aed" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><rect x="1" y="4" width="22" height="16" rx="2"/><line x1="1" y1="10" x2="23" y2="10"/></svg></div><span>Ahorro en tarjeta</span></button>
+  <button onclick="closeFab();tab('escanear')" style="display:flex;align-items:center;gap:10px;background:var(--white);border:1px solid var(--border);border-radius:24px;padding:9px 16px 9px 12px;font-family:inherit;font-size:13px;font-weight:600;cursor:pointer;white-space:nowrap;color:var(--text)"><div style="width:26px;height:26px;border-radius:8px;background:#4b556315;display:flex;align-items:center;justify-content:center;flex-shrink:0"><svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="#4b5563" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="3" width="18" height="18" rx="2"/><circle cx="8.5" cy="8.5" r="1.5"/><polyline points="21 15 16 10 5 21"/></svg></div><span>Escanear recibo</span></button>
+  <button onclick="closeFab();openQuickAdd()" style="display:flex;align-items:center;gap:10px;background:var(--white);border:1px solid var(--border);border-radius:24px;padding:9px 16px 9px 12px;font-family:inherit;font-size:13px;font-weight:600;cursor:pointer;white-space:nowrap;color:var(--text)"><div style="width:26px;height:26px;border-radius:8px;background:#4772fa15;display:flex;align-items:center;justify-content:center;flex-shrink:0"><svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="#4772fa" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg></div><span>Gasto rápido</span></button>
+  <button onclick="closeFab();openQuickSaving()" style="display:flex;align-items:center;gap:10px;background:var(--white);border:1px solid var(--border);border-radius:24px;padding:9px 16px 9px 12px;font-family:inherit;font-size:13px;font-weight:600;cursor:pointer;white-space:nowrap;color:var(--text)"><div style="width:26px;height:26px;border-radius:8px;background:#16a34a15;display:flex;align-items:center;justify-content:center;flex-shrink:0"><svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="#16a34a" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M19 5c-1.5 0-2.8 1.4-3 2-3.5-1.5-11-.3-11 5 0 1.8 0 3 2 4.5V20h4v-2h3v2h4v-4c1-.5 1.7-1 2-2h2v-4h-2c0-1-.5-1.5-1-2h0V5z"/></svg></div><span>Ahorro rápido</span></button>
+  <button onclick="closeFab();openQuickDebtPay()" style="display:flex;align-items:center;gap:10px;background:var(--white);border:1px solid var(--border);border-radius:24px;padding:9px 16px 9px 12px;font-family:inherit;font-size:13px;font-weight:600;cursor:pointer;white-space:nowrap;color:var(--text)"><div style="width:26px;height:26px;border-radius:8px;background:#ef444415;display:flex;align-items:center;justify-content:center;flex-shrink:0"><svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="#ef4444" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="23 4 23 10 17 10"/><polyline points="1 20 1 14 7 14"/><path d="M3.51 9a9 9 0 0 1 14.85-3.36L23 10M1 14l4.64 4.36A9 9 0 0 0 20.49 15"/></svg></div><span>Pago de deuda</span></button>
+  <button onclick="closeFab();openCreditSaving()" style="display:flex;align-items:center;gap:10px;background:var(--white);border:1px solid var(--border);border-radius:24px;padding:9px 16px 9px 12px;font-family:inherit;font-size:13px;font-weight:600;cursor:pointer;white-space:nowrap;color:var(--text)"><div style="width:26px;height:26px;border-radius:8px;background:#7c3aed15;display:flex;align-items:center;justify-content:center;flex-shrink:0"><svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="#7c3aed" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><rect x="1" y="4" width="22" height="16" rx="2"/><line x1="1" y1="10" x2="23" y2="10"/></svg></div><span>Ahorro en tarjeta</span></button>
 </div>
 <div id="fabOverlay" style="display:none;position:fixed;inset:0;z-index:39" onclick="closeFab()"></div>
 <button class="fab" id="fabBtn" onclick="toggleFab()" title="Agregar">+</button>
@@ -1983,7 +1994,7 @@ function rTxList(){
   }
 
   if(!gs.length){
-    con.innerHTML=`<div class="empty"><div class="ee">🧾</div><div class="et">Sin gastos este mes</div><div class="es">Escaneá un recibo o cargá uno manualmente</div></div>`;
+    con.innerHTML=`<div class="empty"><div class="ee" style="font-size:32px;color:var(--border)">—</div><div class="et">Sin gastos este mes</div><div class="es">Escaneá un recibo o cargá uno manualmente</div></div>`;
     return;
   }
 
@@ -2181,7 +2192,7 @@ function rSummary(){
   const libreEl=document.getElementById('sumLibre');
   if(libreEl)libreEl.textContent=fmt(libre<0?Math.abs(libre):libre);
   const libreSubEl=document.getElementById('sumLibreSub');
-  if(libreSubEl)libreSubEl.textContent=libre<0?'⚠️ en déficit':'antes de ahorros y deudas';
+  if(libreSubEl)libreSubEl.textContent=libre<0?'en déficit':'antes de ahorros y deudas';
 
   // Row 3: Ahorros / Deudas / Sobrante
   const sobrante=libre-savedWithCreditSavings-debtPaidThisMonthCalc;
@@ -2486,10 +2497,12 @@ function rAnalisis(){
 
 function formatAnalysis(text){
   // Convert markdown-like sections to styled HTML
+  // Strip leading emojis from lines before rendering
+  text=text.replace(/^[\u{1F300}-\u{1F9FF}\u{2600}-\u{26FF}\u{2700}-\u{27BF}\s]+/ugm,m=>m.replace(/[^\s]/gu,'').trimStart());
   return text
     .replace(/\*\*(.*?)\*\*/g,'<strong>$1</strong>')
-    .replace(/^(##.*|###.*)$/gm,'<div style="font-weight:700;font-size:15px;margin:14px 0 6px">$1</div>')
-    .replace(/^- (.+)$/gm,'<div style="padding:3px 0 3px 12px;border-left:2px solid var(--border)">$1</div>')
+    .replace(/^##+ (.+)$/gm,'<div style="font-weight:700;font-size:14px;margin:12px 0 4px;color:var(--text)">$1</div>')
+    .replace(/^- (.+)$/gm,'<div style="padding:4px 0 4px 12px;border-left:2px solid var(--border);font-size:13px">$1</div>')
     .replace(/\n\n/g,'<br>')
     .replace(/\n/g,' ');
 }
@@ -2536,6 +2549,8 @@ async function generateAnalysis(key,y,m){
   var totalDebit=debitGs.reduce(function(s,g){return s+(+g.amount);},0);
   var totalCredit=crGs.reduce(function(s,g){return s+(g._cuota||+g.amount/(+g.installments||1));},0);
   var totalSpent=totalDebit+totalCredit;
+  // If current month and very few transactions, show a note
+  const isCurrentMonth=y===new Date().getFullYear()&&m===new Date().getMonth();
   var prevDebit=prevGs.reduce(function(s,g){return s+(+g.amount);},0);
   var prevCredit=prevCrGs.reduce(function(s,g){return s+(g._cuota||+g.amount/(+g.installments||1));},0);
   var totalPrev=prevDebit+prevCredit;
@@ -2600,7 +2615,7 @@ async function generateAnalysis(key,y,m){
     var res=await fetch('https://api.anthropic.com/v1/messages',{
       method:'POST',
       headers:{'Content-Type':'application/json','x-api-key':apiKey,'anthropic-version':'2023-06-01','anthropic-dangerous-direct-browser-access':'true'},
-      body:JSON.stringify({model:'claude-sonnet-4-20250514',max_tokens:1000,messages:[{role:'user',content:prompt}]})
+      body:JSON.stringify({model:'claude-sonnet-4-6',max_tokens:1000,messages:[{role:'user',content:prompt}]})
     });
     var data=await res.json();
     var text=(data.content&&data.content[0]&&data.content[0].text)||'Error generando an\u00e1lisis.';
@@ -2662,7 +2677,7 @@ function rAlerts(){
           </div>
         </div>
         <button onclick="dismissAlert('${monthKey}',${alerts.indexOf(alerts.find(a=>a.cat.name===cat.name))});event.stopPropagation()"
-          style="background:none;border:none;font-size:16px;cursor:pointer;color:var(--red);padding:4px;line-height:1;flex-shrink:0">✕</button>
+          style="background:rgba(239,68,68,.05);border:1px solid rgba(239,68,68,.2);border-radius:var(--r);cursor:pointer;color:var(--red);padding:6px;display:flex;align-items:center;justify-content:center;flex-shrink:0"><svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg></button>
       </div>
       <div style="display:flex;justify-content:space-between;font-size:12px;color:var(--text-muted);margin-bottom:6px">
         <span>${fmt(sp)} gastado</span><span>límite ${fmt(bu)}</span>
@@ -2708,13 +2723,13 @@ function rSavingsProjection(){
       if(g.noDisponible)return s;
       return s+(g.entries||[]).filter(e=>{
         const ed=new Date(e.date+'T12:00:00');
-        return ed.getMonth()===m&&ed.getFullYear()===y&&+e.amount>0;
-      }).reduce((a,e)=>a+(+e.amount),0);
+        return ed.getMonth()===m&&ed.getFullYear()===y;
+      }).reduce((a,e)=>a+(+e.amount),0); // net: includes withdrawals (negative amounts)
     },0);
     months.push({m,y,saved});
   }
 
-  const withData=months.filter(m=>m.saved>0);
+  const withData=months.filter(m=>m.saved>0); // only months with positive net savings
   if(withData.length<2){
     con.innerHTML='';
     return;
@@ -2878,7 +2893,7 @@ function confirmQuickSaving(){
   g.entries.push({date:new Date().toISOString().slice(0,10),amount:finalAmt,note});
   g.saved=(+g.saved||0)+finalAmt;
   save();rSavings();closeM('mQuickSaving');
-  toast(type==='withdrawal'?`Retiro registrado en ${g.name} ✓`:`Ahorro guardado en ${g.name} ✓`);
+  toast(type==='withdrawal'?`Retiro registrado en ${g.name}`:`Ahorro guardado en ${g.name}`);
 }
 
 window.toggleCatRow=function(catId){
@@ -3302,7 +3317,7 @@ function updCrModeUI(){
   const desc=document.getElementById('crModeDesc');
   if(desc)desc.innerHTML=mode==='consumo'
     ?'<strong>Mes que consumí:</strong> si compraste en mayo con tarjeta, aparece como gasto de mayo — aunque lo pagues en junio.'
-    :'<strong>💳 Mes que pago:</strong> la cuota aparece en el mes en que sale de tu cuenta. Una compra de mayo aparece en junio.';
+    :'<strong>Mes que pago:</strong> la cuota aparece en el mes en que sale de tu cuenta. Una compra de mayo aparece en junio.';
 }
 
 // Format budget in its saved currency for display
@@ -3353,7 +3368,7 @@ function rBudget(){
         </div>
         <div style="display:flex;gap:6px">
           <button onclick="openEB(${i})" style="width:30px;height:30px;border-radius:8px;border:1px solid var(--border);background:var(--bg);cursor:pointer;display:flex;align-items:center;justify-content:center;color:var(--text-muted)"><svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"/><path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"/></svg></button>
-          <button onclick="delCat(${i})" style="width:30px;height:30px;border-radius:8px;border:1px solid rgba(239,68,68,.2);background:rgba(239,68,68,.05);cursor:pointer;display:flex;align-items:center;justify-content:center;color:var(--red)"><svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="3 6 5 6 21 6"/><path d="M19 6l-1 14a2 2 0 0 1-2 2H8a2 2 0 0 1-2-2L5 6"/></svg></button>
+          <button onclick="delCat(${i})" style="width:30px;height:30px;border-radius:8px;border:1px solid var(--border);background:var(--bg);cursor:pointer;display:flex;align-items:center;justify-content:center;color:var(--text-muted)"><svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="3 6 5 6 21 6"/><path d="M19 6l-1 14a2 2 0 0 1-2 2H8a2 2 0 0 1-2-2L5 6"/></svg></button>
         </div>
       </div>
     </div>`;
@@ -3373,7 +3388,7 @@ function rBudget(){
             </div>
             <div style="display:flex;gap:6px">
               <button onclick="openEB(${ci2})" style="width:30px;height:30px;border-radius:8px;border:1px solid var(--border);background:var(--bg);cursor:pointer;display:flex;align-items:center;justify-content:center;color:var(--text-muted)"><svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"/><path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"/></svg></button>
-              <button onclick="delCat(${ci2})" style="width:30px;height:30px;border-radius:8px;border:1px solid rgba(239,68,68,.2);background:rgba(239,68,68,.05);cursor:pointer;display:flex;align-items:center;justify-content:center;color:var(--red)"><svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="3 6 5 6 21 6"/><path d="M19 6l-1 14a2 2 0 0 1-2 2H8a2 2 0 0 1-2-2L5 6"/></svg></button>
+              <button onclick="delCat(${ci2})" style="width:30px;height:30px;border-radius:8px;border:1px solid var(--border);background:var(--bg);cursor:pointer;display:flex;align-items:center;justify-content:center;color:var(--text-muted)"><svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="3 6 5 6 21 6"/><path d="M19 6l-1 14a2 2 0 0 1-2 2H8a2 2 0 0 1-2-2L5 6"/></svg></button>
             </div>
           </div>
         </div>`;
@@ -3403,12 +3418,12 @@ function popCats(){
     const children=getChildren(pid);
     if(children.length>0){
       // Has subcategories — show as optgroup
-      opts+=`<optgroup label="${p.emoji} ${p.name}">`;
-      children.forEach(c=>opts+=`<option value="${c.name}">${c.emoji} ${c.name}</option>`);
+      opts+=`<optgroup label="${p.name}">`;
+      children.forEach(c=>opts+=`<option value="${c.name}">${c.name}</option>`);
       opts+=`</optgroup>`;
     } else {
       // No children — show as regular option
-      opts+=`<option value="${p.name}">${p.emoji} ${p.name}</option>`;
+      opts+=`<option value="${p.name}">${p.name}</option>`;
     }
   });
   opts+='<option value="__newcat__">+ Nueva categoría...</option>';
@@ -3517,7 +3532,7 @@ function openGastoDetail(id, isInst, instNum, instTotal){
       </div>
     </div>
 
-    <div style="background:${isCr?'var(--purple-light)':'var(--accent-light)'};border-radius:var(--R);padding:14px;text-align:center;margin-bottom:14px">
+    <div style="background:var(--bg);border:1px solid var(--border);border-radius:var(--R);padding:14px;text-align:center;margin-bottom:14px">
       <div style="font-size:11px;font-weight:700;color:${isCr?'var(--purple)':'var(--accent)'};text-transform:uppercase;letter-spacing:.5px;margin-bottom:4px">${isInst?`Cuota ${instNum}/${instTotal}`:(isCr?`Total en ${inst} cuota${inst>1?'s':''}`:'Monto')}</div>
       <div style="font-size:32px;font-weight:700;color:${isCr?'var(--purple)':'var(--text)'};letter-spacing:-1px">${isInst?fmt(cuota):displayAmt}</div>
       ${secondaryAmt?'<div style="font-size:12px;color:var(--text-muted);margin-top:4px">≈ '+secondaryAmt+'</div>':''}
@@ -3533,14 +3548,14 @@ function openGastoDetail(id, isInst, instNum, instTotal){
         <span class="detail-lbl">Forma de pago</span>
         <span class="detail-val">${isCr?'Crédito':'Débito'}</span>
       </div>
-      ${g.recurring?'<div class="detail-row"><span class="detail-lbl">Recurrencia</span><span class="detail-val">🔁 Mensual</span></div>':''}
+      ${g.recurring?'<div class="detail-row"><span class="detail-lbl">Recurrencia</span><span class="detail-val">Mensual</span></div>':''}
       ${payInfo}
       ${g.note?'<div class="detail-row"><span class="detail-lbl">Nota</span><span class="detail-val" style="color:var(--text-mid)">'+g.note+'</span></div>':''}
     </div>
 
     <div style="display:flex;gap:8px">
-      <button class="btn bp" style="flex:1" onclick="closeM('mGastoDetail');openEditGasto('${g.id}')">✏️ Editar</button>
-      <button class="btn" style="background:var(--red-light);color:var(--red);flex:1" onclick="closeM('mGastoDetail');delG('${g.id}')">🗑 Eliminar</button>
+      <button class="btn bp" style="flex:1" onclick="closeM('mGastoDetail');openEditGasto('${g.id}')">Editar</button>
+      <button class="btn bg" style="color:var(--red);border-color:rgba(239,68,68,.2);flex:1" onclick="closeM('mGastoDetail');delG('${g.id}')">Eliminar</button>
     </div>`;
 
   document.getElementById('gastoDetailContent').innerHTML=html;
@@ -3672,7 +3687,7 @@ function selPay(t){
       const sel=document.getElementById('mCardId');
       const cur=sel.value;
       sel.innerHTML='<option value="">— Seleccionar —</option>'+
-        getCards().map(c=>`<option value="${c.id}">${c.emoji} ${c.name}</option>`).join('');
+        getCards().map(c=>`<option value="${c.id}">${c.name}</option>`).join('');
       if(cur)sel.value=cur;
     }
   }
@@ -3719,7 +3734,7 @@ function openNewGoal(){
   document.getElementById('goalMT').textContent='Nuevo bolsillo de ahorro';
   ['gName','gTarget','gSaved','gDeadline'].forEach(id=>document.getElementById(id).value='');
   document.getElementById('gNoDisp').checked=false;
-  setEmojiDisplay('g','🎯');
+  
   openM('mNewGoal');
 }
 function openEditGoal(i){
@@ -3727,7 +3742,7 @@ function openEditGoal(i){
   document.getElementById('goalMT').textContent='Editar objetivo';
   document.getElementById('gName').value=g.name;
   document.getElementById('gNoDisp').checked=!!g.noDisponible;
-  setEmojiDisplay('g',g.emoji||'🎯');
+  
   document.getElementById('gTarget').value=g.target||'';
   document.getElementById('gSaved').value=g.saved||'';
   document.getElementById('gDeadline').value=g.deadline||'';
@@ -3735,7 +3750,7 @@ function openEditGoal(i){
 }
 function saveGoal(){
   const name=document.getElementById('gName').value.trim();
-  const emoji=document.getElementById('gEmoji').value||'🎯';
+  const emoji=document.getElementById('gEmoji')?.value||'';
   const target=toUSD(parseFloat(document.getElementById('gTarget').value)||0,txCur.gtarget);
   const saved=toUSD(parseFloat(document.getElementById('gSaved').value)||0,txCur.gsaved);
   const deadline=document.getElementById('gDeadline').value||null;
@@ -3866,7 +3881,7 @@ function toggleEgInstall(){
   if(egCR&&egCS){
     egCR.style.display=pt==='credit'?'block':'none';
     if(pt==='credit')egCS.innerHTML='<option value="">— Sin tarjeta —</option>'+
-      getCards().map(c=>`<option value="${c.id}">${c.emoji} ${c.name}</option>`).join('');
+      getCards().map(c=>`<option value="${c.id}">${c.name}</option>`).join('');
   }
   const isCr=pt==='credit';
   document.getElementById('egInstallField').style.opacity=isCr?'1':'0.3';
@@ -4013,7 +4028,7 @@ function openEditCreditSaving(id){
   if(!g)return;
   // Populate card select
   const cardSel=document.getElementById('csCard');
-  if(cardSel)cardSel.innerHTML=getCards().map(c=>'<option value="'+c.id+'"'+(c.id===g.cardId?' selected':'')+'>'+c.emoji+' '+c.name+'</option>').join('');
+  if(cardSel)cardSel.innerHTML=getCards().map(c=>'<option value="'+c.id+'"'+(c.id===g.cardId?' selected':'')+'>'+c.name+'</option>').join('');
   document.getElementById('csDes').value=g.desc||'';
   document.getElementById('csAmt').value=g.amount||'';
   const dateEl=document.getElementById('csDate');
@@ -4029,7 +4044,7 @@ function openCreditSaving(){
   // Populate card select
   const cardSel=document.getElementById('csCard');
   if(cardSel){
-    cardSel.innerHTML=getCards().map(c=>'<option value="'+c.id+'">'+c.emoji+' '+c.name+'</option>').join('');
+    cardSel.innerHTML=getCards().map(c=>'<option value="'+c.id+'">'+c.name+'</option>').join('');
   }
   // Default date = today
   const dateEl=document.getElementById('csDate');
@@ -4043,13 +4058,13 @@ function updateCsPrimerCobro(){
   if(!el)return;
   const dateVal=document.getElementById('csDate').value;
   const cardId=document.getElementById('csCard').value;
-  if(!dateVal||!cardId){el.textContent='🔁 Se cobra automáticamente todos los meses';return;}
+  if(!dateVal||!cardId){el.textContent='Se cobra automáticamente · mensual';return;}
   const d=new Date(dateVal+'T12:00:00');
   const cd=getClosingDay(cardId,d.getMonth(),d.getFullYear());
   const billM=d.getDate()<=cd?d.getMonth():d.getMonth()+1;
   const billY=billM>11?d.getFullYear()+1:d.getFullYear();
   const billDate=new Date(billY,billM%12,1).toLocaleDateString('es-UY',{month:'long',year:'numeric'});
-  el.innerHTML='🔁 Mensual · <strong>Primer cobro: '+billDate+'</strong>';
+  el.innerHTML='Mensual · <strong>Primer cobro: '+billDate+'</strong>';
 }
 
 function saveCreditSaving(){
@@ -4186,7 +4201,7 @@ function handleInputPaste(e){
       // Route based on active mode
       const modeEstado=document.getElementById('modeEstado-content');
       const isEstado=modeEstado&&modeEstado.style.display!=='none';
-      toast('📋 Procesando captura...');
+      toast('Procesando captura...');
       if(isEstado){handleEstado(file);}
       else{handleFile(file);}
       return;
@@ -4215,7 +4230,7 @@ document.addEventListener('paste', (e) => {
       } else {
         handleFile(file);
       }
-      toast('📋 Imagen pegada — analizando...');
+      toast('Imagen pegada — analizando...');
       return;
     }
   }
@@ -4231,12 +4246,11 @@ function setMode(mode){
   if(desc)desc.textContent=mode==='estado'
     ?'Modo: Estado bancario — pegá tu captura arriba'
     :'Modo: Foto de ticket — pegá tu captura arriba';
-  document.getElementById('modeRecibo').className='btn'+(mode==='recibo'?' bp':' bg');
-  document.getElementById('modeEstado').className='btn'+(mode==='estado'?' bp':' bg');
-  if(mode==='recibo'){
-    document.getElementById('modeRecibo').style.cssText='flex:1;font-size:12px';
-    document.getElementById('modeEstado').style.cssText='flex:1;font-size:12px';
-  }
+  const btnR=document.getElementById('modeRecibo');
+  const btnE=document.getElementById('modeEstado');
+  const sharedStyle='flex:1;font-size:12px;display:flex;align-items:center;justify-content:center;gap:6px';
+  if(btnR){btnR.className='btn '+(mode==='recibo'?'bp':'bg');btnR.style.cssText=sharedStyle;}
+  if(btnE){btnE.className='btn '+(mode==='estado'?'bp':'bg');btnE.style.cssText=sharedStyle;}
 }
 
 // ============================================================
@@ -4284,7 +4298,7 @@ async function handleEstado(file){
       method:'POST',
       headers:{'Content-Type':'application/json','x-api-key':S.apiKey,'anthropic-version':'2023-06-01','anthropic-dangerous-direct-browser-access':'true'},
       body:JSON.stringify({
-        model:'claude-sonnet-4-20250514',
+        model:'claude-sonnet-4-6',
         max_tokens:4000,
         messages:[{role:'user',content:[
           contentBlock,
@@ -4370,13 +4384,13 @@ function renderBulk(){
   document.getElementById('bulkCount').textContent=`${active.length} seleccionadas`;
   document.getElementById('bulkConfirmBtn').textContent=`Agregar ${active.length} gastos`;
 
-  const catOpts=S.categories.map(c=>`<option value="${c.name}"${''} >${c.emoji} ${c.name}</option>`).join('')
+  const catOpts=S.categories.map(c=>`<option value="${c.name}">${c.name}</option>`).join('')
     +'<option value="__new__">+ Nueva categoría...</option>';
 
   list.innerHTML=bulkTxs.map((tx,i)=>{
     const excBtn=tx._excluded
       ?`<button class="bulk-include" onclick="toggleBulk(${i})">↩</button>`
-      :`<button class="bulk-exclude" onclick="toggleBulk(${i})">✕</button>`;
+      :`<button class="bulk-exclude" onclick="toggleBulk(${i})"><svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg></button>`;
     const amtDisp=(+tx.amount||0).toLocaleString('es-UY',{minimumFractionDigits:0,maximumFractionDigits:2});
     return `<div class="bulk-item${tx._excluded?' excluded':''}" id="bulk-item-${i}" style="${tx._isDuplicate?'border-left:3px solid #f59e0b':''}">
       <div class="bulk-item-top">
@@ -4394,9 +4408,9 @@ function renderBulk(){
               parents.forEach(p=>{
                 const children=getChildren(getCatId(p));
                 if(children.length>0){
-                  opts+=`<optgroup label="${p.emoji} ${p.name}">`;
-                  if(tx.category===p.name)opts+=`<option value="${p.name}" selected>${p.emoji} ${p.name} (todos)</option>`;
-                  else opts+=`<option value="${p.name}">${p.emoji} ${p.name} (todos)</option>`;
+                  opts+=`<optgroup label="${p.name}">`;
+                  if(tx.category===p.name)opts+=`<option value="${p.name}" selected>${p.name} (todos)</option>`;
+                  else opts+=`<option value="${p.name}">${p.name} (todos)</option>`;
                   children.forEach(c=>opts+=`<option value="${c.name}"${c.name===tx.category?' selected':''}>${c.emoji} ${c.name}</option>`);
                   opts+=`</optgroup>`;
                 } else {
@@ -4520,7 +4534,7 @@ async function scanReceipt(file){
       method:'POST',
       headers:{'Content-Type':'application/json','x-api-key':S.apiKey,'anthropic-version':'2023-06-01','anthropic-dangerous-direct-browser-access':'true'},
       body:JSON.stringify({
-        model:'claude-sonnet-4-20250514',max_tokens:400,
+        model:'claude-sonnet-4-6',max_tokens:400,
         messages:[{role:'user',content:[
           {type:'image',source:{type:'base64',media_type:file.type||'image/jpeg',data:b64}},
           {type:'text',text:`Analizá este recibo/ticket/captura y devolvé SOLO un JSON:
@@ -4601,10 +4615,10 @@ function rIngresos(){
   const tot=inc.reduce((s,i)=>s+(+i.amount),0);
   con.innerHTML=`<div style="background:var(--white);border-radius:var(--R);overflow:hidden;">
     ${inc.map(i=>`<div class="txi" style="border-radius:0;margin-bottom:0;border-bottom:1px solid var(--border)">
-      <div class="txico" style="background:rgba(34,197,94,.1)">💸</div>
+      <div class="txico" style="background:rgba(34,197,94,.1);display:flex;align-items:center;justify-content:center"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#16a34a" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><line x1="12" y1="1" x2="12" y2="23"/><path d="M17 5H9.5a3.5 3.5 0 0 0 0 7h5a3.5 3.5 0 0 1 0 7H6"/></svg></div>
       <div class="txb"><div class="txd">${i.desc}</div><div class="txm"><span>${new Date(i.date+'T12:00:00').toLocaleDateString('es-UY',{day:'2-digit',month:'short'})}</span>${i.note?'<span>· '+i.note+'</span>':''}</div></div>
       <div class="txr"><div class="txa" style="color:var(--green)">${fmt(i.amount)}</div></div>
-      <button class="txdel" onclick="delIngreso('${i.id}')">✕</button>
+      <button class="txdel" onclick="delIngreso('${i.id}')"><svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg></button>
     </div>`).join('')}
     <div style="padding:10px 14px;display:flex;justify-content:space-between;align-items:center">
       <span style="font-size:11px;font-weight:700;color:var(--text-muted);text-transform:uppercase">Total extra</span>
@@ -5394,7 +5408,7 @@ function runSearch(q){
       const d=new Date(i.date+'T12:00:00');
       const dateStr=d.toLocaleDateString('es-UY',{day:'numeric',month:'short',year:'numeric'});
       return `<div style="display:flex;align-items:center;gap:10px;padding:10px 14px;border-bottom:1px solid var(--border)">
-        <div style="width:36px;height:36px;border-radius:10px;background:var(--green-light);display:flex;align-items:center;justify-content:center;font-size:18px;flex-shrink:0">💵</div>
+        <div style="width:36px;height:36px;border-radius:9px;background:rgba(34,197,94,.1);border:1.5px solid rgba(34,197,94,.2);display:flex;align-items:center;justify-content:center;flex-shrink:0"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#16a34a" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><line x1="12" y1="1" x2="12" y2="23"/><path d="M17 5H9.5a3.5 3.5 0 0 0 0 7h5a3.5 3.5 0 0 1 0 7H6"/></svg></div>
         <div style="flex:1;min-width:0">
           <div style="font-size:13px;font-weight:600">${highlight(i.desc,term)}</div>
           <div style="font-size:11px;color:var(--text-muted)">${dateStr}${i.note?' · '+i.note:''}</div>
@@ -5532,6 +5546,9 @@ function rCasa(){
   // Color the value itself
   const conVal=document.getElementById('casaDifCon');if(conVal)conVal.style.color=difCon>=0?'#16a34a':'var(--red)';
   const sinVal=document.getElementById('casaDifSin');if(sinVal)sinVal.style.color=difSin>=0?'#16a34a':'var(--red)';
+  // Update icons color
+  const updIcon=(id,pos)=>{const el=document.getElementById(id);if(!el)return;const c=pos>=0?'#16a34a':'#ef4444';el.style.background=c+'15';el.style.borderColor=c+'25';el.innerHTML=pos>=0?'<svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="'+c+'" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>':'<svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="'+c+'" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><line x1="5" y1="12" x2="19" y2="12"/></svg>';};
+  updIcon('casaIconCon',difCon);updIcon('casaIconSin',difSin);
   setEl('casaDifCon',fmtC(difCon));
   setEl('casaDifSin',fmtC(difSin));
 
