@@ -5488,13 +5488,14 @@ function saveCasaState(state){localStorage.setItem('mg_casa',JSON.stringify(stat
 function saveCasaConfig(){
   const state=getCasaState();
   const cn=getCasaState();
-  cn.boleto=parseFloat(document.getElementById('casaBoleto')?.value)||29500;
-  cn.prestamoPadres=parseFloat(document.getElementById('casaPrestamoPadres')?.value)||35000;
-  cn.hipoteca=parseFloat(document.getElementById('casaHipoteca')?.value)||81493;
-  cn.comision=parseFloat(document.getElementById('casaComision')?.value)||9726;
-  cn.conexiones=parseFloat(document.getElementById('casaConexiones')?.value)||5900;
-  cn.notariales=parseFloat(document.getElementById('casaNotariales')?.value)||6000;
-  cn.escrituras=parseFloat(document.getElementById('casaEscrituras')?.value)||6000;
+  const pn=(id,def)=>{const v=parseFloat(document.getElementById(id)?.value);return isNaN(v)?def:v;};
+  cn.boleto=pn('casaBoleto',29500);
+  cn.prestamoPadres=pn('casaPrestamoPadres',35000);
+  cn.hipoteca=pn('casaHipoteca',81493);
+  cn.comision=pn('casaComision',9726);
+  cn.conexiones=pn('casaConexiones',5900);
+  cn.notariales=pn('casaNotariales',6000);
+  cn.escrituras=pn('casaEscrituras',6000);
   // Save extras from DOM
   ['tengo','necesito'].forEach(tipo=>{
     const container=document.getElementById('casaExtras'+tipo[0].toUpperCase()+tipo.slice(1));
@@ -5556,13 +5557,14 @@ function renderCasaExtras(tipo,cn){
 
 function rCasa(){
   const cn=getCasaState();
-  const boleto=cn.boleto||29500;
-  const prestamoPadres=cn.prestamoPadres||35000;
-  const hipoteca=cn.hipoteca||81493;
-  const comision=cn.comision||9726;
-  const conexiones=cn.conexiones||5900;
-  const notariales=cn.notariales||6000;
-  const escrituras=cn.escrituras||6000;
+  const nd=(v,def)=>v==null||v===undefined?def:v;
+  const boleto=nd(cn.boleto,29500);
+  const prestamoPadres=nd(cn.prestamoPadres,35000);
+  const hipoteca=nd(cn.hipoteca,81493);
+  const comision=nd(cn.comision,9726);
+  const conexiones=nd(cn.conexiones,5900);
+  const notariales=nd(cn.notariales,6000);
+  const escrituras=nd(cn.escrituras,6000);
 
   // Populate inputs without stealing focus
   const setInput=(id,v)=>{const el=document.getElementById(id);if(el&&!el.matches(':focus'))el.value=v;};
