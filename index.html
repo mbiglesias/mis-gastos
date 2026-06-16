@@ -3200,8 +3200,8 @@ function renderCrComparison(){
 
   let html=`
     <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-bottom:8px">
-      <div style="font-size:10px;font-weight:700;color:var(--accent);text-transform:uppercase;letter-spacing:.5px">📅 Consumí en ${MOS[CM]}</div>
-      <div style="font-size:10px;font-weight:700;color:var(--purple);text-transform:uppercase;letter-spacing:.5px">💳 Pago en ${MOS[CM]}</div>
+      <div style="font-size:10px;font-weight:700;color:var(--text-muted);text-transform:uppercase;letter-spacing:.5px">Consumí en ${MOS[CM]}</div>
+      <div style="font-size:10px;font-weight:700;color:var(--text-muted);text-transform:uppercase;letter-spacing:.5px">Pago en ${MOS[CM]}</div>
     </div>`;
 
   // Rows for consumed
@@ -3215,13 +3215,13 @@ function renderCrComparison(){
       html+=`<div style="${rowStyle}">
         <div style="${cellStyle}">
           ${c?`<div style="font-size:12px;font-weight:600;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">${c.desc}</div>
-               <div style="font-size:11px;color:var(--accent);font-weight:700;margin-top:2px">${fmt(c.amount)}</div>
+               <div style="font-size:11px;font-weight:700;color:var(--text);margin-top:2px">${fmt(c.amount)}</div>
                <div style="font-size:10px;color:var(--text-muted)">${c.installments>1?c.installments+' cuotas':'pago único'}</div>`
           :'<div style="font-size:11px;color:var(--text-muted)">—</div>'}
         </div>
         <div style="${cellStyle}">
           ${p?`<div style="font-size:12px;font-weight:600;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">${p.desc}</div>
-               <div style="font-size:11px;color:var(--purple);font-weight:700;margin-top:2px">${fmt(p._cuota||p.amount/(+p.installments||1))}/mes</div>
+               <div style="font-size:11px;font-weight:700;color:var(--text);margin-top:2px">${fmt(p._cuota||p.amount/(+p.installments||1))}/mes</div>
                <div style="font-size:10px;color:var(--text-muted)">Cuota ${p._instNum}/${p._instTotal||p.installments}</div>`
           :'<div style="font-size:11px;color:var(--text-muted)">—</div>'}
         </div>
