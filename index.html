@@ -188,9 +188,7 @@ onAuthStateChanged(auth, (user) => {
   .sc.hero .ss{font-size:11px;margin-top:4px}
   .sc{background:var(--white);border-radius:var(--R);padding:13px 14px;border:1px solid var(--border)}
   .sc.primary{padding:16px 14px}
-  .sc.ab{background:var(--white);border-color:rgba(71,114,250,.25)}
-  .sc.pb{background:var(--white);border-color:rgba(109,40,217,.25)}
-  .sc.gb{background:var(--white);border-color:rgba(34,197,94,.25)}
+  .sc.ab,.sc.pb,.sc.gb{background:var(--white)}
   .sl{font-size:10px;font-weight:700;color:var(--text-muted);text-transform:uppercase;letter-spacing:.5px;margin-bottom:4px}
   .sl.li{color:var(--text-muted)}
   .sv{font-size:22px;font-weight:700;color:var(--text);letter-spacing:-.5px;line-height:1}
@@ -973,16 +971,14 @@ onAuthStateChanged(auth, (user) => {
     <div class="mt"> Google Sheets</div>
     <div id="sheetsContent">
       <p style="font-size:13px;color:var(--text-mid);margin-bottom:16px;line-height:1.6">Sincronizá tus gastos automáticamente con un Google Sheet. Cada vez que guardás un gasto, se actualiza en tiempo real.</p>
-      <div id="sheetsStatus" style="background:var(--bg);border-radius:var(--r);padding:12px;margin-bottom:14px;font-size:12px;color:var(--text-muted);text-align:center">No conectado</div>
-      <button id="sheetConnectBtn" class="btn bp" style="width:100%;margin-bottom:8px" onclick="connectSheets()">
-        <span>Conectar con Google</span>
-      </button>
+      <div id="sheetsStatus" class="alert-banner" style="margin-bottom:14px;text-align:center">No conectado</div>
+      <button id="sheetConnectBtn" class="btn bp" style="width:100%;margin-bottom:8px" onclick="connectSheets()">Conectar con Google</button>
       <div id="sheetsIdRow" style="display:none;margin-bottom:8px">
         <div class="fl" style="margin-bottom:4px">ID del Sheet (opcional — dejá vacío para crear uno nuevo)</div>
         <input type="text" class="fi" id="sheetsIdInput" placeholder="1BxiMVs0XRA5nFMdKvBdBZjgmUUqptlbs74OgVE2upms">
       </div>
-      <button id="sheetSyncBtn" class="btn bg" style="width:100%;margin-bottom:8px;display:none" onclick="syncToSheets()">Sincronizar ahora</button>
-      <button id="sheetDisconnectBtn" class="btn bg" style="width:100%;color:var(--red);display:none" onclick="disconnectSheets()">Desconectar</button>
+      <button id="sheetSyncBtn" class="btn bp" style="width:100%;margin-bottom:8px;display:none" onclick="syncToSheets()">Sincronizar ahora</button>
+      <button id="sheetDisconnectBtn" class="btn bg" style="width:100%;color:var(--red);border-color:rgba(239,68,68,.2);display:none" onclick="disconnectSheets()">Desconectar</button>
     </div>
   </div>
 </div>
@@ -1478,9 +1474,9 @@ onAuthStateChanged(auth, (user) => {
     </div>
 
     <!-- Tabs: Tengo / Necesito -->
-    <div style="display:flex;gap:0;margin-bottom:12px;background:var(--bg);border-radius:var(--R);padding:3px">
-      <button id="casaTabTengo" onclick="setCasaTab('tengo')" style="flex:1;padding:8px;border:none;border-radius:calc(var(--R) - 2px);font-family:inherit;font-size:13px;font-weight:600;cursor:pointer;background:var(--white);color:var(--accent);box-shadow:0 1px 4px rgba(0,0,0,.06)">Lo que tengo</button>
-      <button id="casaTabNecesito" onclick="setCasaTab('necesito')" style="flex:1;padding:8px;border:none;border-radius:calc(var(--R) - 2px);font-family:inherit;font-size:13px;font-weight:700;cursor:pointer;background:transparent;color:var(--text-muted)">Lo que necesito</button>
+    <div class="chips" style="margin-bottom:12px">
+      <button id="casaTabTengo" class="chip on" onclick="setCasaTab('tengo')">Lo que tengo</button>
+      <button id="casaTabNecesito" class="chip" onclick="setCasaTab('necesito')">Lo que necesito</button>
     </div>
 
     <!-- Tengo -->
@@ -1503,6 +1499,11 @@ onAuthStateChanged(auth, (user) => {
             <div style="font-size:11px;color:var(--text-muted);margin-bottom:4px">Préstamo padres (USD)</div>
             <input type="number" class="fi" id="casaPrestamoPadres" oninput="saveCasaConfig();rCasa()">
           </div>
+          <!-- Extras tengo -->
+          <div id="casaExtrasTengo"></div>
+        </div>
+        <div style="padding:0 14px 14px">
+          <button onclick="addCasaExtra('tengo')" style="width:100%;padding:9px;border-radius:var(--r);border:1px dashed var(--border);background:transparent;font-family:inherit;font-size:12px;font-weight:600;color:var(--text-muted);cursor:pointer;transition:all .15s" onmouseover="this.style.borderColor='var(--accent)';this.style.color='var(--accent)'" onmouseout="this.style.borderColor='var(--border)';this.style.color='var(--text-muted)'">+ Agregar ingreso</button>
         </div>
       </div>
     </div>
@@ -1535,6 +1536,11 @@ onAuthStateChanged(auth, (user) => {
             <div style="font-size:11px;color:var(--text-muted);margin-bottom:4px">Gastos escrituras (USD) <span style="font-size:9px;background:rgba(249,115,22,.1);color:var(--orange);border-radius:4px;padding:1px 5px">excluido en "sin escrituras"</span></div>
             <input type="number" class="fi" id="casaEscrituras" oninput="saveCasaConfig();rCasa()">
           </div>
+          <!-- Extras necesito -->
+          <div id="casaExtrasNecesito"></div>
+        </div>
+        <div style="padding:0 14px 14px">
+          <button onclick="addCasaExtra('necesito')" style="width:100%;padding:9px;border-radius:var(--r);border:1px dashed var(--border);background:transparent;font-family:inherit;font-size:12px;font-weight:600;color:var(--text-muted);cursor:pointer;transition:all .15s" onmouseover="this.style.borderColor='var(--accent)';this.style.color='var(--accent)'" onmouseout="this.style.borderColor='var(--border)';this.style.color='var(--text-muted)'">+ Agregar gasto</button>
         </div>
       </div>
     </div>
@@ -2372,7 +2378,7 @@ function rDebts(){
     const fmtD=function(v){return d.currency==='USD'?'USD '+v.toLocaleString('es-UY',{minimumFractionDigits:0,maximumFractionDigits:0}):'$ '+v.toLocaleString('es-UY',{minimumFractionDigits:0,maximumFractionDigits:0});};
     const payments=S.gastos.filter(function(g){return g.debtId===d.id;}).sort(function(a,b){return b.date.localeCompare(a.date);});
     const borderCol=done?'rgba(34,197,94,.25)':'var(--border)';
-    return '<div class="r-card" style="padding:0;overflow:hidden;margin-bottom:8px;'+(done?'border-color:rgba(34,197,94,.25)':'')+'">'+
+    return '<div class="r-card" style="padding:0;overflow:hidden;margin-bottom:8px">'+
       '<div style="padding:16px">'+
         '<div style="display:flex;align-items:flex-start;gap:12px;margin-bottom:12px">'+
           '<div style="width:36px;height:36px;border-radius:9px;background:'+(done?'rgba(34,197,94,.1)':'rgba(239,68,68,.08)')+';border:1.5px solid '+(done?'rgba(34,197,94,.25)':'rgba(239,68,68,.2)')+';display:flex;align-items:center;justify-content:center;flex-shrink:0">'+
@@ -4865,7 +4871,9 @@ function setSheetsStatus(msg,type){
   const el=document.getElementById('sheetsStatus');
   if(!el)return;
   el.textContent=msg;
-  el.style.color=type==='ok'?'var(--green)':type==='error'?'var(--red)':'var(--text-muted)';
+  el.style.color=type==='ok'?'#16a34a':type==='error'?'var(--red)':'var(--text-muted)';
+  el.style.background=type==='ok'?'rgba(34,197,94,.06)':type==='error'?'rgba(239,68,68,.05)':'var(--bg)';
+  el.style.borderColor=type==='ok'?'rgba(34,197,94,.2)':type==='error'?'rgba(239,68,68,.15)':'var(--border)';
 }
 
 function updateSheetsBtns(connected){
@@ -5487,6 +5495,17 @@ function saveCasaConfig(){
   cn.conexiones=parseFloat(document.getElementById('casaConexiones')?.value)||5900;
   cn.notariales=parseFloat(document.getElementById('casaNotariales')?.value)||6000;
   cn.escrituras=parseFloat(document.getElementById('casaEscrituras')?.value)||6000;
+  // Save extras from DOM
+  ['tengo','necesito'].forEach(tipo=>{
+    const container=document.getElementById('casaExtras'+tipo[0].toUpperCase()+tipo.slice(1));
+    if(!container)return;
+    const key='extra'+tipo[0].toUpperCase()+tipo.slice(1);
+    cn[key]=(cn[key]||[]).map((item,i)=>{
+      const lbl=container.querySelector('[data-extra-lbl="'+i+'"]');
+      const amt=container.querySelector('[data-extra-amt="'+i+'"]');
+      return {...item, label:lbl?lbl.value:item.label, amount:parseFloat(amt?amt.value:0)||0};
+    });
+  });
   saveCasaState(cn);
 }
 
@@ -5495,8 +5514,44 @@ function setCasaTab(tab){
   document.getElementById('casaPanelNecesito').style.display=tab==='necesito'?'':'none';
   const btnT=document.getElementById('casaTabTengo');
   const btnN=document.getElementById('casaTabNecesito');
-  if(btnT){btnT.style.background=tab==='tengo'?'var(--white)':'transparent';btnT.style.color=tab==='tengo'?'var(--accent)':'var(--text-muted)';btnT.style.boxShadow=tab==='tengo'?'var(--sh)':'none';}
-  if(btnN){btnN.style.background=tab==='necesito'?'var(--white)':'transparent';btnN.style.color=tab==='necesito'?'var(--accent)':'var(--text-muted)';btnN.style.boxShadow=tab==='necesito'?'var(--sh)':'none';}
+  if(btnT){btnT.className='chip'+(tab==='tengo'?' on':'');}
+  if(btnN){btnN.className='chip'+(tab==='necesito'?' on':'');}
+}
+
+function addCasaExtra(tipo){
+  const cn=getCasaState();
+  const key='extra'+tipo[0].toUpperCase()+tipo.slice(1);
+  if(!cn[key])cn[key]=[];
+  cn[key].push({id:Date.now(),label:'',amount:0});
+  saveCasaState(cn);
+  renderCasaExtras(tipo,cn);
+  rCasa();
+}
+
+function removeCasaExtra(tipo,id){
+  const cn=getCasaState();
+  const key='extra'+tipo[0].toUpperCase()+tipo.slice(1);
+  cn[key]=(cn[key]||[]).filter(x=>x.id!==id);
+  saveCasaState(cn);
+  renderCasaExtras(tipo,cn);
+  rCasa();
+}
+
+function renderCasaExtras(tipo,cn){
+  const key='extra'+tipo[0].toUpperCase()+tipo.slice(1);
+  const container=document.getElementById('casaExtras'+tipo[0].toUpperCase()+tipo.slice(1));
+  if(!container)return;
+  const items=(cn||getCasaState())[key]||[];
+  if(!items.length){container.innerHTML='';return;}
+  container.innerHTML=items.map((item,i)=>
+    '<div style="display:grid;grid-template-columns:1fr auto auto;gap:6px;align-items:center;padding-top:4px">'+
+      '<input type="text" class="fi" placeholder="Descripción" data-extra-lbl="'+i+'" value="'+item.label+'" oninput="saveCasaConfig();rCasa()" style="font-size:12px;padding:8px 10px">'+
+      '<input type="number" class="fi" placeholder="0" data-extra-amt="'+i+'" value="'+(item.amount||'')+'" oninput="saveCasaConfig();rCasa()" style="font-size:12px;padding:8px 10px;width:100px">'+
+      '<button onclick="removeCasaExtra(&apos;'+tipo+'&apos;,'+item.id+')" style="width:30px;height:36px;border-radius:var(--r);border:1px solid var(--border);background:var(--bg);cursor:pointer;display:flex;align-items:center;justify-content:center;flex-shrink:0;color:var(--text-muted)">'+
+        '<svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>'+
+      '</button>'+
+    '</div>'
+  ).join('');
 }
 
 function rCasa(){
@@ -5525,11 +5580,17 @@ function rCasa(){
     return s+(+g.saved||0);
   },0);
 
+  // Extras
+  const extraTengoSum=(cn.extraTengo||[]).reduce((s,x)=>s+(+x.amount||0),0);
+  const extraNeceSum=(cn.extraNecesito||[]).reduce((s,x)=>s+(+x.amount||0),0);
   // Lo que tengo
-  const tengo=boleto+ahorrosPropios+prestamoPadres;
+  const tengo=boleto+ahorrosPropios+prestamoPadres+extraTengoSum;
   // Lo que necesito
-  const necesitoCon=hipoteca+comision+conexiones+notariales+escrituras;
-  const necesitaSin=hipoteca+comision+conexiones+notariales;
+  const necesitoCon=hipoteca+comision+conexiones+notariales+escrituras+extraNeceSum;
+  const necesitaSin=hipoteca+comision+conexiones+notariales+extraNeceSum;
+  // Render extras
+  renderCasaExtras('tengo',cn);
+  renderCasaExtras('necesito',cn);
   // Diferencia
   const difCon=tengo-necesitoCon;
   const difSin=tengo-necesitaSin;
@@ -5541,13 +5602,20 @@ function rCasa(){
   // Cards
   const conCard=document.getElementById('casaCardCon');
   const sinCard=document.getElementById('casaCardSin');
-  if(conCard){conCard.style.borderColor=difCon>=0?'rgba(34,197,94,.3)':'rgba(239,68,68,.3)';conCard.style.background='var(--white)';}
-  if(sinCard){sinCard.style.borderColor=difSin>=0?'rgba(34,197,94,.3)':'rgba(239,68,68,.3)';sinCard.style.background='var(--white)';}
+  if(conCard){conCard.style.borderColor='var(--border)';conCard.style.background='var(--white)';}
+  if(sinCard){sinCard.style.borderColor='var(--border)';sinCard.style.background='var(--white)';}
   // Color the value itself
-  const conVal=document.getElementById('casaDifCon');if(conVal)conVal.style.color=difCon>=0?'#16a34a':'var(--red)';
-  const sinVal=document.getElementById('casaDifSin');if(sinVal)sinVal.style.color=difSin>=0?'#16a34a':'var(--red)';
-  // Update icons color
-  const updIcon=(id,pos)=>{const el=document.getElementById(id);if(!el)return;const c=pos>=0?'#16a34a':'#ef4444';el.style.background=c+'15';el.style.borderColor=c+'25';el.innerHTML=pos>=0?'<svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="'+c+'" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>':'<svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="'+c+'" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><line x1="5" y1="12" x2="19" y2="12"/></svg>';};
+  // Numbers always dark — color only in border and icon
+  const conVal=document.getElementById('casaDifCon');if(conVal)conVal.style.color='var(--text)';
+  const sinVal=document.getElementById('casaDifSin');if(sinVal)sinVal.style.color='var(--text)';
+  const updIcon=(id,pos)=>{
+    const el=document.getElementById(id);if(!el)return;
+    const c=pos>=0?'#16a34a':'#ef4444';
+    el.style.background=c+'15';el.style.borderColor=c+'25';
+    el.innerHTML=pos>=0
+      ?'<svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="'+c+'" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="18 15 12 9 6 15"/></svg>'
+      :'<svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="'+c+'" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="6 9 12 15 18 9"/></svg>';
+  };
   updIcon('casaIconCon',difCon);updIcon('casaIconSin',difSin);
   setEl('casaDifCon',fmtC(difCon));
   setEl('casaDifSin',fmtC(difSin));
