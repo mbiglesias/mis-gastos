@@ -1330,12 +1330,22 @@ onAuthStateChanged(auth, (user) => {
   <div id="t-credito" style="display:none">
     <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-bottom:10px">
       <div class="r-card" style="padding:16px">
-        <div class="r-label" style="margin-bottom:8px">Total pendiente</div>
+        <div class="r-row" style="margin-bottom:8px">
+          <div class="r-label">Total pendiente</div>
+          <div class="r-icon r-icon-gray">
+            <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="#666" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><rect x="1" y="4" width="22" height="16" rx="2"/><line x1="1" y1="10" x2="23" y2="10"/></svg>
+          </div>
+        </div>
         <div style="font-size:24px;font-weight:800;color:var(--text);letter-spacing:-.5px" id="crTot">$0</div>
         <div style="font-size:11px;color:var(--text-muted);margin-top:4px" id="crTotSub"></div>
       </div>
       <div class="r-card tap" onclick="filterCreditMonth()" style="padding:16px">
-        <div class="r-label" style="margin-bottom:8px">Este mes</div>
+        <div class="r-row" style="margin-bottom:8px">
+          <div class="r-label">Este mes</div>
+          <div class="r-icon r-icon-blue">
+            <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="#4772fa" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="4" width="18" height="18" rx="2"/><line x1="16" y1="2" x2="16" y2="6"/><line x1="8" y1="2" x2="8" y2="6"/><line x1="3" y1="10" x2="21" y2="10"/></svg>
+          </div>
+        </div>
         <div style="font-size:24px;font-weight:800;color:var(--text);letter-spacing:-.5px" id="crMon">$0</div>
         <div style="font-size:11px;color:var(--text-muted);margin-top:4px" id="crMonSub">ver cuotas</div>
       </div>
@@ -1348,19 +1358,31 @@ onAuthStateChanged(auth, (user) => {
 
   <!-- AHORROS -->
   <div id="t-ahorros" style="display:none">
-    <div class="shero">
-      <div class="shlbl">Total ahorrado</div>
-      <div class="shval" id="savTot">$0</div>
-      <div class="shsub" id="savSub">en tus objetivos</div>
-    </div>
-    <div id="savingsProjection" style="margin-bottom:12px"></div>
-    <div id="goalList"></div>
-    <button class="btn bgn" onclick="openNewGoal()" style="width:100%;margin-top:4px">+ Nuevo bolsillo de ahorro</button>
 
-    <div style="margin-top:20px;border-top:1px solid var(--border);padding-top:16px;padding-bottom:32px">
+    <!-- Hero: Total ahorrado -->
+    <div class="r-card" style="padding:18px 16px;margin-bottom:8px">
+      <div class="r-row" style="margin-bottom:6px">
+        <div class="r-label">Total ahorrado</div>
+        <div class="r-icon r-icon-green">
+          <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="#16a34a" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M19 5c-1.5 0-2.8 1.4-3 2-3.5-1.5-11-.3-11 5 0 1.8 0 3 2 4.5V20h4v-2h3v2h4v-4c1-.5 1.7-1 2-2h2v-4h-2c0-1-.5-1.5-1-2h0V5z"/><line x1="2" y1="9" x2="4" y2="9"/></svg>
+        </div>
+      </div>
+      <div style="font-size:32px;font-weight:800;color:var(--text);letter-spacing:-.8px;line-height:1" id="savTot">$0</div>
+      <div style="font-size:11px;color:var(--text-muted);margin-top:5px" id="savSub">en tus bolsillos</div>
+    </div>
+
+    <!-- Proyección -->
+    <div id="savingsProjection" style="margin-bottom:8px"></div>
+
+    <!-- Bolsillos -->
+    <div id="goalList"></div>
+    <button class="btn" style="width:100%;margin-top:4px;background:var(--bg);border:1px solid var(--border);color:var(--text-mid);padding:11px" onclick="openNewGoal()">+ Nuevo bolsillo</button>
+
+    <!-- Deudas -->
+    <div style="margin-top:20px;padding-bottom:32px">
       <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:10px">
-        <div style="font-size:10px;font-weight:700;color:var(--text-muted);text-transform:uppercase;letter-spacing:.6px">💸 Deudas</div>
-        <button onclick="openNewDebt()" style="font-size:12px;font-weight:700;background:var(--accent);color:#fff;border:none;border-radius:8px;padding:5px 12px;cursor:pointer;font-family:inherit">+ Nueva deuda</button>
+        <div style="font-size:11px;font-weight:700;color:var(--text);letter-spacing:-.1px">Deudas</div>
+        <button onclick="openNewDebt()" style="font-size:11px;font-weight:700;background:var(--bg);color:var(--text-mid);border:1px solid var(--border);border-radius:var(--r);padding:5px 12px;cursor:pointer;font-family:inherit;transition:all .15s" onmouseover="this.style.borderColor='var(--accent)';this.style.color='var(--accent)'" onmouseout="this.style.borderColor='var(--border)';this.style.color='var(--text-mid)'">+ Nueva deuda</button>
       </div>
       <div id="debtList"></div>
     </div>
@@ -2296,47 +2318,61 @@ function rDebts(){
     con.innerHTML=`<div style="text-align:center;padding:16px;color:var(--text-muted);font-size:13px">Sin deudas registradas</div>`;
     return;
   }
-  con.innerHTML=S.debts.map((d,i)=>{
-    const paid=S.gastos.filter(g=>g.debtId===d.id).reduce((s,g)=>{
-      // convert to debt currency if needed
+  con.innerHTML=S.debts.map(function(d,i){
+    const paid=S.gastos.filter(function(g){return g.debtId===d.id;}).reduce(function(s,g){
       const amt=g.origCur&&g.origCur!==d.currency&&g.tcAtSave
-        ? (d.currency==='USD'?+g.origAmount/(g.tcAtSave||1):+g.origAmount*(g.tcAtSave||1))
-        : +g.amount;
+        ?(d.currency==='USD'?+g.origAmount/(g.tcAtSave||1):+g.origAmount*(g.tcAtSave||1))
+        :+g.amount;
       return s+amt;
     },0);
     const total=+d.total;
     const remaining=Math.max(0,total-paid);
     const pct=total>0?Math.min(paid/total*100,100):0;
     const done=remaining===0;
-    const fmtD=v=>d.currency==='USD'?`USD ${v.toLocaleString('es-UY',{minimumFractionDigits:0,maximumFractionDigits:0})}`:`$ ${v.toLocaleString('es-UY',{minimumFractionDigits:0,maximumFractionDigits:0})}`;
-    const payments=S.gastos.filter(g=>g.debtId===d.id).sort((a,b)=>b.date.localeCompare(a.date));
-    return `<div style="background:var(--card);border-radius:var(--R);padding:14px;margin-bottom:10px;border:1px solid ${done?'var(--green)':'var(--border)'}">
-      <div style="display:flex;justify-content:space-between;align-items:flex-start;margin-bottom:8px">
-        <div>
-          <div style="font-weight:700;font-size:15px">${d.desc}</div>
-          <div style="font-size:12px;color:var(--text-muted)">${d.person||''}${done?' · <span style="color:var(--green);font-weight:700">✅ Saldada</span>':''}</div>
-        </div>
-        <div style="text-align:right">
-          <div style="font-weight:700;font-size:15px;color:${done?'var(--green)':'var(--red)'}">${fmtD(remaining)}</div>
-          <div style="font-size:11px;color:var(--text-muted)">de ${fmtD(total)}</div>
-        </div>
-      </div>
-      <div style="background:var(--border);border-radius:99px;height:6px;margin-bottom:10px">
-        <div style="background:${done?'var(--green)':'var(--accent)'};height:6px;border-radius:99px;width:${pct}%;transition:width .4s"></div>
-      </div>
-      ${payments.length?`<div style="font-size:11px;color:var(--text-muted);margin-bottom:6px;font-weight:700;text-transform:uppercase;letter-spacing:.4px">Pagos registrados</div>
-      ${payments.slice(0,3).map(g=>{
-        const d2=new Date(g.date+'T12:00:00');
-        const ds=d2.toLocaleDateString('es-UY',{day:'numeric',month:'short'});
-        return `<div style="display:flex;justify-content:space-between;font-size:12px;padding:4px 0;border-bottom:1px solid var(--border)">
-          <span style="color:var(--text-mid)">${ds} · ${g.desc}</span>
-          <span style="font-weight:600">${fmtD(+g.amount)}</span>
-        </div>`;
-      }).join('')}
-      ${payments.length>3?'<div style="font-size:11px;color:var(--text-muted);margin-top:4px">+ '+(payments.length-3)+' pago'+(payments.length-3!==1?'s':'')+' más</div>':''}`:
-      `<div style="font-size:12px;color:var(--text-muted);font-style:italic">Sin pagos registrados todavía</div>`}
-      ${!done?'<button onclick="delDebt('+i+')" style="margin-top:10px;font-size:11px;color:var(--text-muted);background:none;border:none;cursor:pointer;padding:0">🗑 Eliminar deuda</button>':''}
-    </div>`;
+    const fmtD=function(v){return d.currency==='USD'?'USD '+v.toLocaleString('es-UY',{minimumFractionDigits:0,maximumFractionDigits:0}):'$ '+v.toLocaleString('es-UY',{minimumFractionDigits:0,maximumFractionDigits:0});};
+    const payments=S.gastos.filter(function(g){return g.debtId===d.id;}).sort(function(a,b){return b.date.localeCompare(a.date);});
+    const borderCol=done?'rgba(34,197,94,.25)':'var(--border)';
+    return '<div class="r-card" style="padding:0;overflow:hidden;margin-bottom:8px;'+(done?'border-color:rgba(34,197,94,.25)':'')+'">'+
+      '<div style="padding:16px">'+
+        '<div style="display:flex;align-items:flex-start;gap:12px;margin-bottom:12px">'+
+          '<div style="width:36px;height:36px;border-radius:9px;background:'+(done?'rgba(34,197,94,.1)':'rgba(239,68,68,.08)')+';border:1.5px solid '+(done?'rgba(34,197,94,.25)':'rgba(239,68,68,.2)')+';display:flex;align-items:center;justify-content:center;flex-shrink:0">'+
+            (done
+              ?'<svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="#16a34a" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"/></svg>'
+              :'<svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="#ef4444" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>'
+            )+
+          '</div>'+
+          '<div style="flex:1;min-width:0">'+
+            '<div style="font-size:14px;font-weight:700;color:var(--text)">'+d.desc+'</div>'+
+            '<div style="font-size:11px;color:var(--text-muted);margin-top:1px">'+(d.person||'')+(done?' · <span style="color:#16a34a;font-weight:700">Saldada</span>':'')+'</div>'+
+          '</div>'+
+          '<div style="text-align:right;flex-shrink:0">'+
+            '<div style="font-size:18px;font-weight:800;color:'+(done?'#16a34a':'var(--text)')+';letter-spacing:-.3px">'+fmtD(remaining)+'</div>'+
+            '<div style="font-size:10px;color:var(--text-muted);margin-top:1px">de '+fmtD(total)+'</div>'+
+          '</div>'+
+        '</div>'+
+        '<div style="height:4px;background:var(--border);border-radius:2px;overflow:hidden;margin-bottom:12px">'+
+          '<div style="height:100%;background:'+(done?'#16a34a':'var(--accent)')+';width:'+pct+'%;border-radius:2px;transition:width .4s"></div>'+
+        '</div>'+
+        (!done?'<button onclick="delDebt('+i+')" style="font-size:11px;color:var(--text-muted);background:none;border:1px solid var(--border);border-radius:var(--r);padding:6px 10px;cursor:pointer;font-family:inherit;transition:all .15s" >Eliminar deuda</button>':'')+
+      '</div>'+
+      (payments.length
+        ?'<div style="border-top:1px solid var(--border)">'+
+          '<div style="padding:10px 16px 6px;font-size:10px;font-weight:700;color:var(--text-muted);text-transform:uppercase;letter-spacing:.5px">Pagos registrados</div>'+
+          payments.slice(0,3).map(function(g){
+            const ds=new Date(g.date+'T12:00:00').toLocaleDateString('es-UY',{day:'numeric',month:'short'});
+            return '<div style="display:flex;justify-content:space-between;align-items:center;padding:8px 16px;border-top:1px solid var(--border-light,#f3f3f3)">'+
+              '<div style="display:flex;align-items:center;gap:8px">'+
+                '<div style="width:6px;height:6px;border-radius:50%;background:#16a34a;flex-shrink:0"></div>'+
+                '<span style="font-size:12px;color:var(--text-mid)">'+ds+' · '+g.desc+'</span>'+
+              '</div>'+
+              '<span style="font-size:12px;font-weight:700;color:var(--text)">'+fmtD(+g.amount)+'</span>'+
+            '</div>';
+          }).join('')+
+          (payments.length>3?'<div style="padding:8px 16px 10px;font-size:11px;color:var(--text-muted)">+ '+(payments.length-3)+' pago'+(payments.length-3!==1?'s':'')+' más</div>':'<div style="padding-bottom:4px"></div>')+
+        '</div>'
+        :'<div style="padding:0 16px 12px;font-size:11px;color:var(--text-muted)">Sin pagos registrados todavía</div>'
+      )+
+    '</div>';
   }).join('');
 }
 
@@ -2676,50 +2712,50 @@ function rSavingsProjection(){
   const proj12=avg*12;
   const MNAMES=['Ene','Feb','Mar','Abr','May','Jun','Jul','Ago','Sep','Oct','Nov','Dic'];
 
-  con.innerHTML=`
-    <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:10px">
-      <div style="font-size:10px;font-weight:700;color:var(--text-muted);text-transform:uppercase;letter-spacing:.6px">📈 Proyección de ahorro</div>
-    </div>
-    <div style="background:var(--white);border:1px solid var(--border);border-radius:var(--R);padding:14px;box-shadow:var(--sh)">
-      <div style="display:flex;gap:10px;margin-bottom:14px">
-        <div style="flex:1;background:var(--bg);border-radius:10px;padding:10px;text-align:center">
-          <div style="font-size:11px;color:var(--text-muted);margin-bottom:2px">Promedio/mes</div>
-          <div style="font-size:17px;font-weight:700;color:var(--green)">${fmt(avg)}</div>
-          <div style="font-size:10px;color:${trend>=0?'var(--green)':'var(--red)'}">
-            ${trend>=0?'▲':'▼'} ${Math.abs(trendPct).toFixed(0)}% vs mes ant.
-          </div>
-        </div>
-        <div style="flex:1;background:var(--bg);border-radius:10px;padding:10px;text-align:center">
-          <div style="font-size:11px;color:var(--text-muted);margin-bottom:2px">Este mes</div>
-          <div style="font-size:17px;font-weight:700">${fmt(currentSaved)}</div>
-          <div style="font-size:10px;color:var(--text-muted)">ahorrado hasta hoy</div>
-        </div>
-      </div>
-      <div style="display:flex;gap:8px;margin-bottom:14px">
-        <div style="flex:1;background:var(--accent)11;border:1px solid var(--accent)33;border-radius:10px;padding:10px;text-align:center">
-          <div style="font-size:10px;color:var(--text-muted);margin-bottom:2px">En 6 meses</div>
-          <div style="font-size:16px;font-weight:700;color:var(--accent)">${fmt(proj6)}</div>
-        </div>
-        <div style="flex:1;background:var(--accent)11;border:1px solid var(--accent)33;border-radius:10px;padding:10px;text-align:center">
-          <div style="font-size:10px;color:var(--text-muted);margin-bottom:2px">En 12 meses</div>
-          <div style="font-size:16px;font-weight:700;color:var(--accent)">${fmt(proj12)}</div>
-        </div>
-      </div>
-      <div style="font-size:11px;color:var(--text-muted);margin-bottom:8px;font-weight:700;text-transform:uppercase;letter-spacing:.4px">Últimos ${sample.length} meses</div>
-      <div style="display:flex;align-items:flex-end;gap:6px;height:48px">
-        ${sample.map(({m,y,saved})=>{
-          const barH=avg>0?Math.round((saved/Math.max(...sample.map(x=>x.saved)))*100):0;
-          return `<div style="flex:1;display:flex;flex-direction:column;align-items:center;gap:2px">
-            <div style="font-size:9px;color:var(--text-muted)">${fmt(saved).replace('USD ','')}</div>
-            <div style="width:100%;background:var(--green);border-radius:4px 4px 0 0;height:${Math.max(barH*0.36,4)}px;opacity:.8"></div>
-            <div style="font-size:9px;color:var(--text-muted)">${MNAMES[m]}</div>
-          </div>`;
-        }).join('')}
-      </div>
-      <div style="font-size:10px;color:var(--text-muted);margin-top:10px;line-height:1.4">
-        Basado en tu promedio de los últimos ${sample.length} meses con ahorro registrado.
-      </div>
-    </div>`;
+  const trendIcon = trend>=0
+    ? '<svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="18 15 12 9 6 15"/></svg>'
+    : '<svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="6 9 12 15 18 9"/></svg>';
+  con.innerHTML=
+    '<div class="r-card" style="padding:0;overflow:hidden">'+
+      '<div style="padding:18px 16px 14px">'+
+        '<div class="r-row" style="margin-bottom:6px">'+
+          '<div class="r-label">Proyección de ahorro</div>'+
+          '<div class="r-icon r-icon-green">'+
+            '<svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="#16a34a" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="22 12 18 12 15 21 9 3 6 12 2 12"/></svg>'+
+          '</div>'+
+        '</div>'+
+        '<div style="font-size:28px;font-weight:800;color:var(--text);letter-spacing:-.5px;line-height:1">'+fmt(avg)+'<span style="font-size:14px;font-weight:600;color:var(--text-muted)">/mes</span></div>'+
+        '<div style="font-size:11px;color:'+(trend>=0?'#16a34a':'var(--red)')+';margin-top:5px;display:flex;align-items:center;gap:3px">'+
+          trendIcon+' '+Math.abs(trendPct).toFixed(0)+'% vs mes anterior'+
+        '</div>'+
+      '</div>'+
+      '<div style="height:1px;background:var(--border)"></div>'+
+      '<div style="display:grid;grid-template-columns:1fr 1fr 1fr;text-align:center">'+
+        '<div style="padding:12px 8px">'+
+          '<div class="r-label" style="margin-bottom:4px">Este mes</div>'+
+          '<div style="font-size:15px;font-weight:700;color:var(--text)">'+fmt(currentSaved)+'</div>'+
+        '</div>'+
+        '<div style="padding:12px 8px;border-left:1px solid var(--border);border-right:1px solid var(--border)">'+
+          '<div class="r-label" style="margin-bottom:4px">En 6 meses</div>'+
+          '<div style="font-size:15px;font-weight:700;color:var(--text)">'+fmt(proj6)+'</div>'+
+        '</div>'+
+        '<div style="padding:12px 8px">'+
+          '<div class="r-label" style="margin-bottom:4px">En 12 meses</div>'+
+          '<div style="font-size:15px;font-weight:700;color:var(--text)">'+fmt(proj12)+'</div>'+
+        '</div>'+
+      '</div>'+
+      '<div style="height:1px;background:var(--border)"></div>'+
+      '<div style="padding:12px 16px;display:flex;align-items:flex-end;gap:6px;height:72px">'+
+        sample.map(function(s2){
+          const barH=avg>0?Math.round((s2.saved/Math.max.apply(null,sample.map(function(x){return x.saved;}))*100)):0;
+          return '<div style="flex:1;display:flex;flex-direction:column;align-items:center;gap:2px;height:100%;justify-content:flex-end">'+
+            '<div style="font-size:9px;color:var(--text-muted);margin-bottom:2px">'+fmt(s2.saved).replace('USD ','')+'</div>'+
+            '<div style="width:100%;background:rgba(34,197,94,.7);border-radius:3px 3px 0 0;min-height:4px;height:'+Math.max(barH*0.44,4)+'px"></div>'+
+            '<div style="font-size:9px;color:var(--text-muted);margin-top:3px">'+MNAMES[s2.m]+'</div>'+
+          '</div>';
+        }).join('')+
+      '</div>'+
+    '</div>';
 }
 
 function openQuickDebtPay(){
@@ -2880,12 +2916,22 @@ function rCredit(){
     crSummEl.innerHTML=`
       <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-bottom:12px">
         <div class="r-card" style="padding:14px">
-          <div class="r-label" style="margin-bottom:8px">Consumí en ${MOS[CM]}</div>
+          <div class="r-row" style="margin-bottom:8px">
+            <div class="r-label">Consumí en ${MOS[CM]}</div>
+            <div class="r-icon r-icon-gray">
+              <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="#666" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="7 17 17 7"/><polyline points="7 7 17 7 17 17"/></svg>
+            </div>
+          </div>
           <div style="font-size:22px;font-weight:800;color:var(--text);letter-spacing:-.5px">${fmt(consumiThisMonth)}</div>
           <div style="font-size:11px;color:var(--text-muted);margin-top:3px">compras realizadas</div>
         </div>
         <div class="r-card" style="padding:14px">
-          <div class="r-label" style="margin-bottom:8px">Pago en ${MOS[CM]}</div>
+          <div class="r-row" style="margin-bottom:8px">
+            <div class="r-label">Pago en ${MOS[CM]}</div>
+            <div class="r-icon r-icon-blue">
+              <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="#4772fa" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 12 20 22 4 22 4 12"/><rect x="2" y="7" width="20" height="5"/><path d="M12 22V7"/></svg>
+            </div>
+          </div>
           <div style="font-size:22px;font-weight:800;color:var(--text);letter-spacing:-.5px">${fmt(pagoThisMonth)}</div>
           <div style="font-size:11px;color:var(--text-muted);margin-top:3px">cuotas que vencen</div>
         </div>
@@ -3000,25 +3046,22 @@ function rSavings(){
         }).join('')
         +'</div>'
       :'<div style="font-size:11px;color:var(--text-muted);margin-top:8px;text-align:center">El primer cobro aún no ocurrió</div>';
-    return '<div class="goal-card">'
-      +'<div class="gh"><div class="ge">📈</div>'
-      +'<div class="gn">'+g.desc+'</div>'
-      +'<div class="gp">🔄</div></div>'
-      +'<div class="gam"><span class="gas">'+fmt(totalSaved)+'</span>'
-      +'<span>'+card.emoji+' '+card.name+' · automático</span></div>'
-      +'<div class="gacts">'
-      +'<button class="gab gab-e" data-csid="'+g.id+'" onclick="openEditCreditSaving(this.dataset.csid)">Editar</button>'
-      +'<button class="gab gab-d" data-csid="'+g.id+'" onclick="deleteCreditSaving(this.dataset.csid)">Eliminar</button>'
-      +'</div>'
-      +entriesHTML
-      +'</div>';
+    return '<div class="r-card" style="padding:16px;margin-bottom:8px">'+'<div style="display:flex;align-items:center;gap:12px;margin-bottom:10px">'+'<div style="width:36px;height:36px;border-radius:9px;background:rgba(34,197,94,.1);border:1.5px solid rgba(34,197,94,.25);display:flex;align-items:center;justify-content:center;flex-shrink:0"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#16a34a" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="23 4 23 10 17 10"/><polyline points="1 20 1 14 7 14"/><path d="M3.51 9a9 9 0 0 1 14.85-3.36L23 10M1 14l4.64 4.36A9 9 0 0 0 20.49 15"/></svg></div>'+'<div style="flex:1;min-width:0"><div style="font-size:14px;font-weight:700;color:var(--text)">'+g.desc+'</div>'+'<div style="font-size:11px;color:var(--text-muted);margin-top:1px">'+card.name+' · automático</div></div>'+'<div style="text-align:right"><div style="font-size:18px;font-weight:800;color:var(--text)">'+fmt(totalSaved)+'</div>'+'<div style="font-size:10px;color:var(--text-muted)">'+fmt(+g.amount)+'/mes</div></div>'+'</div>'+'<div style="display:flex;gap:6px">'+'<button data-csid="'+g.id+'" onclick="openEditCreditSaving(this.dataset.csid)" style="flex:1;padding:8px;border-radius:var(--r);border:1px solid var(--border);background:var(--bg);color:var(--text-mid);font-family:inherit;font-size:12px;font-weight:600;cursor:pointer">Editar</button>'+'<button data-csid="'+g.id+'" onclick="deleteCreditSaving(this.dataset.csid)" style="padding:8px 12px;border-radius:var(--r);border:1px solid var(--border);background:var(--bg);color:var(--text-muted);font-family:inherit;font-size:12px;cursor:pointer"><svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="3 6 5 6 21 6"/><path d="M19 6l-1 14a2 2 0 0 1-2 2H8a2 2 0 0 1-2-2L5 6"/></svg></button>'+'</div>'+(entriesHTML?'<div style="margin-top:10px;border-top:1px solid var(--border);padding-top:10px">'+entriesHTML+'</div>':'')+
+    '</div>';
   }).join('');
-  con.innerHTML=creditSavingSection+S.goals.map((g,i)=>{
+  const svgChevD2='<svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="6 9 12 15 18 9"/></svg>';
+  const svgChevU2='<svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="18 15 12 9 6 15"/></svg>';
+
+  const goalsHTML=S.goals.map((g,i)=>{
     const hasTarget=g.target>0;
     const pct=hasTarget?Math.min((g.saved/g.target)*100,100):0;
     const done=hasTarget&&g.saved>=g.target;
+    const col=g.color||'#4772fa';
 
-    // Deadline calculations
+    // Goal icon: colored square with first letter
+    const goalIcon='<div style="width:36px;height:36px;border-radius:9px;background:'+col+'15;border:1.5px solid '+col+'30;display:flex;align-items:center;justify-content:center;font-size:14px;font-weight:800;color:'+col+';flex-shrink:0">'+g.name[0].toUpperCase()+'</div>';
+
+    // Deadline
     let deadlineHTML='';
     if(g.deadline&&hasTarget&&!done){
       const dlDate=new Date(g.deadline+'T12:00:00');
@@ -3028,58 +3071,82 @@ function rSavings(){
       const perMonth=monthsLeft>0?remaining/monthsLeft:remaining;
       const isLate=dlDate<now;
       const dlStr=dlDate.toLocaleDateString('es-UY',{day:'numeric',month:'short',year:'numeric'});
-      deadlineHTML=`<div style="margin-top:8px;padding:8px 10px;background:${isLate?'var(--red-light)':monthsLeft<=2?'#fffbeb':'var(--accent-light)'};border-radius:var(--r);font-size:12px">
-        ${isLate
-          ? `<span style="color:var(--red);font-weight:700">⚠️ Fecha límite vencida</span> — ${dlStr}`
-          : `<span style="color:var(--accent);font-weight:700">📅 ${dlStr}</span> — ${monthsLeft} mes${monthsLeft!==1?'es':''} · <strong>${fmt(perMonth)}/mes</strong> necesarios`
-        }
-      </div>`;
+      deadlineHTML='<div style="margin-top:8px;padding:8px 10px;background:'+(isLate?'rgba(239,68,68,.06)':monthsLeft<=2?'rgba(249,115,22,.06)':'rgba(71,114,250,.05)')+';border-radius:var(--r);border:1px solid '+(isLate?'rgba(239,68,68,.2)':monthsLeft<=2?'rgba(249,115,22,.2)':'rgba(71,114,250,.15)')+';font-size:11px;color:var(--text-mid)">'+
+        (isLate
+          ? '<span style="color:var(--red);font-weight:700">Fecha límite vencida</span> — '+dlStr
+          : dlStr+' — '+monthsLeft+' mes'+(monthsLeft!==1?'es':'')+' · <strong>'+fmt(perMonth)+'/mes</strong> necesarios'
+        )+'</div>';
     }
+
     // Entries history
     const entries=(g.entries||[]).slice().sort((a,b)=>new Date(b.date)-new Date(a.date));
     const showAll=window._savingsExpanded&&window._savingsExpanded[i];
     const visibleEntries=showAll?entries:entries.slice(0,3);
-    const entriesHTML=entries.length?`
-      <div style="margin-top:10px;border-top:1px solid var(--border);padding-top:8px">
-        <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:6px">
-          <div style="font-size:10px;font-weight:700;color:var(--text-muted);text-transform:uppercase;letter-spacing:.5px">Historial (${entries.length})</div>
-          ${entries.length>3?'<button onclick="toggleSavingsHistory('+i+')" style="font-size:10px;color:var(--accent);background:none;border:none;cursor:pointer;font-weight:700">'+(showAll?'▲ Ver menos':'▼ Ver todo ('+entries.length+')')+'</button>':''}
-        </div>
-        ${visibleEntries.map((e,ei)=>{
-          const isWithdrawal=e.amount<0;
-          const realIdx=(g.entries||[]).findIndex((x,xi)=>x===g.entries.slice().sort((a,b)=>new Date(b.date)-new Date(a.date))[ei]);
-          const origIdx=(g.entries||[]).indexOf(g.entries.slice().sort((a,b)=>new Date(b.date)-new Date(a.date))[ei]);
-          return `<div style="display:flex;align-items:center;gap:8px;padding:8px 0;border-bottom:1px solid var(--border-light)">
-            <div style="flex:1">
-              <div style="font-size:12px;font-weight:700;color:${isWithdrawal?'var(--red)':'var(--green)'}">${isWithdrawal?'':'+'} ${fmt(Math.abs(e.amount))}</div>
-              <div style="font-size:10px;color:var(--text-muted)">${isWithdrawal?'🔴 Retiro':'🟢 Depósito'} · ${new Date(e.date+'T12:00:00').toLocaleDateString('es-UY',{day:'numeric',month:'short',year:'numeric'})}${e.note?' · '+e.note:''}</div>
-            </div>
-            <button onclick="openEditGoalEntry(${i},${origIdx})" style="background:var(--accent-light);border:none;color:var(--accent);width:28px;height:28px;border-radius:6px;cursor:pointer;font-size:12px;flex-shrink:0">✏️</button>
-            <button onclick="delGoalEntry(${i},${origIdx})" style="background:var(--red-light);border:none;color:var(--red);width:28px;height:28px;border-radius:6px;cursor:pointer;font-size:12px;flex-shrink:0">✕</button>
-          </div>`;
-        }).join('')}
-      </div>`:
-      `<div style="font-size:11px;color:var(--text-muted);margin-top:8px;text-align:center">Sin entradas todavía</div>`;
+    const entriesHTML=entries.length
+      ?'<div style="margin-top:2px;border-top:1px solid var(--border);padding-top:0">'+
+        '<div style="display:flex;align-items:center;justify-content:space-between;padding:10px 0 6px">'+
+          '<div style="font-size:10px;font-weight:700;color:var(--text-muted);text-transform:uppercase;letter-spacing:.5px">Historial ('+entries.length+')</div>'+
+          (entries.length>3?'<button onclick="toggleSavingsHistory('+i+')" style="font-size:10px;color:var(--accent);background:none;border:none;cursor:pointer;font-weight:700;display:flex;align-items:center;gap:3px">'+(showAll?svgChevU2+' Ver menos':svgChevD2+' Ver todo ('+entries.length+')')+'</button>':'')
+        +'</div>'+
+        visibleEntries.map(function(e,ei){
+          const isW=e.amount<0;
+          const origIdx=(g.entries||[]).indexOf(g.entries.slice().sort((a,b2)=>new Date(b2.date)-new Date(a.date))[ei]);
+          const eDate=new Date(e.date+'T12:00:00').toLocaleDateString('es-UY',{day:'numeric',month:'short',year:'numeric'});
+          return '<div style="display:flex;align-items:center;gap:10px;padding:8px 0;border-bottom:1px solid var(--border-light,#f3f3f3)">'+
+            '<div style="width:6px;height:6px;border-radius:50%;background:'+(isW?'var(--red)':'#16a34a')+';flex-shrink:0;margin-left:2px"></div>'+
+            '<div style="flex:1;min-width:0">'+
+              '<div style="font-size:12px;font-weight:600;color:var(--text)">'+(isW?'−':'+')+'  '+fmt(Math.abs(e.amount))+'</div>'+
+              '<div style="font-size:10px;color:var(--text-muted)">'+eDate+(e.note?' · '+e.note:'')+'</div>'+
+            '</div>'+
+            '<div style="display:flex;gap:4px">'+
+              '<button onclick="openEditGoalEntry('+i+','+origIdx+')" style="background:var(--bg);border:1px solid var(--border);color:var(--text-mid);width:26px;height:26px;border-radius:6px;cursor:pointer;font-size:11px;flex-shrink:0;display:flex;align-items:center;justify-content:center"><svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"/><path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"/></svg></button>'+
+              '<button onclick="delGoalEntry('+i+','+origIdx+')" style="background:var(--bg);border:1px solid var(--border);color:var(--text-muted);width:26px;height:26px;border-radius:6px;cursor:pointer;font-size:11px;flex-shrink:0;display:flex;align-items:center;justify-content:center"><svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="3 6 5 6 21 6"/><path d="M19 6l-1 14a2 2 0 0 1-2 2H8a2 2 0 0 1-2-2L5 6"/><path d="M10 11v6"/><path d="M14 11v6"/></svg></button>'+
+            '</div>'+
+          '</div>';
+        }).join('')+'</div>'
+      :'<div style="font-size:11px;color:var(--text-muted);text-align:center;padding:10px 0">Sin entradas todavía</div>';
 
-    return `<div class="goal-card">
-      <div class="gh"><div class="ge">${g.emoji}</div><div class="gn">${g.name}${g.noDisponible?'<span style="font-size:10px;background:#f1f5f9;color:var(--text-muted);border-radius:4px;padding:1px 5px;margin-left:4px;vertical-align:middle">no afecta disponible</span>':''}</div>
-        <div class="gp">${done?'✅':hasTarget?Math.round(pct)+'%':''}</div>
-      </div>
-      ${hasTarget?'<div class="gbb"><div class="gbf" style="width:'+pct+'%"></div></div>':''}
-      <div class="gam">
-        <span class="gas">${fmt(g.saved)}</span>
-        <span>${hasTarget?'de '+fmt(g.target):'sin meta'}</span>
-      </div>
-      <div class="gacts">
-        <button class="gab gab-a" onclick="openAddGoal(${i},false)">+ Depositar</button>
-        <button class="gab" style="background:var(--red-light);color:var(--red);border:1.5px solid var(--red-light)" onclick="openAddGoal(${i},true)">− Retirar</button>
-        <button class="gab gab-e" onclick="openEditGoal(${i})">Editar</button>
-        <button class="gab gab-d" onclick="delGoal(${i})">Eliminar</button>
-      </div>
-      ${deadlineHTML}
-      ${entriesHTML}
-    </div>`;
+    return '<div class="r-card" style="padding:0;overflow:hidden;margin-bottom:8px">'+
+      '<div style="padding:16px">'+
+        '<div style="display:flex;align-items:center;gap:12px;margin-bottom:12px">'+
+          goalIcon+
+          '<div style="flex:1;min-width:0">'+
+            '<div style="font-size:14px;font-weight:700;color:var(--text)">'+g.name+
+              (g.noDisponible?'<span style="font-size:9px;background:var(--bg);color:var(--text-muted);border-radius:5px;padding:2px 6px;margin-left:6px;font-weight:600">no afecta disponible</span>':'')+
+            '</div>'+
+            '<div style="font-size:22px;font-weight:800;color:var(--text);letter-spacing:-.5px;margin-top:2px">'+fmt(g.saved)+
+              (hasTarget?'<span style="font-size:12px;font-weight:500;color:var(--text-muted)"> / '+fmt(g.target)+'</span>':'')+
+            '</div>'+
+          '</div>'+
+          '<div style="text-align:right;flex-shrink:0">'+
+            (done
+              ?'<div style="font-size:10px;font-weight:700;color:#16a34a;background:rgba(34,197,94,.1);border-radius:20px;padding:4px 8px">Completado</div>'
+              :hasTarget?'<div style="font-size:13px;font-weight:700;color:var(--text-muted)">'+Math.round(pct)+'%</div>':''
+            )+
+          '</div>'+
+        '</div>'+
+        (hasTarget?'<div style="height:4px;background:var(--border);border-radius:2px;overflow:hidden;margin-bottom:12px"><div style="height:100%;border-radius:2px;background:'+col+';width:'+pct+'%;transition:width .5s"></div></div>':'')+
+        '<div style="display:flex;gap:6px">'+
+          '<button onclick="openAddGoal('+i+',false)" style="flex:1;padding:8px;border-radius:var(--r);border:1px solid rgba(34,197,94,.3);background:rgba(34,197,94,.06);color:#16a34a;font-family:inherit;font-size:12px;font-weight:600;cursor:pointer">+ Depositar</button>'+
+          '<button onclick="openAddGoal('+i+',true)" style="flex:1;padding:8px;border-radius:var(--r);border:1px solid rgba(239,68,68,.25);background:rgba(239,68,68,.05);color:var(--red);font-family:inherit;font-size:12px;font-weight:600;cursor:pointer">− Retirar</button>'+
+          '<button onclick="openEditGoal('+i+')" style="padding:8px 12px;border-radius:var(--r);border:1px solid var(--border);background:var(--bg);color:var(--text-mid);font-family:inherit;font-size:12px;cursor:pointer"><svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"/><path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"/></svg></button>'+
+          '<button onclick="delGoal('+i+')" style="padding:8px 12px;border-radius:var(--r);border:1px solid var(--border);background:var(--bg);color:var(--text-muted);font-family:inherit;font-size:12px;cursor:pointer"><svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="3 6 5 6 21 6"/><path d="M19 6l-1 14a2 2 0 0 1-2 2H8a2 2 0 0 1-2-2L5 6"/></svg></button>'+
+        '</div>'+
+        deadlineHTML+
+      '</div>'+
+      (entries.length?'<div style="padding:0 16px 12px">'+entriesHTML+'</div>':'')+
+    '</div>';
   }).join('');
+
+  // Nantas — credit auto-savings, placed after bolsillos
+  const nantasHTML=creditSavingSection
+    ?'<div style="margin-top:4px;margin-bottom:4px">'+
+        '<div style="font-size:11px;font-weight:700;color:var(--text-muted);text-transform:uppercase;letter-spacing:.5px;margin-bottom:8px;padding:0 2px">Automáticos en tarjeta</div>'+
+        creditSavingSection+
+      '</div>'
+    :'';
+
+  con.innerHTML=goalsHTML+nantasHTML;
 }
 
 function delGoalEntry(goalIdx,entryIdx){
