@@ -206,6 +206,10 @@ onAuthStateChanged(auth, (user) => {
   .date-display span{color:var(--text-muted)}
   input[type=date].fi{opacity:0;position:relative;z-index:1}
 
+  /* ALERT BANNER — unified across tabs */
+  .alert-banner{background:var(--bg);border:1px solid var(--border);border-radius:var(--r);padding:10px 13px;margin-bottom:8px;font-size:12px;color:var(--text-mid);line-height:1.5}
+  .alert-banner strong{color:var(--text)}
+
   /* RESUMEN CARDS */
   .r-card{background:var(--white);border-radius:14px;border:1px solid var(--border);padding:16px;margin-bottom:8px;cursor:default}
   .r-card.tap{cursor:pointer;transition:opacity .12s}.r-card.tap:active{opacity:.75}
@@ -686,7 +690,7 @@ onAuthStateChanged(auth, (user) => {
     </div>
     <div style="display:flex;align-items:center;gap:10px;margin-bottom:8px;padding:10px 12px;background:var(--bg);border-radius:var(--r)">
       <input type="checkbox" id="egRecurring" style="width:18px;height:18px;cursor:pointer;accent-color:var(--accent)" onchange="document.getElementById('egEndDateRow').style.display=this.checked?'':'none'">
-      <label for="egRecurring" style="font-size:13px;font-weight:600;cursor:pointer">🔁 Pago recurrente (se repite cada mes)</label>
+      <label for="egRecurring" style="font-size:13px;font-weight:600;cursor:pointer">Pago recurrente (se repite cada mes)</label>
     </div>
     <div id="egEndDateRow" style="display:none;margin-bottom:14px">
       <div class="fld"><div class="fl">Fecha de fin (opcional — dejar vacío si sigue activo)</div>
@@ -735,7 +739,7 @@ onAuthStateChanged(auth, (user) => {
 
 <div class="mo hid" id="mNewDebt" onclick="overlayClose(event,'mNewDebt')">
   <div class="modal"><div class="mh"></div>
-    <div class="mt">💸 Nueva deuda</div>
+    <div class="mt">Nueva deuda</div>
     <div class="fr f1" style="margin-bottom:8px">
       <div class="fld"><div class="fl">Descripción</div><input class="fi" id="debtDesc" placeholder="Ej: Préstamo padres"></div>
     </div>
@@ -797,7 +801,7 @@ onAuthStateChanged(auth, (user) => {
 
 <div class="mo hid" id="mQuickSaving" onclick="overlayClose(event,'mQuickSaving')">
   <div class="modal"><div class="mh"></div>
-    <div class="mt">💰 Registrar ahorro</div>
+    <div class="mt"> Registrar ahorro</div>
     <div class="fr f1" style="margin-bottom:8px">
       <div class="fld"><div class="fl">Bolsillo</div>
         <select class="fi" id="qsGoalIdx">
@@ -961,7 +965,7 @@ onAuthStateChanged(auth, (user) => {
 <!-- GOOGLE SHEETS MODAL -->
 <div class="mo hid" id="mSheets" onclick="overlayClose(event,'mSheets')">
   <div class="modal"><div class="mh"></div>
-    <div class="mt">📊 Google Sheets</div>
+    <div class="mt"> Google Sheets</div>
     <div id="sheetsContent">
       <p style="font-size:13px;color:var(--text-mid);margin-bottom:16px;line-height:1.6">Sincronizá tus gastos automáticamente con un Google Sheet. Cada vez que guardás un gasto, se actualiza en tiempo real.</p>
       <div id="sheetsStatus" style="background:var(--bg);border-radius:var(--r);padding:12px;margin-bottom:14px;font-size:12px;color:var(--text-muted);text-align:center">No conectado</div>
@@ -1121,7 +1125,7 @@ onAuthStateChanged(auth, (user) => {
   <div id="t-gastos" style="display:none">
     <input type="text" id="txSearch" style="display:none" oninput="rTxList()">
     <div id="chipsWrap"></div>
-    <div id="filtTotal" style="display:none;padding:8px 16px;background:var(--accent-light);border-radius:var(--r);margin:0 0 8px;font-size:13px;font-weight:600;color:var(--accent)"></div>
+    <div id="filtTotal" class="alert-banner" style="display:none"></div>
     <div id="txList"></div>
   </div>
 
@@ -1132,7 +1136,7 @@ onAuthStateChanged(auth, (user) => {
     <div class="fc" style="margin-bottom:12px">
       <div class="ft">Pegar captura de pantalla</div>
       <input type="text" id="pasteInput" class="fi"
-        placeholder="📋 Tocá acá → mantené presionado → Pegar"
+        placeholder="Tocá acá → mantené presionado → Pegar"
         style="font-size:13px;text-align:center"
         onpaste="handleInputPaste(event)"
         onfocus="this.select()"
@@ -1208,7 +1212,7 @@ onAuthStateChanged(auth, (user) => {
         </div>
         <label style="display:flex;align-items:center;gap:8px;padding:10px 0;cursor:pointer;font-size:13px;color:var(--text-mid)">
           <input type="checkbox" id="mRecurring" style="width:16px;height:16px;accent-color:var(--accent)">
-          🔁 Pago recurrente (se repite cada mes)
+          Pago recurrente (se repite cada mes)
         </label>
         <div id="debtLinkRow" style="display:none;margin-bottom:8px">
           <div class="fl" style="margin-bottom:4px">Pago de deuda</div>
@@ -1536,11 +1540,11 @@ onAuthStateChanged(auth, (user) => {
 
 <!-- FLOATING SCAN BUTTON -->
 <div id="fabMenu" style="display:none;position:fixed;bottom:96px;right:20px;z-index:40;flex-direction:column;gap:8px;align-items:flex-end">
-  <button onclick="closeFab();tab('escanear')" style="display:flex;align-items:center;gap:8px;background:var(--white);border:1px solid var(--border);border-radius:24px;padding:10px 16px;font-family:inherit;font-size:13px;font-weight:600;cursor:pointer;white-space:nowrap">📸 Escanear recibo</button>
-  <button onclick="closeFab();openQuickAdd()" style="display:flex;align-items:center;gap:8px;background:var(--white);border:1px solid var(--border);border-radius:24px;padding:10px 16px;font-family:inherit;font-size:13px;font-weight:600;cursor:pointer;white-space:nowrap">✏️ Gasto rápido</button>
-  <button onclick="closeFab();openQuickSaving()" style="display:flex;align-items:center;gap:8px;background:var(--white);border:1px solid var(--border);border-radius:24px;padding:10px 16px;font-family:inherit;font-size:13px;font-weight:600;cursor:pointer;white-space:nowrap">Ahorro rápido</button>
-  <button onclick="closeFab();openQuickDebtPay()" style="display:flex;align-items:center;gap:8px;background:var(--white);border:1px solid var(--border);border-radius:24px;padding:10px 16px;font-family:inherit;font-size:13px;font-weight:600;cursor:pointer;white-space:nowrap">Pago de deuda</button>
-  <button onclick="closeFab();openCreditSaving()" style="display:flex;align-items:center;gap:8px;background:var(--white);border:1px solid var(--border);border-radius:24px;padding:10px 16px;font-family:inherit;font-size:13px;font-weight:600;cursor:pointer;white-space:nowrap">Ahorro en tarjeta</button>
+  <button onclick="closeFab();tab('escanear')" style="display:flex;align-items:center;gap:10px;background:var(--white);border:1px solid var(--border);border-radius:24px;padding:9px 16px 9px 12px;font-family:inherit;font-size:13px;font-weight:600;cursor:pointer;white-space:nowrap;color:var(--text);box-shadow:0 2px 8px rgba(0,0,0,.08)"><div style="width:26px;height:26px;border-radius:8px;background:#4b556315;display:flex;align-items:center;justify-content:center;flex-shrink:0"><svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="#4b5563" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="3" width="18" height="18" rx="2"/><circle cx="8.5" cy="8.5" r="1.5"/><polyline points="21 15 16 10 5 21"/></svg></div><span>Escanear recibo</span></button>
+  <button onclick="closeFab();openQuickAdd()" style="display:flex;align-items:center;gap:10px;background:var(--white);border:1px solid var(--border);border-radius:24px;padding:9px 16px 9px 12px;font-family:inherit;font-size:13px;font-weight:600;cursor:pointer;white-space:nowrap;color:var(--text);box-shadow:0 2px 8px rgba(0,0,0,.08)"><div style="width:26px;height:26px;border-radius:8px;background:#4772fa15;display:flex;align-items:center;justify-content:center;flex-shrink:0"><svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="#4772fa" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg></div><span>Gasto rápido</span></button>
+  <button onclick="closeFab();openQuickSaving()" style="display:flex;align-items:center;gap:10px;background:var(--white);border:1px solid var(--border);border-radius:24px;padding:9px 16px 9px 12px;font-family:inherit;font-size:13px;font-weight:600;cursor:pointer;white-space:nowrap;color:var(--text);box-shadow:0 2px 8px rgba(0,0,0,.08)"><div style="width:26px;height:26px;border-radius:8px;background:#16a34a15;display:flex;align-items:center;justify-content:center;flex-shrink:0"><svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="#16a34a" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M19 5c-1.5 0-2.8 1.4-3 2-3.5-1.5-11-.3-11 5 0 1.8 0 3 2 4.5V20h4v-2h3v2h4v-4c1-.5 1.7-1 2-2h2v-4h-2c0-1-.5-1.5-1-2h0V5z"/></svg></div><span>Ahorro rápido</span></button>
+  <button onclick="closeFab();openQuickDebtPay()" style="display:flex;align-items:center;gap:10px;background:var(--white);border:1px solid var(--border);border-radius:24px;padding:9px 16px 9px 12px;font-family:inherit;font-size:13px;font-weight:600;cursor:pointer;white-space:nowrap;color:var(--text);box-shadow:0 2px 8px rgba(0,0,0,.08)"><div style="width:26px;height:26px;border-radius:8px;background:#ef444415;display:flex;align-items:center;justify-content:center;flex-shrink:0"><svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="#ef4444" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="23 4 23 10 17 10"/><polyline points="1 20 1 14 7 14"/><path d="M3.51 9a9 9 0 0 1 14.85-3.36L23 10M1 14l4.64 4.36A9 9 0 0 0 20.49 15"/></svg></div><span>Pago de deuda</span></button>
+  <button onclick="closeFab();openCreditSaving()" style="display:flex;align-items:center;gap:10px;background:var(--white);border:1px solid var(--border);border-radius:24px;padding:9px 16px 9px 12px;font-family:inherit;font-size:13px;font-weight:600;cursor:pointer;white-space:nowrap;color:var(--text);box-shadow:0 2px 8px rgba(0,0,0,.08)"><div style="width:26px;height:26px;border-radius:8px;background:#7c3aed15;display:flex;align-items:center;justify-content:center;flex-shrink:0"><svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="#7c3aed" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><rect x="1" y="4" width="22" height="16" rx="2"/><line x1="1" y1="10" x2="23" y2="10"/></svg></div><span>Ahorro en tarjeta</span></button>
 </div>
 <div id="fabOverlay" style="display:none;position:fixed;inset:0;z-index:39" onclick="closeFab()"></div>
 <button class="fab" id="fabBtn" onclick="toggleFab()" title="Agregar">+</button>
@@ -2952,46 +2956,57 @@ function rCredit(){
   const disclaimer=document.getElementById('crDisclaimer');
   if(disclaimer&&cardDebitItems.length>0){
     disclaimer.style.display='block';
-    disclaimer.innerHTML=`<div style="background:rgba(249,115,22,.05);border:1px solid rgba(249,115,22,.2);border-radius:var(--r);padding:10px 12px;margin-bottom:10px;font-size:12px;color:var(--text-mid);line-height:1.5">
-      Los items con badge <strong style="color:var(--orange)">tarjeta</strong> (${cardDebitItems.map(g=>g.desc).slice(0,3).join(', ')}${cardDebitItems.length>3?'…':''}) se cobran mensualmente en tu tarjeta pero <strong>computan como Gastado</strong>, no como cuota.
-    </div>`;
+    disclaimer.innerHTML='<div class="alert-banner">Los items con badge <strong>tarjeta</strong> ('+cardDebitItems.map(g=>g.desc).slice(0,3).join(', ')+(cardDebitItems.length>3?'…':'')+') se cobran mensualmente en tu tarjeta pero <strong>computan como Gastado</strong>, no como cuota.</div>';
   } else if(disclaimer) disclaimer.style.display='none';
-  if(!displayActive.length){con.innerHTML=`<div class="empty"><div class="ee">✅</div><div class="et">Sin deudas en crédito</div><div class="es">Tus compras en cuotas aparecen acá</div></div>`;return;}
-  con.innerHTML=displayActive.map(g=>{
-    const inst=+g.installments||1;
-    const cuota=g.amount/inst;
-    const s=new Date(g.date+'T12:00:00');
-    // Day-6 cutoff: purchases on or before the 6th → first cuota same month
-    const firstM=(function(d,s){var cd=getClosingDay(d,s.getMonth(),s.getFullYear());var eom=cd>=28;return s.getDate()<=cd?(eom?s.getMonth()+1:s.getMonth()):(eom?s.getMonth()+2:s.getMonth()+1);})(g.cardId,s);
-    const firstY=s.getFullYear()+Math.floor(firstM/12);
-    const fm=((firstM%12)+12)%12;
-    const fy=firstY;
-    // Cuotas paid as of viewed month (CM/CY)
-    const diff=(CY-fy)*12+(CM-fm);
-    const paid=Math.max(0,Math.min(inst,diff));
-    const purchaseStr=s.toLocaleDateString('es-UY',{day:'numeric',month:'short',year:'numeric'});
-    const cat=S.categories.find(c=>c.name===g.category);
-      const col=cat?cat.color:'#6b7280';
-    const crCat=cat;
-    return '<div class="cri" style="cursor:pointer" onclick="openGastoDetail(&apos;'+g.id+'&apos;,false,'+(paid+1)+','+inst+')">'+
-      '<div style="display:flex;align-items:center;gap:10px">'+
-        renderCatIcon(crCat,34)+
-        '<div style="flex:1;min-width:0">'+
-          '<div class="txd">'+g.desc+(g.recurring?' <span style="font-size:10px;background:var(--accent-light);color:var(--accent);border-radius:6px;padding:1px 5px;font-weight:700">recurrente</span>':'')+'</div>'+
-          '<div class="txm">'+
+  if(!displayActive.length){con.innerHTML='<div class="empty"><div class="ee" style="font-size:32px">✓</div><div class="et">Sin cuotas activas</div><div class="es">Tus compras en cuotas aparecen acá</div></div>';return;}
+
+  // Group by purchase date
+  const crGrp={};
+  displayActive.forEach(g=>{
+    const key=g.date;
+    if(!crGrp[key])crGrp[key]=[];
+    crGrp[key].push(g);
+  });
+  const crKeys=Object.keys(crGrp).sort((a,b)=>b.localeCompare(a));
+
+  con.innerHTML=crKeys.map(key=>{
+    const its=crGrp[key];
+    const d=new Date(key+'T12:00:00');
+    const dayLbl=d.toLocaleDateString('es-UY',{weekday:'short',day:'numeric',month:'short'});
+    const isToday=d.toDateString()===new Date().toDateString();
+
+    const itemsHTML=its.map((g,gi)=>{
+      const inst=+g.installments||1;
+      const cuota=g.amount/inst;
+      const s=new Date(g.date+'T12:00:00');
+      const firstM=(function(d2,s2){var cd=getClosingDay(d2,s2.getMonth(),s2.getFullYear());var eom=cd>=28;return s2.getDate()<=cd?(eom?s2.getMonth()+1:s2.getMonth()):(eom?s2.getMonth()+2:s2.getMonth()+1);})(g.cardId,s);
+      const firstY=s.getFullYear()+Math.floor(firstM/12);
+      const fm=((firstM%12)+12)%12;
+      const diff=(CY-firstY)*12+(CM-fm);
+      const paid=Math.max(0,Math.min(inst,diff));
+      const cat=S.categories.find(c=>c.name===g.category);
+      const border=gi>0?'border-top:1px solid var(--border-light,#f3f3f3)':'';
+      return '<div class="tx-day-item" style="'+border+'" onclick="openGastoDetail(&apos;'+g.id+'&apos;,false,'+(paid+1)+','+inst+')">'+
+        renderCatIcon(cat,34)+
+        '<div class="tx-info">'+
+          '<div class="tx-name">'+g.desc+(g.recurring?' <span style="font-size:9px;font-weight:700;background:var(--accent-light);color:var(--accent);border-radius:5px;padding:1px 5px">recurrente</span>':'')+'</div>'+
+          '<div class="tx-meta">'+
             (g.recurring&&inst===1
               ?'<span class="tx-badge tx-badge-db">Tarjeta</span>'
               :'<span class="tx-badge tx-badge-cr">Cuota '+(paid+1)+'/'+inst+'</span>')+
-            '<span style="color:var(--text-muted)">'+g.category+'</span>'+
+            '<span>'+g.category+'</span>'+
           '</div>'+
-          '<div style="font-size:10px;color:var(--text-muted);margin-top:2px">'+purchaseStr+'</div>'+
         '</div>'+
-        '<div style="text-align:right;flex-shrink:0">'+
-          '<div style="font-size:15px;font-weight:700;color:var(--text)">'+fmt(cuota)+'</div>'+
-          '<div style="font-size:10px;color:var(--text-muted)">Total: '+fmt(g.amount)+'</div>'+
+        '<div class="tx-amt">'+
+          '<div class="tx-amt-val">'+fmt(cuota)+'</div>'+
+          '<div class="tx-amt-sub">Total: '+fmt(g.amount)+'</div>'+
         '</div>'+
-        '<div style="color:var(--text-muted);display:flex;align-items:center"><svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="9 18 15 12 9 6"/></svg></div>'+
-      '</div>'+
+      '</div>';
+    }).join('');
+
+    return '<div class="tx-day">'+
+      '<div class="tx-day-lbl">'+dayLbl+(isToday?' <span style="font-size:9px;font-weight:700;background:var(--accent);color:#fff;border-radius:10px;padding:1px 7px">HOY</span>':'')+'</div>'+
+      '<div class="tx-day-box">'+itemsHTML+'</div>'+
     '</div>';
   }).join('');
 }
@@ -3006,7 +3021,7 @@ function rSavings(){
   rDebts();
   rSavingsProjection();
   const con=document.getElementById('goalList');
-  if(!S.goals.length){con.innerHTML=`<div class="empty"><div class="ee">🎯</div><div class="et">Sin ahorros todavía</div><div class="es">Creá tu primer objetivo o bolsillo de ahorro</div></div>`;return;}
+  if(!S.goals.length){con.innerHTML=`<div class="empty"><div class="et">Sin ahorros todavía</div><div class="es">Creá tu primer objetivo o bolsillo de ahorro</div></div>`;return;}
   // Credit savings section — identical UI to bolsillos
   const creditSavingGs=S.gastos.filter(g=>g.payType==='credit'&&g.isSaving&&g.recurring);
   function buildCreditSavingHistory(g){
@@ -4555,7 +4570,7 @@ function rIngresos(){
   const inc=S.ingresos.filter(i=>{const d=new Date(i.date+'T12:00:00');return d.getMonth()===CM&&d.getFullYear()===CY;});
   inc.sort((a,b)=>new Date(b.date)-new Date(a.date));
   if(!inc.length){
-    con.innerHTML=`<div class="empty"><div class="ee">💸</div><div class="et">Sin ingresos extra este mes</div><div class="es">Agregá freelances, bonos u otros ingresos</div></div>`;
+    con.innerHTML=`<div class="empty"><div class="et">Sin ingresos extra este mes</div><div class="es">Agregá freelances, bonos u otros ingresos</div></div>`;
     return;
   }
   const tot=inc.reduce((s,i)=>s+(+i.amount),0);
