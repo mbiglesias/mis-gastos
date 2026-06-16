@@ -183,9 +183,9 @@ onAuthStateChanged(auth, (user) => {
   .sc.hero .ss{font-size:11px;margin-top:4px}
   .sc{background:var(--white);border-radius:var(--R);padding:13px 14px;border:1px solid var(--border)}
   .sc.primary{padding:16px 14px}
-  .sc.ab{background:rgba(71,114,250,.05);border-color:rgba(71,114,250,.3)}
-  .sc.pb{background:rgba(109,40,217,.05);border-color:rgba(109,40,217,.3)}
-  .sc.gb{background:rgba(34,197,94,.05);border-color:rgba(34,197,94,.3)}
+  .sc.ab{background:var(--white);border-color:rgba(71,114,250,.25)}
+  .sc.pb{background:var(--white);border-color:rgba(109,40,217,.25)}
+  .sc.gb{background:var(--white);border-color:rgba(34,197,94,.25)}
   .sl{font-size:10px;font-weight:700;color:var(--text-muted);text-transform:uppercase;letter-spacing:.5px;margin-bottom:4px}
   .sl.li{color:var(--text-muted)}
   .sv{font-size:22px;font-weight:700;color:var(--text);letter-spacing:-.5px;line-height:1}
@@ -238,7 +238,7 @@ onAuthStateChanged(auth, (user) => {
   .cbl{font-size:10px;color:var(--text-muted);text-align:right}
 
   /* CREDIT BOX */
-  .cbox{background:rgba(109,40,217,.04);border:1px solid rgba(109,40,217,.2);border-radius:var(--R);padding:12px 14px;margin-bottom:10px;display:flex;gap:12px;align-items:center}
+  .cbox{background:var(--white);border:1px solid rgba(109,40,217,.2);border-radius:var(--R);padding:12px 14px;margin-bottom:10px;display:flex;gap:12px;align-items:center}
   .cbox-icon{font-size:22px}.cbox-body{flex:1}
   .cbox-title{font-size:13px;font-weight:700;color:var(--purple)}
   .cbox-sub{font-size:11px;color:var(--text-muted);margin-top:2px}
@@ -1328,11 +1328,18 @@ onAuthStateChanged(auth, (user) => {
     </div>
   </div>
   <div id="t-credito" style="display:none">
-    <div class="sg" style="margin-bottom:10px">
-      <div class="sc pb"><div class="sl li">Total pendiente</div><div class="sv li" id="crTot">$0</div><div class="ss li" id="crTotSub"></div></div>
-      <div class="sc tap-card" onclick="filterCreditMonth()" style="cursor:pointer"><div class="sl">Este mes</div><div class="sv pu" id="crMon">$0</div><div class="ss" id="crMonSub">ver cuotas ›</div></div>
+    <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-bottom:10px">
+      <div class="r-card" style="padding:16px">
+        <div class="r-label" style="margin-bottom:8px">Total pendiente</div>
+        <div style="font-size:24px;font-weight:800;color:var(--text);letter-spacing:-.5px" id="crTot">$0</div>
+        <div style="font-size:11px;color:var(--text-muted);margin-top:4px" id="crTotSub"></div>
+      </div>
+      <div class="r-card tap" onclick="filterCreditMonth()" style="padding:16px">
+        <div class="r-label" style="margin-bottom:8px">Este mes</div>
+        <div style="font-size:24px;font-weight:800;color:var(--text);letter-spacing:-.5px" id="crMon">$0</div>
+        <div style="font-size:11px;color:var(--text-muted);margin-top:4px" id="crMonSub">ver cuotas</div>
+      </div>
     </div>
-    <div class="ft" style="margin-bottom:8px">Cuotas activas</div>
     <div id="crModeSummary"></div>
     <div id="crCardFilter"></div>
     <div id="crDisclaimer" style="display:none"></div>
@@ -2872,15 +2879,15 @@ function rCredit(){
   if(crSummEl){
     crSummEl.innerHTML=`
       <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-bottom:12px">
-        <div style="background:var(--accent-light);border-radius:var(--R);padding:12px;text-align:center">
-          <div style="font-size:10px;font-weight:700;color:var(--accent);text-transform:uppercase;letter-spacing:.5px;margin-bottom:4px">📅 Consumí en ${MOS[CM]}</div>
-          <div style="font-size:20px;font-weight:700;color:var(--accent)">${fmt(consumiThisMonth)}</div>
-          <div style="font-size:10px;color:var(--text-muted);margin-top:2px">compras realizadas</div>
+        <div class="r-card" style="padding:14px">
+          <div class="r-label" style="margin-bottom:8px">Consumí en ${MOS[CM]}</div>
+          <div style="font-size:22px;font-weight:800;color:var(--text);letter-spacing:-.5px">${fmt(consumiThisMonth)}</div>
+          <div style="font-size:11px;color:var(--text-muted);margin-top:3px">compras realizadas</div>
         </div>
-        <div style="background:var(--purple-light);border-radius:var(--R);padding:12px;text-align:center">
-          <div style="font-size:10px;font-weight:700;color:var(--purple);text-transform:uppercase;letter-spacing:.5px;margin-bottom:4px">💳 Pago en ${MOS[CM]}</div>
-          <div style="font-size:20px;font-weight:700;color:var(--purple)">${fmt(pagoThisMonth)}</div>
-          <div style="font-size:10px;color:var(--text-muted);margin-top:2px">cuotas que vencen</div>
+        <div class="r-card" style="padding:14px">
+          <div class="r-label" style="margin-bottom:8px">Pago en ${MOS[CM]}</div>
+          <div style="font-size:22px;font-weight:800;color:var(--text);letter-spacing:-.5px">${fmt(pagoThisMonth)}</div>
+          <div style="font-size:11px;color:var(--text-muted);margin-top:3px">cuotas que vencen</div>
         </div>
       </div>`;
   }
@@ -2899,8 +2906,8 @@ function rCredit(){
   const disclaimer=document.getElementById('crDisclaimer');
   if(disclaimer&&cardDebitItems.length>0){
     disclaimer.style.display='block';
-    disclaimer.innerHTML=`<div style="background:#fffbeb;border:1px solid #fcd34d;border-radius:var(--r);padding:10px 12px;margin-bottom:10px;font-size:12px;color:#92400e;line-height:1.5">
-      💳 Los items con badge <strong>tarjeta</strong> (${cardDebitItems.map(g=>g.desc).slice(0,3).join(', ')}${cardDebitItems.length>3?'…':''}) se cobran mensualmente en tu tarjeta pero <strong>computan como Gastado</strong>, no como cuota.
+    disclaimer.innerHTML=`<div style="background:rgba(249,115,22,.05);border:1px solid rgba(249,115,22,.2);border-radius:var(--r);padding:10px 12px;margin-bottom:10px;font-size:12px;color:var(--text-mid);line-height:1.5">
+      Los items con badge <strong style="color:var(--orange)">tarjeta</strong> (${cardDebitItems.map(g=>g.desc).slice(0,3).join(', ')}${cardDebitItems.length>3?'…':''}) se cobran mensualmente en tu tarjeta pero <strong>computan como Gastado</strong>, no como cuota.
     </div>`;
   } else if(disclaimer) disclaimer.style.display='none';
   if(!displayActive.length){con.innerHTML=`<div class="empty"><div class="ee">✅</div><div class="et">Sin deudas en crédito</div><div class="es">Tus compras en cuotas aparecen acá</div></div>`;return;}
@@ -2919,26 +2926,27 @@ function rCredit(){
     const purchaseStr=s.toLocaleDateString('es-UY',{day:'numeric',month:'short',year:'numeric'});
     const cat=S.categories.find(c=>c.name===g.category);
       const col=cat?cat.color:'#6b7280';
-    return `<div class="cri" style="cursor:pointer" onclick="openGastoDetail('${g.id}',false,${paid+1},${inst})">
-      <div style="display:flex;align-items:center;gap:10px">
-        <div class="txico" style="background:${col}22;flex-shrink:0">${em}</div>
-        <div style="flex:1;min-width:0">
-          <div class="txd">${g.desc}${g.recurring?' <span style="font-size:10px;background:var(--accent-light);color:var(--accent);border-radius:6px;padding:1px 5px;font-weight:700">🔁</span>':''}</div>
-          <div class="txm">
-            ${g.recurring&&inst===1
-              ?`<span class="bdg" style="background:rgba(71,114,250,.1);color:var(--accent)">💳 tarjeta</span>`
-              :`<span class="bdg bdg-cr">🟣 Cuota ${paid+1}/${inst}</span>`}
-            <span style="color:var(--text-muted)">${g.category}</span>
-          </div>
-          <div style="font-size:10px;color:var(--text-muted);margin-top:2px">🛒 ${purchaseStr}</div>
-        </div>
-        <div style="text-align:right;flex-shrink:0">
-          <div style="font-size:15px;font-weight:700;color:var(--purple)">${fmt(cuota)}</div>
-          <div style="font-size:10px;color:var(--text-muted)">Total: ${fmt(g.amount)}</div>
-        </div>
-        <div style="color:var(--text-muted);font-size:14px">›</div>
-      </div>
-    </div>`;
+    const crCat=cat;
+    return '<div class="cri" style="cursor:pointer" onclick="openGastoDetail(&apos;'+g.id+'&apos;,false,'+(paid+1)+','+inst+')">'+
+      '<div style="display:flex;align-items:center;gap:10px">'+
+        renderCatIcon(crCat,34)+
+        '<div style="flex:1;min-width:0">'+
+          '<div class="txd">'+g.desc+(g.recurring?' <span style="font-size:10px;background:var(--accent-light);color:var(--accent);border-radius:6px;padding:1px 5px;font-weight:700">recurrente</span>':'')+'</div>'+
+          '<div class="txm">'+
+            (g.recurring&&inst===1
+              ?'<span class="tx-badge tx-badge-db">Tarjeta</span>'
+              :'<span class="tx-badge tx-badge-cr">Cuota '+(paid+1)+'/'+inst+'</span>')+
+            '<span style="color:var(--text-muted)">'+g.category+'</span>'+
+          '</div>'+
+          '<div style="font-size:10px;color:var(--text-muted);margin-top:2px">'+purchaseStr+'</div>'+
+        '</div>'+
+        '<div style="text-align:right;flex-shrink:0">'+
+          '<div style="font-size:15px;font-weight:700;color:var(--text)">'+fmt(cuota)+'</div>'+
+          '<div style="font-size:10px;color:var(--text-muted)">Total: '+fmt(g.amount)+'</div>'+
+        '</div>'+
+        '<div style="color:var(--text-muted);display:flex;align-items:center"><svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="9 18 15 12 9 6"/></svg></div>'+
+      '</div>'+
+    '</div>';
   }).join('');
 }
 
