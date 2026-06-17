@@ -2216,18 +2216,18 @@ function rSummary(){
   const budTot=S.categories.reduce((s,c)=>s+getBudgetUSD(c),0);
   const sal=+S.salary||0;
   const extraInc=S.ingresos.filter(i=>{const d=new Date(i.date+'T12:00:00');return d.getMonth()===CM&&d.getFullYear()===CY;}).reduce((s,i)=>s+(+i.amount),0);
-  // New logic: carry sobrante from prev month; salary credited manually
-  const now=new Date();
-  const isCurrentMonth=CM===now.getMonth()&&CY===now.getFullYear();
+  // New model from June 2026 onwards: carry sobrante + explicit salary crediting
+  const MODEL_START_Y=2026, MODEL_START_M=5; // June 2026
+  const isNewModel=(CY>MODEL_START_Y)||(CY===MODEL_START_Y&&CM>=MODEL_START_M);
   const salaryCredited=!!(S.salaryCredited&&S.salaryCredited[CY+'_'+CM]);
-  const prevSob=isCurrentMonth?Math.max(0,calcPrevSobrante()):0;
-  const totalIncome=isCurrentMonth
+  const prevSob=isNewModel?Math.max(0,calcPrevSobrante()):0;
+  const totalIncome=isNewModel
     ?(prevSob+(salaryCredited?sal:0)+extraInc)
     :(sal+extraInc);
   // Show/hide salary banner
   const banner=document.getElementById('salaryBanner');
   if(banner){
-    banner.style.display=(isCurrentMonth&&!salaryCredited)?'block':'none';
+    banner.style.display=(isNewModel&&!salaryCredited)?'block':'none';
     const bannerSub=document.getElementById('salaryBannerSub');
     if(bannerSub){
       const parts=[];
