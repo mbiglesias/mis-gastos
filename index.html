@@ -1720,6 +1720,7 @@ function ensureDefaults() {
   if (!S.analyses) S.analyses = {};
   if (!S.dismissedAlerts) S.dismissedAlerts = {};
   if (!S.salaryCredited) S.salaryCredited = {};
+  if (!S.sobrantes) S.sobrantes = {};
   if (!S.cards) S.cards = [];
   // One-time migration: assign Itaú to credit gastos without cardId
   // Fix orphaned categories: parentId pointing to a non-existent category
@@ -2162,9 +2163,17 @@ window.goToday=function(){
 // ============================================================
 
 function calcPrevSobrante() {
-  // Calculate the sobrante from the previous month (for carry-forward)
+  const MODEL_START_Y=2026, MODEL_START_M=5;
   const pm = CM === 0 ? 11 : CM - 1;
   const py = CM === 0 ? CY - 1 : CY;
+  // Don't carry forward from months before the new model
+  const prevIsNew = (py > MODEL_START_Y)||(py === MODEL_START_Y && pm >= MODEL_START_M);
+  if (!prevIsNew) return 0;
+  // Use stored sobrante if available (set by rSummary when viewing that month)
+  if (S.sobrantes && S.sobrantes[py+'_'+pm] !== undefined) {
+    return S.sobrantes[py+'_'+pm];
+  }
+  // Otherwise calculate fresh with new-model logic for that month
   const savCM = CM, savCY = CY;
   CM = pm; CY = py;
   try {
@@ -2174,7 +2183,14 @@ function calcPrevSobrante() {
       const d=new Date(i.date+'T12:00:00');
       return d.getMonth()===pm&&d.getFullYear()===py;
     }).reduce((s,i)=>s+(+i.amount),0);
-    const totalIn = salUSD + extraUSD;
+    // Check salary credited for that prev month
+    const prevCredited = !!(S.salaryCredited && S.salaryCredited[py+'_'+pm]);
+    // prev-prev month: only carry if also new model (one level deep, avoids recursion)
+    const ppm = pm===0?11:pm-1, ppy = pm===0?py-1:py;
+    const prevPrevIsNew = (ppy>MODEL_START_Y)||(ppy===MODEL_START_Y&&ppm>=MODEL_START_M);
+    const prevPrevSob = prevPrevIsNew && S.sobrantes && S.sobrantes[ppy+'_'+ppm]!==undefined
+      ? Math.max(0, S.sobrantes[ppy+'_'+ppm]) : 0;
+    const totalIn = prevPrevSob + (prevCredited ? salUSD : 0) + extraUSD;
     const budgetSpent = gs.filter(g=>!g.isDebtPayment&&!g._isSaving&&g.payType!=='credit').reduce((s,g)=>s+(+g.amount),0);
     const cardDebitPrev = gs.filter(g=>g._isCardDebit).reduce((s,g)=>s+(+g.amount),0);
     const creditPrev = crDue(pm,py).reduce((s,g)=>s+(g._cuota||g.amount/(+g.installments||1)),0)+cardDebitPrev;
@@ -2188,10 +2204,7 @@ function calcPrevSobrante() {
     },0);
     CM = savCM; CY = savCY;
     return totalIn - budgetSpent - creditPrev - savedPrev - debtPaid;
-  } catch(e) {
-    CM = savCM; CY = savCY;
-    return 0;
-  }
+  } catch(e) { CM = savCM; CY = savCY; return 0; }
 }
 
 function acreditarSalario() {
@@ -2220,7 +2233,9 @@ function rSummary(){
   const MODEL_START_Y=2026, MODEL_START_M=5; // June 2026
   const isNewModel=(CY>MODEL_START_Y)||(CY===MODEL_START_Y&&CM>=MODEL_START_M);
   const salaryCredited=!!(S.salaryCredited&&S.salaryCredited[CY+'_'+CM]);
-  const prevSob=isNewModel?Math.max(0,calcPrevSobrante()):0;
+  const _pm=CM===0?11:CM-1, _py=CM===0?CY-1:CY;
+  const prevIsNew=(_py>MODEL_START_Y)||(_py===MODEL_START_Y&&_pm>=MODEL_START_M);
+  const prevSob=(isNewModel&&prevIsNew)?Math.max(0,calcPrevSobrante()):0;
   const totalIncome=isNewModel
     ?(prevSob+(salaryCredited?sal:0)+extraInc)
     :(sal+extraInc);
@@ -2292,6 +2307,12 @@ function rSummary(){
     const sobSub=document.getElementById('sumSobranteSub');
     if(sobSub)sobSub.textContent=sobrante>=0?'Lo que queda despues de todo':'En déficit este mes';
   }
+  // Store sobrante so next month can use it as carry-forward
+  if (isNewModel) {
+    if (!S.sobrantes) S.sobrantes = {};
+    S.sobrantes[CY+'_'+CM] = sobrante;
+  }
+
   const ahorrosEl=document.getElementById('sumAhorros');
   if(ahorrosEl)ahorrosEl.textContent=savedWithCreditSavings>0?fmt(savedWithCreditSavings):'—';
   const deudaEl=document.getElementById('sumDeuda');
