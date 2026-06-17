@@ -1034,6 +1034,19 @@ onAuthStateChanged(auth, (user) => {
 
   <!-- RESUMEN -->
   <div id="t-resumen">
+    <!-- Salary banner -->
+    <div id="salaryBanner" style="display:none;margin-bottom:8px">
+      <button onclick="acreditarSalario()" style="width:100%;padding:14px 16px;background:var(--white);border:1px solid var(--border);border-radius:var(--R);font-family:inherit;cursor:pointer;display:flex;align-items:center;justify-content:space-between;gap:12px;text-align:left;transition:border-color .15s" onmouseover="this.style.borderColor='var(--accent)'" onmouseout="this.style.borderColor='var(--border)'">
+        <div>
+          <div style="font-size:13px;font-weight:700;color:var(--text);margin-bottom:2px">Acreditar salario</div>
+          <div style="font-size:11px;color:var(--text-muted)" id="salaryBannerSub">Tocá cuando entre tu salario</div>
+        </div>
+        <div style="width:32px;height:32px;border-radius:8px;background:rgba(71,114,250,.1);display:flex;align-items:center;justify-content:center;flex-shrink:0">
+          <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="#4772fa" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><line x1="12" y1="1" x2="12" y2="23"/><path d="M17 5H9.5a3.5 3.5 0 0 0 0 7h5a3.5 3.5 0 0 1 0 7H6"/></svg>
+        </div>
+      </button>
+    </div>
+
     <!-- Row 1: Gastado + Cuotas -->
     <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-bottom:8px">
 
@@ -1706,6 +1719,7 @@ function ensureDefaults() {
   if (!S.debts) S.debts = [];
   if (!S.analyses) S.analyses = {};
   if (!S.dismissedAlerts) S.dismissedAlerts = {};
+  if (!S.salaryCredited) S.salaryCredited = {};
   if (!S.cards) S.cards = [];
   // One-time migration: assign Itaú to credit gastos without cardId
   // Fix orphaned categories: parentId pointing to a non-existent category
@@ -2146,6 +2160,48 @@ window.goToday=function(){
 // ============================================================
 // SUMMARY
 // ============================================================
+
+function calcPrevSobrante() {
+  // Calculate the sobrante from the previous month (for carry-forward)
+  const pm = CM === 0 ? 11 : CM - 1;
+  const py = CM === 0 ? CY - 1 : CY;
+  const savCM = CM, savCY = CY;
+  CM = pm; CY = py;
+  try {
+    const gs = mGastos();
+    const salUSD = +S.salary || 0;
+    const extraUSD = (S.ingresos||[]).filter(i=>{
+      const d=new Date(i.date+'T12:00:00');
+      return d.getMonth()===pm&&d.getFullYear()===py;
+    }).reduce((s,i)=>s+(+i.amount),0);
+    const totalIn = salUSD + extraUSD;
+    const budgetSpent = gs.filter(g=>!g.isDebtPayment&&!g._isSaving&&g.payType!=='credit').reduce((s,g)=>s+(+g.amount),0);
+    const cardDebitPrev = gs.filter(g=>g._isCardDebit).reduce((s,g)=>s+(+g.amount),0);
+    const creditPrev = crDue(pm,py).reduce((s,g)=>s+(g._cuota||g.amount/(+g.installments||1)),0)+cardDebitPrev;
+    const debtPaid = gs.filter(g=>g.isDebtPayment).reduce((s,g)=>s+(+g.amount),0);
+    const savedPrev = (S.goals||[]).reduce((s,g)=>{
+      if(g.noDisponible)return s;
+      return s+(g.entries||[]).filter(e=>{
+        const d=new Date(e.date+'T12:00:00');
+        return d.getMonth()===pm&&d.getFullYear()===py&&+e.amount>0;
+      }).reduce((a,e)=>a+(+e.amount),0);
+    },0);
+    CM = savCM; CY = savCY;
+    return totalIn - budgetSpent - creditPrev - savedPrev - debtPaid;
+  } catch(e) {
+    CM = savCM; CY = savCY;
+    return 0;
+  }
+}
+
+function acreditarSalario() {
+  if(!S.salaryCredited)S.salaryCredited={};
+  S.salaryCredited[CY+'_'+CM]=true;
+  save();
+  renderAll();
+  toast('Salario acreditado');
+}
+
 function rSummary(){
   const gs=mGastos();
   const debitGs=gs.filter(g=>g.payType!=='credit'); // pure debit only (card-debits move to cuotas)
@@ -2160,7 +2216,26 @@ function rSummary(){
   const budTot=S.categories.reduce((s,c)=>s+getBudgetUSD(c),0);
   const sal=+S.salary||0;
   const extraInc=S.ingresos.filter(i=>{const d=new Date(i.date+'T12:00:00');return d.getMonth()===CM&&d.getFullYear()===CY;}).reduce((s,i)=>s+(+i.amount),0);
-  const totalIncome=sal+extraInc;
+  // New logic: carry sobrante from prev month; salary credited manually
+  const now=new Date();
+  const isCurrentMonth=CM===now.getMonth()&&CY===now.getFullYear();
+  const salaryCredited=!!(S.salaryCredited&&S.salaryCredited[CY+'_'+CM]);
+  const prevSob=isCurrentMonth?Math.max(0,calcPrevSobrante()):0;
+  const totalIncome=isCurrentMonth
+    ?(prevSob+(salaryCredited?sal:0)+extraInc)
+    :(sal+extraInc);
+  // Show/hide salary banner
+  const banner=document.getElementById('salaryBanner');
+  if(banner){
+    banner.style.display=(isCurrentMonth&&!salaryCredited)?'block':'none';
+    const bannerSub=document.getElementById('salaryBannerSub');
+    if(bannerSub){
+      const parts=[];
+      if(prevSob>0)parts.push('Sobrante anterior: '+fmt(prevSob));
+      parts.push('Salario pendiente: '+fmt(sal));
+      bannerSub.textContent=parts.join(' · ');
+    }
+  }
   const totalSaved=S.goals.reduce((s,g)=>s+(+g.saved||0),0);
   // Credit does NOT reduce disponible (paid later) — shown separately
   // creditThisMonth = sum of cuotas due this month (same as Gastos/Crédito filter)
