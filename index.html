@@ -4072,7 +4072,7 @@ function openEB(i){
   const selfId=getCatId(cat);
   const childIds=new Set(getChildren(selfId).map(c=>getCatId(c)));
   const validParents=S.categories.filter(c=>getCatId(c)!==selfId&&!childIds.has(getCatId(c))&&!c.parentId);
-  const parentOpts=validParents.map(p=>`<option value="${getCatId(p)}"${cat.parentId===getCatId(p)?' selected':''}>${p.emoji} ${p.name}</option>`).join('');
+  const parentOpts=validParents.map(p=>`<option value="${getCatId(p)}"${cat.parentId===getCatId(p)?' selected':''}>${p.name}</option>`).join('');
   const ebParent=document.getElementById('ebParent');
   if(ebParent){
     ebParent.innerHTML=`<option value=""${!cat.parentId?' selected':''}>— Sin padre (categoría principal) —</option>${parentOpts}`;
@@ -4099,7 +4099,7 @@ function saveEditBudget(){
   const budCur=txCur.ebinput||'USD';
   S.categories[eCatIdx].budgetCur=budCur;
   S.categories[eCatIdx].budget=budCur==='UYU'?v:toUSD(v,'USD');
-  S.categories[eCatIdx].emoji=emoji;
+  S.categories[eCatIdx].icon=iconKey;
   S.categories[eCatIdx].parentId=newParentId||null;
 
   if(oldName!==name){
