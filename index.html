@@ -5488,12 +5488,11 @@ function runSearch(q){
     </div>`;
     html+=gastos.slice(0,30).map(g=>{
       const cat=S.categories.find(c=>c.name===g.category);
-          const col=cat?cat.color:'#6b7280';
       const d=new Date(g.date+'T12:00:00');
       const dateStr=d.toLocaleDateString('es-UY',{day:'numeric',month:'short',year:'numeric'});
       const isCr=g.payType==='credit';
       return `<div style="display:flex;align-items:center;gap:10px;padding:10px 14px;border-bottom:1px solid var(--border);cursor:pointer" onclick="closeM('mSearch');openGastoDetail('${g.id}',false,1,${+g.installments||1})">
-        <div style="width:36px;height:36px;border-radius:10px;background:${col}22;display:flex;align-items:center;justify-content:center;font-size:18px;flex-shrink:0">${em}</div>
+        ${renderCatIcon(cat,36)}
         <div style="flex:1;min-width:0">
           <div style="font-size:13px;font-weight:600;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">${highlight(g.desc,term)}</div>
           <div style="font-size:11px;color:var(--text-muted)">${dateStr} · ${g.category}${g.note?' · '+g.note:''}</div>
@@ -5545,14 +5544,16 @@ function runSearch(q){
   const goals=S.goals.filter(g=>g.name?.toLowerCase().includes(term));
   if(goals.length){
     html+=`<div style="font-size:10px;font-weight:700;color:var(--text-muted);text-transform:uppercase;letter-spacing:.5px;padding:8px 14px 4px">Ahorros (${goals.length})</div>`;
-    html+=goals.map(g=>`<div style="display:flex;align-items:center;gap:10px;padding:10px 14px;border-bottom:1px solid var(--border);cursor:pointer" onclick="closeM('mSearch');tab('ahorros')">
-      <div style="width:36px;height:36px;border-radius:10px;background:var(--accent-light);display:flex;align-items:center;justify-content:center;font-size:18px;flex-shrink:0"></div>` + `<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#16a34a" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg>`+`<div style="display:none"></div>
-      <div style="flex:1">
-        <div style="font-size:13px;font-weight:600">${highlight(g.name,term)}</div>
-        <div style="font-size:11px;color:var(--text-muted)">Ahorrado: ${fmt(g.saved||0)}${g.target?' · Meta: '+fmt(g.target):''}</div>
-      </div>
-      <div style="color:var(--text-muted)">›</div>
-    </div>`).join('');
+    html+=goals.map(g=>{
+      const gCol=g.color||'#4772fa';
+      const gIcon='<div style="width:36px;height:36px;border-radius:9px;background:'+gCol+'15;border:1.5px solid '+gCol+'30;display:flex;align-items:center;justify-content:center;font-size:15px;font-weight:800;color:'+gCol+';flex-shrink:0">'+g.name[0].toUpperCase()+'</div>';
+      return '<div style="display:flex;align-items:center;gap:10px;padding:10px 14px;border-bottom:1px solid var(--border);cursor:pointer" onclick="closeM(\'mSearch\');tab(\'ahorros\')">'+
+        gIcon+
+        '<div style="flex:1"><div style="font-size:13px;font-weight:600">'+highlight(g.name,term)+'</div>'+
+        '<div style="font-size:11px;color:var(--text-muted)">Ahorrado: '+fmt(g.saved||0)+(g.target?' · Meta: '+fmt(g.target):'')+' </div></div>'+
+        '<div style="color:var(--text-muted);display:flex;align-items:center"><svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="9 18 15 12 9 6"/></svg></div>'+
+      '</div>';
+    }).join('');
   }
 
   if(!html)html='<div style="text-align:center;color:var(--text-muted);font-size:13px;padding:24px">Sin resultados para "'+q+'"</div>';
