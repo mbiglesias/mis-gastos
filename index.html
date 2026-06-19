@@ -3633,40 +3633,35 @@ function openGastoDetail(id, isInst, instNum, instTotal){
     : fmt(g.amount);
   const secondaryAmt=hasOrig&&g.origCur==='UYU'?fmt(g.amount):null; // USD equivalent
 
-  const html=`
-    <div style="display:flex;align-items:center;gap:12px;margin-bottom:16px">
-      `+renderCatIcon(cat,48)+`
-      <div>
-        <div style="font-size:17px;font-weight:700;letter-spacing:-.3px">${g.desc}</div>
-        <div style="font-size:12px;color:var(--accent);margin-top:2px;cursor:pointer;font-weight:600" onclick="closeM('mGastoDetail');setF('${g.category}');tab('gastos')">${g.category} →</div>
-      </div>
-    </div>
-
-    <div style="background:var(--bg);border:1px solid var(--border);border-radius:var(--R);padding:14px;text-align:center;margin-bottom:14px">
-      <div style="font-size:11px;font-weight:700;color:${isCr?'var(--purple)':'var(--accent)'};text-transform:uppercase;letter-spacing:.5px;margin-bottom:4px">${isInst?`Cuota ${instNum}/${instTotal}`:(isCr?`Total en ${inst} cuota${inst>1?'s':''}`:'Monto')}</div>
-      <div style="font-size:32px;font-weight:700;color:${isCr?'var(--purple)':'var(--text)'};letter-spacing:-1px">${isInst?fmt(cuota):displayAmt}</div>
-      ${secondaryAmt?'<div style="font-size:12px;color:var(--text-muted);margin-top:4px">≈ '+secondaryAmt+'</div>':''}
-      ${isCr&&!isInst&&inst>1?'<div style="font-size:13px;color:var(--purple);margin-top:4px">'+fmt(cuota)+'/mes</div>':''}
-    </div>
-
-    <div style="background:var(--bg);border-radius:var(--R);padding:2px 0;margin-bottom:14px">
-      <div class="detail-row">
-        <span class="detail-lbl">Fecha de compra</span>
-        <span class="detail-val">${purchaseDate}</span>
-      </div>
-      <div class="detail-row">
-        <span class="detail-lbl">Forma de pago</span>
-        <span class="detail-val">${isCr?'Crédito':'Débito'}</span>
-      </div>
-      ${g.recurring?'<div class="detail-row"><span class="detail-lbl">Recurrencia</span><span class="detail-val">Mensual</span></div>':''}
-      ${payInfo}
-      ${g.note?'<div class="detail-row"><span class="detail-lbl">Nota</span><span class="detail-val" style="color:var(--text-mid)">'+g.note+'</span></div>':''}
-    </div>
-
-    <div style="display:flex;gap:8px">
-      <button class="btn bp" style="flex:1" onclick="closeM('mGastoDetail');openEditGasto('${g.id}')">Editar</button>
-      <button class="btn bg" style="color:var(--red);border-color:rgba(239,68,68,.2);flex:1" onclick="closeM('mGastoDetail');delG('${g.id}')">Eliminar</button>
-    </div>`;
+  const amtLabel = isInst ? ('Cuota '+instNum+'/'+instTotal) : (isCr ? ('Total en '+inst+' cuota'+(inst>1?'s':'')) : 'Monto');
+  const amtColor = isCr ? 'var(--purple)' : 'var(--text)';
+  const amtVal   = isInst ? fmt(cuota) : displayAmt;
+  const catColor = isCr ? 'var(--purple)' : 'var(--accent)';
+  const html =
+    '<div style="display:flex;align-items:center;gap:12px;margin-bottom:16px">'+
+      renderCatIcon(cat,48)+
+      '<div>'+
+        '<div style="font-size:17px;font-weight:700;letter-spacing:-.3px">'+g.desc+'</div>'+
+        '<div style="font-size:12px;color:var(--accent);margin-top:2px;cursor:pointer;font-weight:600" onclick="closeM(&apos;mGastoDetail&apos;);setF(&apos;'+g.category+'&apos;);tab(&apos;gastos&apos;)">'+g.category+' →</div>'+
+      '</div>'+
+    '</div>'+
+    '<div style="background:var(--bg);border:1px solid var(--border);border-radius:var(--R);padding:14px;text-align:center;margin-bottom:14px">'+
+      '<div style="font-size:11px;font-weight:700;color:'+catColor+';text-transform:uppercase;letter-spacing:.5px;margin-bottom:4px">'+amtLabel+'</div>'+
+      '<div style="font-size:32px;font-weight:700;color:'+amtColor+';letter-spacing:-1px">'+amtVal+'</div>'+
+      (secondaryAmt?'<div style="font-size:12px;color:var(--text-muted);margin-top:4px">≈ '+secondaryAmt+'</div>':'')+
+      (isCr&&!isInst&&inst>1?'<div style="font-size:13px;color:var(--purple);margin-top:4px">'+fmt(cuota)+'/mes</div>':'')+
+    '</div>'+
+    '<div style="background:var(--bg);border-radius:var(--R);padding:2px 0;margin-bottom:14px">'+
+      '<div class="detail-row"><span class="detail-lbl">Fecha de compra</span><span class="detail-val">'+purchaseDate+'</span></div>'+
+      '<div class="detail-row"><span class="detail-lbl">Forma de pago</span><span class="detail-val">'+(isCr?'Crédito':'Débito')+'</span></div>'+
+      (g.recurring?'<div class="detail-row"><span class="detail-lbl">Recurrencia</span><span class="detail-val">Mensual</span></div>':'')+
+      payInfo+
+      (g.note?'<div class="detail-row"><span class="detail-lbl">Nota</span><span class="detail-val" style="color:var(--text-mid)">'+g.note+'</span></div>':'')+
+    '</div>'+
+    '<div style="display:flex;gap:8px">'+
+      '<button class="btn bp" style="flex:1" onclick="closeM(&apos;mGastoDetail&apos;);openEditGasto(&apos;'+g.id+'&apos;)">Editar</button>'+
+      '<button class="btn bg" style="color:var(--red);border-color:rgba(239,68,68,.2);flex:1" onclick="closeM(&apos;mGastoDetail&apos;);delG(&apos;'+g.id+'&apos;)">Eliminar</button>'+
+    '</div>';
 
   document.getElementById('gastoDetailContent').innerHTML=html;
   openM('mGastoDetail');
