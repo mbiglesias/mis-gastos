@@ -4,8 +4,8 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0">
 <title>Mis Gastos</title>
-<link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><rect width='100' height='100' rx='22' fill='%234772fa'/><text y='.9em' font-size='72' x='50%' text-anchor='middle' dominant-baseline='hanging'>💰</text></svg>">
-<link rel="apple-touch-icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><rect width='100' height='100' rx='22' fill='%234772fa'/><text y='.9em' font-size='72' x='50%' text-anchor='middle' dominant-baseline='hanging'>💰</text></svg>">
+<link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><rect width='100' height='100' rx='22' fill='%234772fa'/><rect x='18' y='54' width='16' height='30' rx='4' fill='white'/><rect x='42' y='34' width='16' height='50' rx='4' fill='white'/><rect x='66' y='20' width='16' height='64' rx='4' fill='white'/></svg>">
+<link rel="apple-touch-icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><rect width='100' height='100' rx='22' fill='%234772fa'/><rect x='18' y='54' width='16' height='30' rx='4' fill='white'/><rect x='42' y='34' width='16' height='50' rx='4' fill='white'/><rect x='66' y='20' width='16' height='64' rx='4' fill='white'/></svg>">
 <meta name="apple-mobile-web-app-title" content="Mis Gastos">
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="theme-color" content="#4772fa">
@@ -420,7 +420,7 @@ onAuthStateChanged(auth, (user) => {
 
   /* AUTH OVERLAY */
   .auth-overlay{position:fixed;inset:0;background:var(--white);display:flex;flex-direction:column;align-items:center;justify-content:center;z-index:500;padding:32px}
-  .auth-logo{font-size:52px;margin-bottom:12px}
+  .auth-logo{margin-bottom:16px}
   .auth-title{font-size:26px;font-weight:700;letter-spacing:-.5px;margin-bottom:8px}
   .auth-sub{font-size:14px;color:var(--text-muted);text-align:center;margin-bottom:36px;line-height:1.6;max-width:280px}
   .google-btn{display:flex;align-items:center;gap:12px;background:#fff;border:1px solid var(--border);border-radius:10px;padding:12px 20px;font-family:inherit;font-size:14px;font-weight:600;cursor:pointer;transition:all .15s;width:100%;max-width:280px;justify-content:center}
@@ -985,7 +985,14 @@ onAuthStateChanged(auth, (user) => {
 
 <!-- AUTH OVERLAY -->
 <div class="auth-overlay" id="authOverlay">
-  <div class="auth-logo">💰</div>
+  <div class="auth-logo" style="font-size:0">
+    <svg width="64" height="64" viewBox="0 0 64 64" fill="none" xmlns="http://www.w3.org/2000/svg">
+      <rect width="64" height="64" rx="16" fill="#4772fa"/>
+      <rect x="12" y="36" width="10" height="18" rx="3" fill="white"/>
+      <rect x="27" y="24" width="10" height="30" rx="3" fill="white"/>
+      <rect x="42" y="14" width="10" height="40" rx="3" fill="white"/>
+    </svg>
+  </div>
   <div class="auth-title">Mis Gastos</div>
   <div class="auth-sub">Tus finanzas sincronizadas en todos tus dispositivos</div>
   <button class="google-btn" onclick="window._fbSignIn()">
