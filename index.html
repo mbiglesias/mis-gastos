@@ -378,7 +378,7 @@ onAuthStateChanged(auth, (user) => {
 
   /* MODAL */
   .mo{position:fixed;inset:0;background:rgba(0,0,0,.4);display:flex;align-items:flex-end;justify-content:center;z-index:200;backdrop-filter:blur(4px)}
-  #mSearch{align-items:stretch;justify-content:center;background:transparent;backdrop-filter:none}
+  #mSearch{align-items:stretch;justify-content:center;background:var(--white)!important;backdrop-filter:none}
   .mo.hid{display:none}
   .modal{background:var(--white);border-radius:16px 16px 0 0;padding:20px 18px 32px;width:100%;max-width:480px;animation:su .25s ease;max-height:90vh;overflow-y:auto}
   @keyframes su{from{transform:translateY(100%)}to{transform:translateY(0)}}
@@ -928,7 +928,7 @@ onAuthStateChanged(auth, (user) => {
 
 <!-- GLOBAL SEARCH MODAL -->
 <div class="mo hid" id="mSearch">
-  <div style="background:var(--white);width:100%;height:100%;max-width:480px;display:flex;flex-direction:column;animation:su .2s ease">
+  <div style="background:var(--white);width:100%;flex:1;max-width:480px;display:flex;flex-direction:column">
     <div style="padding:12px 16px 8px;border-bottom:1px solid var(--border);flex-shrink:0">
       <div style="display:flex;align-items:center;gap:10px">
         <div style="display:flex;align-items:center;gap:8px;background:var(--bg);border-radius:var(--R);padding:10px 12px;flex:1">
@@ -943,7 +943,6 @@ onAuthStateChanged(auth, (user) => {
     <div id="searchResults" style="overflow-y:auto;flex:1;padding-bottom:env(safe-area-inset-bottom,16px)">
       <div style="text-align:center;color:var(--text-muted);font-size:13px;padding:32px">Escribí para buscar</div>
     </div>
-  </div>
   </div>
 </div>
 
