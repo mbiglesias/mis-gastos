@@ -205,9 +205,8 @@ onAuthStateChanged(auth, (user) => {
   .mcl:hover{color:var(--text)}
   .mh-wrap{position:relative}
   .date-wrap{position:relative;cursor:pointer}
-  .date-display{position:absolute;inset:0;background:var(--bg);border:1px solid var(--border);border-radius:var(--r);padding:9px 11px;font-size:13px;color:var(--text);display:flex;align-items:center;justify-content:space-between;pointer-events:none}
-  .date-display span{color:var(--text-muted)}
-  input[type=date].fi{opacity:0;position:relative;z-index:1}
+  .date-display{display:none}
+  input[type=date].fi{opacity:1;position:relative;color:var(--text)}
 
   /* ALERT BANNER — unified across tabs */
   .alert-banner{background:var(--bg);border:1px solid var(--border);border-radius:var(--r);padding:10px 13px;margin:8px 0;font-size:12px;font-weight:600;color:var(--text-mid);line-height:1.5}
@@ -4739,6 +4738,13 @@ let CY_annual=new Date().getFullYear();
 
 function chY(d){CY_annual+=d;rAnual();}
 
+function mGastosFor(m, y) {
+  const savCM=CM, savCY=CY;
+  CM=m; CY=y;
+  try { const r=mGastos(); CM=savCM; CY=savCY; return r; }
+  catch(e) { CM=savCM; CY=savCY; return []; }
+}
+
 function rAnual(){
   const yl=document.getElementById('yearLbl');if(!yl)return;
   yl.textContent=CY_annual;
@@ -4746,8 +4752,13 @@ function rAnual(){
   const now=new Date();
   let ySpent=0,yIncome=0;
   const rows=MOS.map((mName,m)=>{
+    // Debit purchases (excl debt payments counted separately)
     const gs=S.gastos.filter(g=>{const d=new Date(g.date+'T12:00:00');return d.getMonth()===m&&d.getFullYear()===CY_annual&&g.payType!=='credit';});
-    const spent=gs.reduce((s,g)=>s+(+g.amount),0);
+    const debitSpent=gs.filter(g=>!g.isDebtPayment).reduce((s,g)=>s+(+g.amount),0);
+    // Credit installments due this month + card-debit subscriptions
+    const cuotasDue=crDue(m,CY_annual).reduce((s,g)=>s+(g._cuota||g.amount/(+g.installments||1)),0);
+    const cardDebitDue=mGastosFor(m,CY_annual).filter(g=>g._isCardDebit).reduce((s,g)=>s+(+g.amount),0);
+    const spent=debitSpent+cuotasDue+cardDebitDue;
     const extraInc=S.ingresos.filter(i=>{const d=new Date(i.date+'T12:00:00');return d.getMonth()===m&&d.getFullYear()===CY_annual;}).reduce((s,i)=>s+(+i.amount),0);
     const isCurrentM=m===CM&&CY_annual===CY;
     const hasTx=spent>0||extraInc>0;
