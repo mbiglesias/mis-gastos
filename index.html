@@ -3073,8 +3073,8 @@ function rCredit(){
   const thisMon=crDueItems.reduce((s,g)=>s+(g._cuota||+g.amount/(+g.installments||1)),0)+cardDebitTotal;
   const thisMonCount=crDueItems.length+cardDebitItems.length;
 
-  // ── Calculations for 4 cards ─────────────────────────────────────────────
-  // 1. Consumí este mes = first cuota of new purchases + card-debits monthly amount
+  // ── Two simple cards ─────────────────────────────────────────────────────
+  // Consumí = first cuota of new purchases this month + card-debits
   const newInstGastos=S.gastos.filter(g=>{
     if(g.payType!=='credit')return false;
     if(g.recurring&&(+g.installments||1)===1)return false;
@@ -3085,64 +3085,38 @@ function rCredit(){
   const consumedCardAmt=cardDebitItems.reduce((s,g)=>s+(+g.amount),0);
   const consumedAmt=consumedInstAmt+consumedCardAmt;
   const consumedCount=newInstGastos.length+cardDebitItems.length;
-  const newInstIds=new Set(newInstGastos.map(g=>g.id));
-
-  // 2. Cuotas de meses anteriores due this month
-  const prevCuotaItems=crDueItems.filter(g=>{
-    const d=new Date(g.date+'T12:00:00');
-    return !(d.getMonth()===CM&&d.getFullYear()===CY);
-  });
-  const prevCuotasAmt=prevCuotaItems.reduce((s,g)=>s+(g._cuota||g.amount/(+g.installments||1)),0);
-
-  // 3. Pago este mes = all crDue + card-debits
+  // Pago = crDue this month (matches Resumen "Cuotas de este mes")
   const pagoAmt=thisMon;
 
-  // ── Cards HTML ────────────────────────────────────────────────────────────
-  const cf=S._crFilter||'all';
-  const cardStyle=(key)=>'cursor:pointer;transition:border-color .15s'+(cf===key?';border-color:var(--accent);background:rgba(71,114,250,.03)':'');
-
-  const svgArrow='<svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="#666" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="7 17 17 7"/><polyline points="7 7 17 7 17 17"/></svg>';
-  const svgClock='<svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="#7c3aed" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg>';
+  // ── Cards HTML: 2 cards only ─────────────────────────────────────────────
+  const svgUp='<svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="#ef4444" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="7 17 17 7"/><polyline points="7 7 17 7 17 17"/></svg>';
   const svgCard='<svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="#4772fa" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><rect x="1" y="4" width="22" height="16" rx="2"/><line x1="1" y1="10" x2="23" y2="10"/></svg>';
+  const nextMon=CM===11?0:CM+1;
 
   const crSummEl=document.getElementById('crModeSummary');
   if(crSummEl){
     crSummEl.innerHTML=
       '<div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-bottom:12px">'+
-        // Total pendiente (not filterable)
         '<div class="r-card" style="padding:14px">'+
-          '<div class="r-row" style="margin-bottom:8px"><div class="r-label">Total pendiente</div>'+
-          '<div class="r-icon r-icon-gray">'+svgCard+'</div></div>'+
-          '<div style="font-size:22px;font-weight:800;color:var(--text);letter-spacing:-.5px">'+fmt(totPend)+'</div>'+
-          '<div style="font-size:11px;color:var(--text-muted);margin-top:3px">'+active.length+' compra'+(active.length!==1?'s':'')+' activa'+(active.length!==1?'s':'')+'</div>'+
-        '</div>'+
-        // Consumí este mes (filterable)
-        '<div class="r-card" style="padding:14px;'+cardStyle('consumed')+'" onclick="setCrFilter(&apos;consumed&apos;)">'+
-          '<div class="r-row" style="margin-bottom:8px"><div class="r-label">Consumí en '+MOS[CM]+'</div>'+
-          '<div class="r-icon r-icon-gray">'+svgArrow+'</div></div>'+
+          '<div class="r-row" style="margin-bottom:8px">'+
+            '<div class="r-label">Consumí en '+MOS[CM]+'</div>'+
+            '<div class="r-icon" style="width:28px;height:28px;border-radius:7px;background:rgba(239,68,68,.1);display:flex;align-items:center;justify-content:center">'+svgUp+'</div>'+
+          '</div>'+
           '<div style="font-size:22px;font-weight:800;color:var(--text);letter-spacing:-.5px">'+fmt(consumedAmt)+'</div>'+
-          '<div style="font-size:11px;color:var(--text-muted);margin-top:3px">'+consumedCount+' compra'+(consumedCount!==1?'s':'')+' nuevas</div>'+
+          '<div style="font-size:11px;color:var(--text-muted);margin-top:3px">pagás en '+MOS[nextMon]+'</div>'+
         '</div>'+
-      '</div>'+
-      '<div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-bottom:12px">'+
-        // Cuotas de meses anteriores (filterable)
-        '<div class="r-card" style="padding:14px;'+cardStyle('previous')+'" onclick="setCrFilter(&apos;previous&apos;)">'+
-          '<div class="r-row" style="margin-bottom:8px"><div class="r-label">Cuotas anteriores</div>'+
-          '<div class="r-icon" style="width:28px;height:28px;border-radius:7px;background:#7c3aed15;display:flex;align-items:center;justify-content:center">'+svgClock+'</div></div>'+
-          '<div style="font-size:22px;font-weight:800;color:var(--text);letter-spacing:-.5px">'+fmt(prevCuotasAmt)+'</div>'+
-          '<div style="font-size:11px;color:var(--text-muted);margin-top:3px">'+prevCuotaItems.length+' cuota'+(prevCuotaItems.length!==1?'s':'')+' este mes</div>'+
-        '</div>'+
-        // Pago este mes (filterable)
-        '<div class="r-card" style="padding:14px;'+cardStyle('payment')+'" onclick="setCrFilter(&apos;payment&apos;)">'+
-          '<div class="r-row" style="margin-bottom:8px"><div class="r-label">Pago en '+MOS[CM]+'</div>'+
-          '<div class="r-icon r-icon-blue">'+svgCard+'</div></div>'+
+        '<div class="r-card" style="padding:14px">'+
+          '<div class="r-row" style="margin-bottom:8px">'+
+            '<div class="r-label">Pago en '+MOS[CM]+'</div>'+
+            '<div class="r-icon r-icon-blue">'+svgCard+'</div>'+
+          '</div>'+
           '<div style="font-size:22px;font-weight:800;color:var(--text);letter-spacing:-.5px">'+fmt(pagoAmt)+'</div>'+
           '<div style="font-size:11px;color:var(--text-muted);margin-top:3px">'+thisMonCount+' cuota'+(thisMonCount!==1?'s':'')+' que vencen</div>'+
         '</div>'+
       '</div>';
   }
 
-  // ── Card filter chips ─────────────────────────────────────────────────────
+  // ── Card filter chips only ────────────────────────────────────────────────
   const crCardCon=document.getElementById('crCardFilter');
   if(crCardCon){
     if(!S._crCardFilt)S._crCardFilt='';
@@ -3152,24 +3126,8 @@ function rCredit(){
       '</div>';
   }
 
-  // ── Filter display items based on active card ─────────────────────────────
-  let filteredActive=S._crCardFilt?active.filter(g=>g.cardId===S._crCardFilt):active;
-  if(cf==='consumed'){
-    // New installment purchases made this month + card-debit subscriptions
-    const consumedIds=newInstIds;
-    const instFiltered=filteredActive.filter(g=>consumedIds.has(g.id));
-    // Add card-debits (subscriptions) — filtered by card if needed
-    const cardDebFiltered=S._crCardFilt?cardDebitItems.filter(g=>g.cardId===S._crCardFilt):cardDebitItems;
-    filteredActive=[...instFiltered,...cardDebFiltered];
-  } else if(cf==='previous'){
-    const prevIds=new Set(prevCuotaItems.map(g=>g.id));
-    filteredActive=filteredActive.filter(g=>prevIds.has(g.id));
-  } else if(cf==='payment'){
-    const payIds=new Set(crDueItems.map(g=>g.id));
-    const cardDebFiltered2=S._crCardFilt?cardDebitItems.filter(g=>g.cardId===S._crCardFilt):cardDebitItems;
-    filteredActive=[...filteredActive.filter(g=>payIds.has(g.id)),...cardDebFiltered2];
-  }
-  const displayActive=filteredActive;
+  // ── List: all active credit purchases, filtered by card only ──────────────
+  const displayActive=S._crCardFilt?active.filter(g=>g.cardId===S._crCardFilt):active;
   const con=document.getElementById('crList');
   // Disclaimer about tarjeta badge items
   const disclaimer=document.getElementById('crDisclaimer');
