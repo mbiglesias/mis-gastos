@@ -3089,9 +3089,12 @@ function rCredit(){
     const d=new Date(g.date+'T12:00:00');
     return !(d.getMonth()===CM&&d.getFullYear()===CY);
   });
-  const consumedAmt=consumedInNext.reduce((s,g)=>s+(g._cuota||g.amount/(+g.installments||1)),0);
+  // Card-debits also charged next month (same amount, recurring)
+  const cardDebitNextAmt=_allCardDebit.reduce((s,g)=>s+(+g.amount),0);
+  const consumedInstAmt2=consumedInNext.reduce((s,g)=>s+(g._cuota||g.amount/(+g.installments||1)),0);
+  const consumedAmt=consumedInstAmt2+cardDebitNextAmt; // June cuotas + subscriptions
   const previousAmt=previousInNext.reduce((s,g)=>s+(g._cuota||g.amount/(+g.installments||1)),0);
-  const totalNextMonth=nextDue.reduce((s,g)=>s+(g._cuota||g.amount/(+g.installments||1)),0);
+  const totalNextMonth=consumedAmt+previousAmt; // = full crDue(July) + subscriptions
 
   // ── Cards HTML ───────────────────────────────────────────────────────────
   const svgUp='<svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="#ef4444" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="7 17 17 7"/><polyline points="7 7 17 7 17 17"/></svg>';
@@ -3109,7 +3112,7 @@ function rCredit(){
           '</div>'+
           '<div style="font-size:22px;font-weight:800;color:var(--text);letter-spacing:-.5px">'+fmt(consumedAmt)+'</div>'+
           '<div style="font-size:11px;color:var(--text-muted);margin-top:3px">'+
-            (previousAmt>0?'+ '+fmt(previousAmt)+' cuotas activas':consumedInNext.length+' cuota'+(consumedInNext.length!==1?'s':''))+
+            (previousAmt>0?'+ '+fmt(previousAmt)+' cuotas activas':'nuevas cuotas '+MOS[CM])+
           '</div>'+
           (previousAmt>0?'<div style="font-size:11px;font-weight:700;color:var(--accent);margin-top:3px">= '+fmt(totalNextMonth)+' en '+MOS[nextM]+'</div>':'')+
         '</div>'+
