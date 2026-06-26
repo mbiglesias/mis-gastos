@@ -3073,38 +3073,47 @@ function rCredit(){
   const thisMon=crDueItems.reduce((s,g)=>s+(g._cuota||+g.amount/(+g.installments||1)),0)+cardDebitTotal;
   const thisMonCount=crDueItems.length+cardDebitItems.length;
 
-  // ── Two simple cards ─────────────────────────────────────────────────────
-  // Consumí = first cuota of new purchases this month + card-debits
-  const newInstGastos=S.gastos.filter(g=>{
-    if(g.payType!=='credit')return false;
-    if(g.recurring&&(+g.installments||1)===1)return false;
+  // ── Cards ────────────────────────────────────────────────────────────────
+  // Pago este mes = crDue(CM,CY) — matches Resumen
+  const pagoAmt=thisMon;
+
+  // Consumí este mes = items in crDue(next month) purchased THIS month
+  const nextM=CM===11?0:CM+1;
+  const nextY=CM===11?CY+1:CY;
+  const nextDue=crDue(nextM,nextY);
+  const consumedInNext=nextDue.filter(g=>{
     const d=new Date(g.date+'T12:00:00');
     return d.getMonth()===CM&&d.getFullYear()===CY;
   });
-  const consumedInstAmt=newInstGastos.reduce((s,g)=>s+(+g.amount)/(+g.installments||1),0);
-  const consumedCardAmt=cardDebitItems.reduce((s,g)=>s+(+g.amount),0);
-  const consumedAmt=consumedInstAmt+consumedCardAmt;
-  const consumedCount=newInstGastos.length+cardDebitItems.length;
-  // Pago = crDue this month (matches Resumen "Cuotas de este mes")
-  const pagoAmt=thisMon;
+  const previousInNext=nextDue.filter(g=>{
+    const d=new Date(g.date+'T12:00:00');
+    return !(d.getMonth()===CM&&d.getFullYear()===CY);
+  });
+  const consumedAmt=consumedInNext.reduce((s,g)=>s+(g._cuota||g.amount/(+g.installments||1)),0);
+  const previousAmt=previousInNext.reduce((s,g)=>s+(g._cuota||g.amount/(+g.installments||1)),0);
+  const totalNextMonth=nextDue.reduce((s,g)=>s+(g._cuota||g.amount/(+g.installments||1)),0);
 
-  // ── Cards HTML: 2 cards only ─────────────────────────────────────────────
+  // ── Cards HTML ───────────────────────────────────────────────────────────
   const svgUp='<svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="#ef4444" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="7 17 17 7"/><polyline points="7 7 17 7 17 17"/></svg>';
   const svgCard='<svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="#4772fa" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><rect x="1" y="4" width="22" height="16" rx="2"/><line x1="1" y1="10" x2="23" y2="10"/></svg>';
-  const nextMon=CM===11?0:CM+1;
 
   const crSummEl=document.getElementById('crModeSummary');
   if(crSummEl){
     crSummEl.innerHTML=
       '<div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-bottom:12px">'+
+        // Consumí este mes
         '<div class="r-card" style="padding:14px">'+
           '<div class="r-row" style="margin-bottom:8px">'+
             '<div class="r-label">Consumí en '+MOS[CM]+'</div>'+
             '<div class="r-icon" style="width:28px;height:28px;border-radius:7px;background:rgba(239,68,68,.1);display:flex;align-items:center;justify-content:center">'+svgUp+'</div>'+
           '</div>'+
           '<div style="font-size:22px;font-weight:800;color:var(--text);letter-spacing:-.5px">'+fmt(consumedAmt)+'</div>'+
-          '<div style="font-size:11px;color:var(--text-muted);margin-top:3px">pagás en '+MOS[nextMon]+'</div>'+
+          '<div style="font-size:11px;color:var(--text-muted);margin-top:3px">'+
+            (previousAmt>0?'+ '+fmt(previousAmt)+' cuotas activas':consumedInNext.length+' cuota'+(consumedInNext.length!==1?'s':''))+
+          '</div>'+
+          (previousAmt>0?'<div style="font-size:11px;font-weight:700;color:var(--accent);margin-top:3px">= '+fmt(totalNextMonth)+' en '+MOS[nextM]+'</div>':'')+
         '</div>'+
+        // Pago este mes
         '<div class="r-card" style="padding:14px">'+
           '<div class="r-row" style="margin-bottom:8px">'+
             '<div class="r-label">Pago en '+MOS[CM]+'</div>'+
@@ -3126,8 +3135,10 @@ function rCredit(){
       '</div>';
   }
 
-  // ── List: all active credit purchases, filtered by card only ──────────────
-  const displayActive=S._crCardFilt?active.filter(g=>g.cardId===S._crCardFilt):active;
+  // ── List: items due THIS month (crDue) — the detail of "Pago este mes" ──
+  const dueItems=S._crCardFilt?crDueItems:_allCrDue;
+  const cardDebDisplay=S._crCardFilt?cardDebitItems:_allCardDebit;
+  const displayActive=[...dueItems,...cardDebDisplay];
   const con=document.getElementById('crList');
   // Disclaimer about tarjeta badge items
   const disclaimer=document.getElementById('crDisclaimer');
