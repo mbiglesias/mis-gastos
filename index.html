@@ -1464,19 +1464,6 @@ onAuthStateChanged(auth, (user) => {
       <button class="sal-edit" onclick="openM('mSalary')">Editar</button>
     </div>
 
-    <!-- SECCIÓN: Crédito -->
-    <div style="font-size:10px;font-weight:700;color:var(--text-muted);text-transform:uppercase;letter-spacing:.6px;margin-bottom:6px">Crédito</div>
-    <div style="background:var(--white);border-radius:var(--R);padding:14px;margin-bottom:16px;border:1px solid var(--border);background:var(--white)">
-      <div style="font-size:13px;font-weight:600;margin-bottom:2px">¿En qué mes cuento el crédito?</div>
-      <div style="font-size:11px;color:var(--text-muted);margin-bottom:12px">Afecta cómo se muestra el gasto por categoría en Resumen.</div>
-      <div style="display:flex;gap:8px;margin-bottom:10px">
-        <button id="btnCrConsumo" class="btn bp" style="flex:1;font-size:12px;padding:8px" onclick="setCrMode('consumo')">Mes que consumí</button>
-        <button id="btnCrPago" class="btn bg" style="flex:1;font-size:12px;padding:8px" onclick="setCrMode('pago')">Mes que pago</button>
-      </div>
-      <div style="background:var(--bg);border-radius:var(--r);padding:10px 12px">
-        <div id="crModeDesc" style="font-size:11px;color:var(--text-muted);line-height:1.5"></div>
-      </div>
-    </div>
 
     <!-- SECCIÓN: Categorías y límites -->
     <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:6px">
@@ -2173,7 +2160,7 @@ function renderAll(){
   const btnHoy=document.getElementById('btnHoy');
   if(btnHoy)btnHoy.style.display=(CM===now.getMonth()&&CY===now.getFullYear())?'none':'inline-block';
   const sd2=document.getElementById('salDisp2');if(sd2)sd2.textContent=fmt(S.salary);
-  rSummary();rCatRows();rTxList();rIngresos();rCredit();rSavings();rBudget();rAnual();updCrModeUI();rCasa();popDebtLink();rAnalisis();rAlerts();
+  rSummary();rCatRows();rTxList();rIngresos();rCredit();rSavings();rBudget();rAnual();rCasa();popDebtLink();rAnalisis();rAlerts();
 }
 
 window.goToday=function(){
