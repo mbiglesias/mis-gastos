@@ -2010,8 +2010,11 @@ function rTxList(){
     if(gs.length>0){
       const debitTotal=gs.filter(g=>g.payType!=='credit'&&!g.isDebtPayment&&!g._isCardDebit).reduce((s,g)=>s+(+g.amount),0);
       const debtTotal=gs.filter(g=>g.isDebtPayment).reduce((s,g)=>s+(+g.amount),0);
-      // credit = card-debit subscriptions (monthly) + full credit purchases made this month
-      const creditTotal=gs.filter(g=>g._isCardDebit||g._creditPurchase).reduce((s,g)=>s+(+g.amount),0);
+      // credit = card-debits (monthly) + first cuota of credit purchases
+      const creditTotal=gs.filter(g=>g._isCardDebit||g._creditPurchase).reduce((s,g)=>{
+        if(g._creditPurchase)return s+(+g.amount)/(g._instTotal||1);
+        return s+(+g.amount);
+      },0);
       const total=debitTotal+creditTotal;
       const count=gs.length;
       const label=q?`"${q}"`:filt!=='Todos'?filt:'';
@@ -2103,11 +2106,11 @@ function rTxList(){
             ? `<span class="tx-badge tx-badge-rec">Recurrente</span>`
             : '';
 
-      const displayAmt=g._creditPurchase?fmt(g.amount):isInst?fmt(cuota):fmt(g.amount);
+      const displayAmt=g._creditPurchase?fmt(g.amount/(g._instTotal||1)):isInst?fmt(cuota):fmt(g.amount);
       const subAmt=g._creditPurchase&&g._instTotal>1
-        ?`<div class="tx-amt-sub">${fmt(g.amount/g._instTotal)}/mes</div>`
-        :isInst?`<div class="tx-amt-sub">Total: ${fmt(g.amount)}</div>`
-        :(isCr&&inst>1?`<div class="tx-amt-sub">${fmt(cuota)}/mes</div>`:'');
+        ?'<div class="tx-amt-sub">'+fmt(g.amount)+' total</div>'
+        :isInst?'<div class="tx-amt-sub">Total: '+fmt(g.amount)+'</div>'
+        :(isCr&&inst>1?'<div class="tx-amt-sub">'+fmt(cuota)+'/mes</div>'+'':'');
       const amtColor=g._creditPurchase?'color:var(--purple)':isInst&&!g._isCardDebit?'color:var(--purple)':'';
 
       const tapAttr=`onclick="openGastoDetail('${g.id}',${JSON.stringify(isInst)},${JSON.stringify(instNum)},${JSON.stringify(inst)})"`;
@@ -3071,21 +3074,18 @@ function rCredit(){
   const thisMonCount=crDueItems.length+cardDebitItems.length;
 
   // ── Calculations for 4 cards ─────────────────────────────────────────────
-  // 1. Consumí este mes = new credit purchases (full amount) + card-debits
-  const consumedInstAmt=S.gastos.filter(g=>{
+  // 1. Consumí este mes = first cuota of new purchases + card-debits monthly amount
+  const newInstGastos=S.gastos.filter(g=>{
     if(g.payType!=='credit')return false;
     if(g.recurring&&(+g.installments||1)===1)return false;
     const d=new Date(g.date+'T12:00:00');
     return d.getMonth()===CM&&d.getFullYear()===CY;
-  }).reduce((s,g)=>s+(+g.amount),0);
+  });
+  const consumedInstAmt=newInstGastos.reduce((s,g)=>s+(+g.amount)/(+g.installments||1),0);
   const consumedCardAmt=cardDebitItems.reduce((s,g)=>s+(+g.amount),0);
   const consumedAmt=consumedInstAmt+consumedCardAmt;
-  const consumedCount=S.gastos.filter(g=>{
-    if(g.payType!=='credit')return false;
-    if(g.recurring&&(+g.installments||1)===1)return false;
-    const d=new Date(g.date+'T12:00:00');
-    return d.getMonth()===CM&&d.getFullYear()===CY;
-  }).length + cardDebitItems.length;
+  const consumedCount=newInstGastos.length+cardDebitItems.length;
+  const newInstIds=new Set(newInstGastos.map(g=>g.id));
 
   // 2. Cuotas de meses anteriores due this month
   const prevCuotaItems=crDueItems.filter(g=>{
@@ -3155,17 +3155,19 @@ function rCredit(){
   // ── Filter display items based on active card ─────────────────────────────
   let filteredActive=S._crCardFilt?active.filter(g=>g.cardId===S._crCardFilt):active;
   if(cf==='consumed'){
-    // Purchases made this month (by date) — show in list as full purchases
-    filteredActive=filteredActive.filter(g=>{
-      const d=new Date(g.date+'T12:00:00');
-      return d.getMonth()===CM&&d.getFullYear()===CY;
-    });
+    // New installment purchases made this month + card-debit subscriptions
+    const consumedIds=newInstIds;
+    const instFiltered=filteredActive.filter(g=>consumedIds.has(g.id));
+    // Add card-debits (subscriptions) — filtered by card if needed
+    const cardDebFiltered=S._crCardFilt?cardDebitItems.filter(g=>g.cardId===S._crCardFilt):cardDebitItems;
+    filteredActive=[...instFiltered,...cardDebFiltered];
   } else if(cf==='previous'){
     const prevIds=new Set(prevCuotaItems.map(g=>g.id));
     filteredActive=filteredActive.filter(g=>prevIds.has(g.id));
   } else if(cf==='payment'){
-    const payIds=new Set([...crDueItems,...cardDebitItems].map(g=>g.id));
-    filteredActive=filteredActive.filter(g=>payIds.has(g.id));
+    const payIds=new Set(crDueItems.map(g=>g.id));
+    const cardDebFiltered2=S._crCardFilt?cardDebitItems.filter(g=>g.cardId===S._crCardFilt):cardDebitItems;
+    filteredActive=[...filteredActive.filter(g=>payIds.has(g.id)),...cardDebFiltered2];
   }
   const displayActive=filteredActive;
   const con=document.getElementById('crList');
