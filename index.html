@@ -1952,7 +1952,16 @@ function rTxList(){
   const con=document.getElementById('txList');
   const chEl=document.getElementById('chips');
   if(!con)return;
-  let gs=mGastos().filter(g=>!g._isSaving);
+  let gs=mGastos().filter(g=>{
+    if(g._isSaving)return false;
+    // Credit installments: only show if the PURCHASE was this month
+    // (installments from past months belong in Crédito tab only)
+    if(g._isInstallment){
+      const pd=new Date(g.date+'T12:00:00');
+      return pd.getMonth()===CM&&pd.getFullYear()===CY;
+    }
+    return true;
+  });
   const chWrap=document.getElementById('chipsWrap');
   if(!chWrap)return;
   const parents=getParents();
