@@ -2218,6 +2218,15 @@ function calcPrevSobrante() {
   } catch(e) { CM = savCM; CY = savCY; return 0; }
 }
 
+window.toggleConsumiDetail=function(){
+  const el=document.getElementById('consumiDetail');
+  const ch=document.getElementById('consumiChevron');
+  if(!el)return;
+  const open=el.style.display==='block';
+  el.style.display=open?'none':'block';
+  if(ch)ch.textContent=open?'▸':'▾';
+};
+
 function setCrFilter(f){
   S._crFilter=(S._crFilter===f)?'all':f; // toggle off if same
   rCredit();
@@ -3093,10 +3102,21 @@ function rCredit(){
 
   const crSummEl=document.getElementById('crModeSummary');
   if(crSummEl){
+    // Build consumed detail HTML
+    const consumedDetailHTML=consumedInNext.length===0?'':consumedInNext.map(g=>{
+      const cat=S.categories.find(c=>c.name===g.category);
+      const inst=+g.installments||1;
+      const cuota=g._cuota||g.amount/inst;
+      return '<div style="display:flex;align-items:center;justify-content:space-between;padding:7px 0;border-top:1px solid var(--border)">'+
+        '<div style="font-size:12px;font-weight:600;color:var(--text);flex:1;min-width:0;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">'+g.desc+'</div>'+
+        '<div style="font-size:12px;font-weight:700;color:var(--text);margin-left:8px;flex-shrink:0">'+fmt(cuota)+(inst>1?' <span style="font-size:10px;color:var(--text-muted)">×'+inst+'</span>':'')+'</div>'+
+      '</div>';
+    }).join('');
+
     crSummEl.innerHTML=
       '<div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-bottom:12px">'+
-        // Consumí este mes
-        '<div class="r-card" style="padding:14px">'+
+        // Consumí este mes — tappable
+        '<div class="r-card" style="padding:14px;cursor:pointer" onclick="toggleConsumiDetail()">'+
           '<div class="r-row" style="margin-bottom:8px">'+
             '<div class="r-label">Consumí en '+MOS[CM]+'</div>'+
             '<div class="r-icon" style="width:28px;height:28px;border-radius:7px;background:rgba(239,68,68,.1);display:flex;align-items:center;justify-content:center">'+svgUp+'</div>'+
@@ -3106,6 +3126,7 @@ function rCredit(){
             (previousAmt>0?'+ '+fmt(previousAmt)+' cuotas activas':'nuevas cuotas '+MOS[CM])+
           '</div>'+
           (previousAmt>0?'<div style="font-size:11px;font-weight:700;color:var(--accent);margin-top:3px">= '+fmt(totalNextMonth)+' en '+MOS[nextM]+'</div>':'')+
+          (consumedInNext.length>0?'<div style="font-size:10px;color:var(--text-muted);margin-top:6px;display:flex;align-items:center;gap:3px"><span id="consumiChevron">▸</span> ver detalle</div>':'')+
         '</div>'+
         // Pago este mes
         '<div class="r-card" style="padding:14px">'+
@@ -3116,7 +3137,14 @@ function rCredit(){
           '<div style="font-size:22px;font-weight:800;color:var(--text);letter-spacing:-.5px">'+fmt(pagoAmt)+'</div>'+
           '<div style="font-size:11px;color:var(--text-muted);margin-top:3px">'+thisMonCount+' cuota'+(thisMonCount!==1?'s':'')+' que vencen</div>'+
         '</div>'+
-      '</div>';
+      '</div>'+
+      // Detalle expandible de Consumí
+      (consumedInNext.length>0?
+        '<div id="consumiDetail" style="display:none;background:var(--white);border:1px solid var(--border);border-radius:var(--R);padding:12px 14px;margin-bottom:12px">'+
+          '<div style="font-size:11px;font-weight:700;color:var(--text-muted);text-transform:uppercase;letter-spacing:.5px;margin-bottom:4px">Compras de '+MOS[CM]+' → resumen de '+MOS[nextM]+'</div>'+
+          consumedDetailHTML+
+        '</div>'
+      :'');
   }
 
   // ── Card filter chips only ────────────────────────────────────────────────
@@ -3142,12 +3170,20 @@ function rCredit(){
   } else if(disclaimer) disclaimer.style.display='none';
   if(!displayActive.length){con.innerHTML='<div class="empty"><div class="ee" style="font-size:32px">✓</div><div class="et">Sin cuotas activas</div><div class="es">Tus compras en cuotas aparecen acá</div></div>';return;}
 
-  // Group by purchase date
+  // Group by cuota date (purchase date shifted forward by paid cuotas)
   const crGrp={};
   displayActive.forEach(g=>{
-    const key=g.date;
+    const inst=+g.installments||1;
+    const s=new Date(g.date+'T12:00:00');
+    const firstM=(function(d2,s2){var cd=getClosingDay(d2,s2.getMonth(),s2.getFullYear());var eom=cd>=28;return s2.getDate()<=cd?(eom?s2.getMonth()+1:s2.getMonth()):(eom?s2.getMonth()+2:s2.getMonth()+1);})(g.cardId,s);
+    const firstY=s.getFullYear()+Math.floor(firstM/12);
+    const fm=((firstM%12)+12)%12;
+    const diff=(CY-firstY)*12+(CM-fm);
+    const paid=Math.max(0,Math.min(inst,diff));
+    const cuotaDate=new Date(s.getFullYear(),s.getMonth()+paid,s.getDate());
+    const key=cuotaDate.toISOString().split('T')[0];
     if(!crGrp[key])crGrp[key]=[];
-    crGrp[key].push(g);
+    crGrp[key].push({...g,_paidCount:paid});
   });
   const crKeys=Object.keys(crGrp).sort((a,b)=>b.localeCompare(a));
 
@@ -3161,11 +3197,7 @@ function rCredit(){
       const inst=+g.installments||1;
       const cuota=g.amount/inst;
       const s=new Date(g.date+'T12:00:00');
-      const firstM=(function(d2,s2){var cd=getClosingDay(d2,s2.getMonth(),s2.getFullYear());var eom=cd>=28;return s2.getDate()<=cd?(eom?s2.getMonth()+1:s2.getMonth()):(eom?s2.getMonth()+2:s2.getMonth()+1);})(g.cardId,s);
-      const firstY=s.getFullYear()+Math.floor(firstM/12);
-      const fm=((firstM%12)+12)%12;
-      const diff=(CY-firstY)*12+(CM-fm);
-      const paid=Math.max(0,Math.min(inst,diff));
+      const paid=g._paidCount!==undefined?g._paidCount:(()=>{const s2=new Date(g.date+'T12:00:00');const firstM=(function(d2,s3){var cd=getClosingDay(d2,s3.getMonth(),s3.getFullYear());var eom=cd>=28;return s3.getDate()<=cd?(eom?s3.getMonth()+1:s3.getMonth()):(eom?s3.getMonth()+2:s3.getMonth()+1);})(g.cardId,s2);const firstY=s2.getFullYear()+Math.floor(firstM/12);const fm=((firstM%12)+12)%12;const diff=(CY-firstY)*12+(CM-fm);return Math.max(0,Math.min(inst,diff));})();
       const cat=S.categories.find(c=>c.name===g.category);
       const border=gi>0?'border-top:1px solid var(--border-light,#f3f3f3)':'';
       return '<div class="tx-day-item" style="'+border+'" onclick="openGastoDetail(&apos;'+g.id+'&apos;,false,'+(paid+1)+','+inst+')">'+
@@ -4017,8 +4049,14 @@ function toggleEgInstall(){
   const egCS=document.getElementById('egCardId');
   if(egCR&&egCS){
     egCR.style.display=pt==='credit'?'block':'none';
-    if(pt==='credit')egCS.innerHTML='<option value="">— Sin tarjeta —</option>'+
-      getCards().map(c=>`<option value="${c.id}">${c.name}</option>`).join('');
+    // Solo repoblar si el select está vacío (no tiene opciones de tarjetas cargadas)
+    // Así no se pisa la tarjeta ya seleccionada al abrir el modal de edición
+    if(pt==='credit'&&egCS.options.length<=1){
+      const cur=egCS.value;
+      egCS.innerHTML='<option value="">— Sin tarjeta —</option>'+
+        getCards().map(c=>`<option value="${c.id}">${c.name}</option>`).join('');
+      if(cur)egCS.value=cur;
+    }
   }
   const isCr=pt==='credit';
   document.getElementById('egInstallField').style.opacity=isCr?'1':'0.3';
