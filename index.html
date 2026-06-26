@@ -2249,6 +2249,11 @@ function calcPrevSobrante() {
   } catch(e) { CM = savCM; CY = savCY; return 0; }
 }
 
+function setCrFilter(f){
+  S._crFilter=(S._crFilter===f)?'all':f; // toggle off if same
+  rCredit();
+}
+
 function acreditarSalario() {
   if(!S.salaryCredited)S.salaryCredited={};
   S.salaryCredited[CY+'_'+CM]=true;
@@ -3086,57 +3091,104 @@ function rCredit(){
   const thisMon=crDueItems.reduce((s,g)=>s+(g._cuota||+g.amount/(+g.installments||1)),0)+cardDebitTotal;
   const thisMonCount=crDueItems.length+cardDebitItems.length;
 
-  document.getElementById('crTot').textContent=fmt(totPend);
-  document.getElementById('crTotSub').textContent=`${active.length} compra${active.length!==1?'s':''} activa${active.length!==1?'s':''}`;
-  document.getElementById('crMon').textContent=fmt(thisMon);
-  document.getElementById('crMonSub').textContent=`${thisMonCount} cuota${thisMonCount!==1?'s':''} en ${MOS[CM]}`;
-
-  // Consumí/Pago summary panel
-  const consumiThisMonth=S.gastos.filter(g=>{
+  // ── Calculations for 4 cards ─────────────────────────────────────────────
+  // 1. Consumí este mes = new credit purchases (full amount) + card-debits
+  const consumedInstAmt=S.gastos.filter(g=>{
     if(g.payType!=='credit')return false;
-    // Exclude card-debits (recurring 1-cuota) — they count as Gastado, not Crédito
     if(g.recurring&&(+g.installments||1)===1)return false;
     const d=new Date(g.date+'T12:00:00');
     return d.getMonth()===CM&&d.getFullYear()===CY;
   }).reduce((s,g)=>s+(+g.amount),0);
-  const pagoThisMonth=thisMon;
+  const consumedCardAmt=cardDebitItems.reduce((s,g)=>s+(+g.amount),0);
+  const consumedAmt=consumedInstAmt+consumedCardAmt;
+  const consumedCount=S.gastos.filter(g=>{
+    if(g.payType!=='credit')return false;
+    if(g.recurring&&(+g.installments||1)===1)return false;
+    const d=new Date(g.date+'T12:00:00');
+    return d.getMonth()===CM&&d.getFullYear()===CY;
+  }).length + cardDebitItems.length;
+
+  // 2. Cuotas de meses anteriores due this month
+  const prevCuotaItems=crDueItems.filter(g=>{
+    const d=new Date(g.date+'T12:00:00');
+    return !(d.getMonth()===CM&&d.getFullYear()===CY);
+  });
+  const prevCuotasAmt=prevCuotaItems.reduce((s,g)=>s+(g._cuota||g.amount/(+g.installments||1)),0);
+
+  // 3. Pago este mes = all crDue + card-debits
+  const pagoAmt=thisMon;
+
+  // ── Cards HTML ────────────────────────────────────────────────────────────
+  const cf=S._crFilter||'all';
+  const cardStyle=(key)=>'cursor:pointer;transition:border-color .15s'+(cf===key?';border-color:var(--accent);background:rgba(71,114,250,.03)':'');
+
+  const svgArrow='<svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="#666" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="7 17 17 7"/><polyline points="7 7 17 7 17 17"/></svg>';
+  const svgClock='<svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="#7c3aed" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg>';
+  const svgCard='<svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="#4772fa" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><rect x="1" y="4" width="22" height="16" rx="2"/><line x1="1" y1="10" x2="23" y2="10"/></svg>';
 
   const crSummEl=document.getElementById('crModeSummary');
   if(crSummEl){
-    crSummEl.innerHTML=`
-      <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-bottom:12px">
-        <div class="r-card" style="padding:14px">
-          <div class="r-row" style="margin-bottom:8px">
-            <div class="r-label">Consumí en ${MOS[CM]}</div>
-            <div class="r-icon r-icon-gray">
-              <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="#666" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="7 17 17 7"/><polyline points="7 7 17 7 17 17"/></svg>
-            </div>
-          </div>
-          <div style="font-size:22px;font-weight:800;color:var(--text);letter-spacing:-.5px">${fmt(consumiThisMonth)}</div>
-          <div style="font-size:11px;color:var(--text-muted);margin-top:3px">compras en cuotas</div>
-        </div>
-        <div class="r-card" style="padding:14px">
-          <div class="r-row" style="margin-bottom:8px">
-            <div class="r-label">Pago en ${MOS[CM]}</div>
-            <div class="r-icon r-icon-blue">
-              <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="#4772fa" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 12 20 22 4 22 4 12"/><rect x="2" y="7" width="20" height="5"/><path d="M12 22V7"/></svg>
-            </div>
-          </div>
-          <div style="font-size:22px;font-weight:800;color:var(--text);letter-spacing:-.5px">${fmt(pagoThisMonth)}</div>
-          <div style="font-size:11px;color:var(--text-muted);margin-top:3px">cuotas que vencen</div>
-        </div>
-      </div>`;
+    crSummEl.innerHTML=
+      '<div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-bottom:12px">'+
+        // Total pendiente (not filterable)
+        '<div class="r-card" style="padding:14px">'+
+          '<div class="r-row" style="margin-bottom:8px"><div class="r-label">Total pendiente</div>'+
+          '<div class="r-icon r-icon-gray">'+svgCard+'</div></div>'+
+          '<div style="font-size:22px;font-weight:800;color:var(--text);letter-spacing:-.5px">'+fmt(totPend)+'</div>'+
+          '<div style="font-size:11px;color:var(--text-muted);margin-top:3px">'+active.length+' compra'+(active.length!==1?'s':'')+' activa'+(active.length!==1?'s':'')+'</div>'+
+        '</div>'+
+        // Consumí este mes (filterable)
+        '<div class="r-card" style="padding:14px;'+cardStyle('consumed')+'" onclick="setCrFilter(&apos;consumed&apos;)">'+
+          '<div class="r-row" style="margin-bottom:8px"><div class="r-label">Consumí en '+MOS[CM]+'</div>'+
+          '<div class="r-icon r-icon-gray">'+svgArrow+'</div></div>'+
+          '<div style="font-size:22px;font-weight:800;color:var(--text);letter-spacing:-.5px">'+fmt(consumedAmt)+'</div>'+
+          '<div style="font-size:11px;color:var(--text-muted);margin-top:3px">'+consumedCount+' compra'+(consumedCount!==1?'s':'')+' nuevas</div>'+
+        '</div>'+
+      '</div>'+
+      '<div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-bottom:12px">'+
+        // Cuotas de meses anteriores (filterable)
+        '<div class="r-card" style="padding:14px;'+cardStyle('previous')+'" onclick="setCrFilter(&apos;previous&apos;)">'+
+          '<div class="r-row" style="margin-bottom:8px"><div class="r-label">Cuotas anteriores</div>'+
+          '<div class="r-icon" style="width:28px;height:28px;border-radius:7px;background:#7c3aed15;display:flex;align-items:center;justify-content:center">'+svgClock+'</div></div>'+
+          '<div style="font-size:22px;font-weight:800;color:var(--text);letter-spacing:-.5px">'+fmt(prevCuotasAmt)+'</div>'+
+          '<div style="font-size:11px;color:var(--text-muted);margin-top:3px">'+prevCuotaItems.length+' cuota'+(prevCuotaItems.length!==1?'s':'')+' este mes</div>'+
+        '</div>'+
+        // Pago este mes (filterable)
+        '<div class="r-card" style="padding:14px;'+cardStyle('payment')+'" onclick="setCrFilter(&apos;payment&apos;)">'+
+          '<div class="r-row" style="margin-bottom:8px"><div class="r-label">Pago en '+MOS[CM]+'</div>'+
+          '<div class="r-icon r-icon-blue">'+svgCard+'</div></div>'+
+          '<div style="font-size:22px;font-weight:800;color:var(--text);letter-spacing:-.5px">'+fmt(pagoAmt)+'</div>'+
+          '<div style="font-size:11px;color:var(--text-muted);margin-top:3px">'+thisMonCount+' cuota'+(thisMonCount!==1?'s':'')+' que vencen</div>'+
+        '</div>'+
+      '</div>';
   }
 
+  // ── Card filter chips ─────────────────────────────────────────────────────
   const crCardCon=document.getElementById('crCardFilter');
   if(crCardCon){
     if(!S._crCardFilt)S._crCardFilt='';
-    crCardCon.innerHTML=`<div class="chips" style="margin-bottom:10px">
-      <button class="chip${!S._crCardFilt?' on':''}" onclick="S._crCardFilt='';rCredit()">Todas</button>`+
-      getCards().map(c=>`<button class="chip${S._crCardFilt===c.id?' on':''}" onclick="S._crCardFilt='${c.id}';rCredit()" style="${S._crCardFilt===c.id?'background:'+c.color+'22;color:'+c.color+';border-color:'+c.color:''}">${c.name}</button>`).join('')+
-      `</div>`;
+    crCardCon.innerHTML='<div class="chips" style="margin-bottom:10px">'+
+      '<button class="chip'+(!S._crCardFilt?' on':'')+'" onclick="S._crCardFilt=\'\';rCredit()">Todas</button>'+
+      getCards().map(c=>'<button class="chip'+(S._crCardFilt===c.id?' on':'')+'" onclick="S._crCardFilt=\''+c.id+'\';rCredit()" style="'+(S._crCardFilt===c.id?'background:'+c.color+'22;color:'+c.color+';border-color:'+c.color:'')+'">' +c.name+'</button>').join('')+
+      '</div>';
   }
-  const displayActive=S._crCardFilt?active.filter(g=>g.cardId===S._crCardFilt):active;
+
+  // ── Filter display items based on active card ─────────────────────────────
+  let filteredActive=S._crCardFilt?active.filter(g=>g.cardId===S._crCardFilt):active;
+  if(cf==='consumed'){
+    // Purchases made this month (by date) — show in list as full purchases
+    filteredActive=filteredActive.filter(g=>{
+      const d=new Date(g.date+'T12:00:00');
+      return d.getMonth()===CM&&d.getFullYear()===CY;
+    });
+  } else if(cf==='previous'){
+    const prevIds=new Set(prevCuotaItems.map(g=>g.id));
+    filteredActive=filteredActive.filter(g=>prevIds.has(g.id));
+  } else if(cf==='payment'){
+    const payIds=new Set([...crDueItems,...cardDebitItems].map(g=>g.id));
+    filteredActive=filteredActive.filter(g=>payIds.has(g.id));
+  }
+  const displayActive=filteredActive;
   const con=document.getElementById('crList');
   // Disclaimer about tarjeta badge items
   const disclaimer=document.getElementById('crDisclaimer');
