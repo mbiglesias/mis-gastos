@@ -966,6 +966,43 @@ onAuthStateChanged(auth, (user) => {
 </div>
 
 <!-- GOOGLE SHEETS MODAL -->
+<!-- DELETE CATEGORY MODAL -->
+<div class="mo hid" id="mDeleteCat" onclick="overlayClose(event,'mDeleteCat')">
+  <div class="modal">
+    <div class="mh"></div>
+    <div class="mt">Eliminar categoría</div>
+    <div class="ms" id="mDeleteCatSub">¿Qué hacés con los gastos de esta categoría?</div>
+
+    <!-- Option 1: Move -->
+    <label style="display:flex;align-items:flex-start;gap:12px;padding:14px;border:1.5px solid var(--border);border-radius:var(--R);cursor:pointer;margin-bottom:8px;transition:border-color .15s" id="optMoveLabel">
+      <input type="radio" name="delCatOpt" value="move" id="optMove" style="margin-top:2px;accent-color:var(--accent)" onchange="document.getElementById('mergeCatRow').style.display='block';document.getElementById('optMoveLabel').style.borderColor='var(--accent)';document.getElementById('optDeleteLabel').style.borderColor='var(--border)'">
+      <div>
+        <div style="font-size:13px;font-weight:700;color:var(--text)">Mover gastos a otra categoría</div>
+        <div style="font-size:11px;color:var(--text-muted);margin-top:2px">El historial se mantiene bajo la nueva categoría</div>
+      </div>
+    </label>
+
+    <div id="mergeCatRow" style="display:none;margin-bottom:8px;padding-left:4px">
+      <div class="fl" style="margin-bottom:6px">Mover a</div>
+      <select class="fi" id="mergeCatTarget"></select>
+    </div>
+
+    <!-- Option 2: Delete anyway -->
+    <label style="display:flex;align-items:flex-start;gap:12px;padding:14px;border:1.5px solid var(--border);border-radius:var(--R);cursor:pointer;margin-bottom:16px;transition:border-color .15s" id="optDeleteLabel">
+      <input type="radio" name="delCatOpt" value="delete" id="optDelete" style="margin-top:2px;accent-color:var(--accent)" onchange="document.getElementById('mergeCatRow').style.display='none';document.getElementById('optDeleteLabel').style.borderColor='var(--accent)';document.getElementById('optMoveLabel').style.borderColor='var(--border)'">
+      <div>
+        <div style="font-size:13px;font-weight:700;color:var(--text)">Eliminar igual</div>
+        <div style="font-size:11px;color:var(--text-muted);margin-top:2px">Los gastos quedan como "Sin categoría"</div>
+      </div>
+    </label>
+
+    <div style="display:flex;gap:8px">
+      <button class="btn bp" style="flex:1" onclick="confirmDeleteCat()">Confirmar</button>
+      <button class="btn bg" onclick="closeM('mDeleteCat')">Cancelar</button>
+    </div>
+  </div>
+</div>
+
 <div class="mo hid" id="mSheets" onclick="overlayClose(event,'mSheets')">
   <div class="modal"><div class="mh"></div>
     <div class="mt"> Google Sheets</div>
@@ -1998,9 +2035,10 @@ function rTxList(){
   const isFiltered=filt!=='Todos'||q;
   if(filtTotalEl){
     if(gs.length>0){
-      const debitTotal=gs.filter(g=>(g.payType!=='credit'||g._isCardDebit)&&!g.isDebtPayment).reduce((s,g)=>s+(+g.amount),0);
+      // card-debits go to creditTotal (same as Resumen "Cuotas de este mes")
+      const debitTotal=gs.filter(g=>g.payType!=='credit'&&!g.isDebtPayment&&!g._isCardDebit).reduce((s,g)=>s+(+g.amount),0);
       const debtTotal=gs.filter(g=>g.isDebtPayment).reduce((s,g)=>s+(+g.amount),0);
-      const creditTotal=gs.filter(g=>g._isInstallment).reduce((s,g)=>s+(g._cuota||0),0);
+      const creditTotal=gs.filter(g=>g._isInstallment||g._isCardDebit).reduce((s,g)=>s+(g._cuota||+g.amount||0),0);
       const total=debitTotal+creditTotal;
       const count=gs.length;
       const label=q?`"${q}"`:filt!=='Todos'&&filt!=='Crédito'?filt:'';
@@ -4116,7 +4154,68 @@ function saveEditBudget(){
   }
   save();popCats();renderAll();closeM('mEditBudget');toast('Categoría actualizada');
 }
-function delCat(i){if(!confirm(`¿Eliminar "${S.categories[i].name}"?`))return;S.categories.splice(i,1);save();popCats();renderAll();toast('Categoría eliminada');}
+let _deleteCatIdx = null;
+function delCat(i) {
+  const cat = S.categories[i];
+  if (!cat) return;
+  _deleteCatIdx = i;
+
+  // Count gastos in this category
+  const gastoCount = S.gastos.filter(g => g.category === cat.name).length;
+
+  // Update subtitle
+  const sub = document.getElementById('mDeleteCatSub');
+  if (sub) sub.textContent = gastoCount > 0
+    ? 'Tenés ' + gastoCount + ' gasto' + (gastoCount !== 1 ? 's' : '') + ' en "' + cat.name + '"'
+    : '"' + cat.name + '" no tiene gastos registrados';
+
+  // Reset options
+  const optMove = document.getElementById('optMove');
+  const optDel  = document.getElementById('optDelete');
+  if (optMove) optMove.checked = gastoCount > 0;
+  if (optDel)  optDel.checked  = gastoCount === 0;
+  const row = document.getElementById('mergeCatRow');
+  if (row) row.style.display = gastoCount > 0 ? 'block' : 'none';
+  const optMoveLabel  = document.getElementById('optMoveLabel');
+  const optDeleteLabel = document.getElementById('optDeleteLabel');
+  if (optMoveLabel)  optMoveLabel.style.borderColor  = gastoCount > 0 ? 'var(--accent)' : 'var(--border)';
+  if (optDeleteLabel) optDeleteLabel.style.borderColor = gastoCount === 0 ? 'var(--accent)' : 'var(--border)';
+
+  // Populate target categories (all others, no children of self)
+  const sel = document.getElementById('mergeCatTarget');
+  if (sel) {
+    const others = S.categories.filter((c, j) => j !== i && c.parentId !== cat.id);
+    sel.innerHTML = others.map(c => '<option value="' + c.name + '">' + c.name + '</option>').join('');
+  }
+
+  openM('mDeleteCat');
+}
+
+function confirmDeleteCat() {
+  const i = _deleteCatIdx;
+  if (i === null || !S.categories[i]) return;
+  const cat = S.categories[i];
+  const optMove = document.getElementById('optMove');
+  const isMove  = optMove && optMove.checked;
+
+  if (isMove) {
+    const target = document.getElementById('mergeCatTarget')?.value;
+    if (!target) { toast('Elegí una categoría destino'); return; }
+    // Reassign all gastos
+    S.gastos.forEach(g => { if (g.category === cat.name) g.category = target; });
+    toast('Gastos movidos a "' + target + '"');
+  } else {
+    // Leave as uncategorized
+    S.gastos.forEach(g => { if (g.category === cat.name) g.category = 'Sin categoría'; });
+  }
+
+  // Remove the category
+  S.categories.splice(i, 1);
+  _deleteCatIdx = null;
+  save(); popCats(); renderAll();
+  closeM('mDeleteCat');
+  toast('Categoría eliminada');
+}
 
 // ============================================================
 // CREDIT SAVING
