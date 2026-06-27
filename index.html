@@ -2009,8 +2009,8 @@ function rTxList(){
     if(gs.length>0){
       const debitTotal=gs.filter(g=>g.payType!=='credit'&&!g.isDebtPayment&&!g._isCardDebit).reduce((s,g)=>s+(+g.amount),0);
       const debtTotal=gs.filter(g=>g.isDebtPayment).reduce((s,g)=>s+(+g.amount),0);
-      // creditTotal = lo que vas a pagar el mes siguiente = crDue(nextM) + suscripciones de ESTE mes
-      // Las suscripciones de junio se pagan en julio (igual que las cuotas)
+      // creditTotal = crDue(mes siguiente) + suscripciones de este mes
+      // = lo que vas a pagar el mes que viene, misma fuente que "= USD X en [nextM]" de tab Crédito
       const nextM2=CM===11?0:CM+1, nextY2=CM===11?CY+1:CY;
       const cardDebitThis=mGastos().filter(g=>g._isCardDebit).reduce((s,g)=>s+(+g.amount),0);
       const crDueNext=crDue(nextM2,nextY2).reduce((s,g)=>s+(g._cuota||g.amount/(+g.installments||1)),0);
@@ -3088,22 +3088,17 @@ function rCredit(){
     const d=new Date(g.date+'T12:00:00');
     return !(d.getMonth()===CM&&d.getFullYear()===CY);
   });
-  // Consumí este mes = misma lógica que tab Gastos (creditTotal)
-  // card-debits de junio + cuota de compras de crédito hechas en junio
-  const gsThisMonth=mGastos();
-  const creditBoughtThisMonth=S.gastos.filter(g=>{
-    if(g.payType!=='credit')return false;
-    if(g.recurring&&(+g.installments||1)===1)return false; // card-debits ya están en gsThisMonth
-    const d=new Date(g.date+'T12:00:00');
-    return d.getMonth()===CM&&d.getFullYear()===CY;
-  });
-  const _allCardDebitThis=gsThisMonth.filter(g=>g._isCardDebit);
+  // Consumí este mes = cuotas de crDue(julio) que son compras de junio + suscripciones de junio
+  // Usar crDue(nextM) como fuente de verdad (excluye compras antes del cierre que van a crDue(junio))
+  const _allCardDebitThis=mGastos().filter(g=>g._isCardDebit);
   const cardDebitThisAmt=_allCardDebitThis.reduce((s,g)=>s+(+g.amount),0);
-  const consumedInstAmt2=creditBoughtThisMonth.reduce((s,g)=>s+(+g.amount)/(+g.installments||1),0);
+  const consumedInstAmt2=consumedInNext.reduce((s,g)=>s+(g._cuota||g.amount/(+g.installments||1)),0);
   const consumedAmt=consumedInstAmt2+cardDebitThisAmt;
 
   const previousAmt=previousInNext.reduce((s,g)=>s+(g._cuota||g.amount/(+g.installments||1)),0);
-  const totalNextMonth=consumedInstAmt2+previousAmt+cardDebitThisAmt; // lo que vas a pagar en julio = crDue(julio) + suscripciones de junio
+  // totalNextMonth = crDue(julio) + suscripciones de junio — misma fuente que creditTotal en tab Gastos
+  const crDueNextAmt=nextDue.reduce((s,g)=>s+(g._cuota||g.amount/(+g.installments||1)),0);
+  const totalNextMonth=crDueNextAmt+cardDebitThisAmt;
 
   // ── Cards HTML ───────────────────────────────────────────────────────────
   const svgUp='<svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="#ef4444" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="7 17 17 7"/><polyline points="7 7 17 7 17 17"/></svg>';
@@ -3113,9 +3108,9 @@ function rCredit(){
   if(crSummEl){
     // Build consumed detail HTML — cuotas nuevas + suscripciones de tarjeta
     const allConsumedItems=[
-      ...creditBoughtThisMonth.map(g=>{
+      ...consumedInNext.map(g=>{
         const inst=+g.installments||1;
-        const cuota=g.amount/inst;
+        const cuota=g._cuota||g.amount/inst;
         return {desc:g.desc,amt:cuota,badge:inst>1?'Cuota 1/'+inst:'Crédito'};
       }),
       ..._allCardDebitThis.map(g=>({desc:g.desc,amt:+g.amount,badge:'Tarjeta'}))
