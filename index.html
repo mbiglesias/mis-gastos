@@ -1919,19 +1919,22 @@ function rTxList(){
   const chEl=document.getElementById('chips');
   if(!con)return;
   // Base: debit purchases + card-debit subscriptions from mGastos
-  let gs=mGastos().filter(g=>!g._isSaving);
-  // Credit purchases MADE this month: show as _creditPurchase (purchase date, badge "X cuotas")
-  // These replace the _isInstallment entry for the purchase month to avoid duplicates
+  let gs=mGastos().filter(g=>!g._isSaving&&!g._isInstallment);
+  // Credit purchases MADE this month: show as _creditPurchase (badge "X cuotas", purchase date)
   const creditBoughtThisMonth=S.gastos.filter(g=>{
     if(g.payType!=='credit')return false;
-    if(g.recurring&&(+g.installments||1)===1)return false; // card-debits already in gs
+    if(g.recurring&&(+g.installments||1)===1)return false;
     const d=new Date(g.date+'T12:00:00');
     return d.getMonth()===CM&&d.getFullYear()===CY;
   }).map(g=>({...g,_creditPurchase:true,_instTotal:+g.installments||1}));
-  // Remove _isInstallment entries for purchases made THIS month (replaced by _creditPurchase above)
   const creditBoughtIds=new Set(creditBoughtThisMonth.map(g=>g.id));
-  gs=gs.filter(g=>!(g._isInstallment&&creditBoughtIds.has(g.id)));
-  gs=[...gs,...creditBoughtThisMonth];
+  // Installments from PREVIOUS months due this month (not the purchase month — those are _creditPurchase)
+  const prevInstallments=mGastos().filter(g=>{
+    if(!g._isInstallment)return false;
+    if(creditBoughtIds.has(g.id))return false; // skip purchase month (handled above)
+    return true;
+  });
+  gs=[...gs,...creditBoughtThisMonth,...prevInstallments];
   const chWrap=document.getElementById('chipsWrap');
   if(!chWrap)return;
   const parents=getParents();
@@ -2001,7 +2004,7 @@ function rTxList(){
     if(gs.length>0){
       const debitTotal=gs.filter(g=>g.payType!=='credit'&&!g.isDebtPayment&&!g._isCardDebit).reduce((s,g)=>s+(+g.amount),0);
       const debtTotal=gs.filter(g=>g.isDebtPayment).reduce((s,g)=>s+(+g.amount),0);
-      // credit = card-debits (monthly) + cuota of credit purchases (current month or installments)
+      // credit = card-debits + cuota of credit purchases this month + installments from prev months
       const creditTotal=gs.filter(g=>g._isCardDebit||g._creditPurchase||g._isInstallment).reduce((s,g)=>{
         if(g._creditPurchase)return s+(+g.amount)/(g._instTotal||1);
         if(g._isInstallment)return s+(g._cuota||g.amount/(g._instTotal||1));
