@@ -1918,26 +1918,27 @@ function rTxList(){
   const con=document.getElementById('txList');
   const chEl=document.getElementById('chips');
   if(!con)return;
-  // Base: debit purchases + card-debit subscriptions + installments due this month
-  // Exclude _creditPurchase logic — we use mGastos() installments directly
-  let gs=mGastos().filter(g=>!g._isSaving);
-  // For credit purchases MADE this month: replace _isInstallment (diff=0, cuota 1)
-  // with _creditPurchase so badge shows "Cuota 1/X" and date is purchase date
-  // mGastos already generates _isInstallment for these, so no need to add separately
-  gs=gs.map(g=>{
-    if(g._isInstallment&&g._instNum===1){
-      // Check if purchase was made this month
-      const orig=S.gastos.find(og=>og.id===g.id);
-      if(orig){
-        const d=new Date(orig.date+'T12:00:00');
-        if(d.getMonth()===CM&&d.getFullYear()===CY){
-          return {...g,_creditPurchase:true,_instTotal:g._instTotal};
-        }
-      }
-    }
-    return g;
+  // Base: debit purchases + card-debit subscriptions from mGastos
+  let gs=mGastos().filter(g=>!g._isSaving&&!g._isInstallment);
+  // Credit purchases MADE this month: show with badge "Cuota 1/X"
+  const creditBoughtThisMonth=S.gastos.filter(g=>{
+    if(g.payType!=='credit')return false;
+    if(g.recurring&&(+g.installments||1)===1)return false;
+    const d=new Date(g.date+'T12:00:00');
+    return d.getMonth()===CM&&d.getFullYear()===CY;
+  }).map(g=>({...g,_creditPurchase:true,_instTotal:+g.installments||1,_cuota:g.amount/(+g.installments||1)}));
+  const creditBoughtIds=new Set(creditBoughtThisMonth.map(g=>g.id));
+  // Installments from previous months due this month — adjust date to current month for display
+  const prevInstallments=mGastos().filter(g=>{
+    if(!g._isInstallment)return false;
+    if(creditBoughtIds.has(g.id))return false; // already shown as _creditPurchase
+    return true;
+  }).map(g=>{
+    const s=new Date(g.date+'T12:00:00');
+    const virtDate=`${CY}-${String(CM+1).padStart(2,'0')}-${String(s.getDate()).padStart(2,'0')}`;
+    return {...g,date:virtDate};
   });
-  const creditBoughtThisMonth=gs.filter(g=>g._creditPurchase);
+  gs=[...gs,...creditBoughtThisMonth,...prevInstallments];
   const chWrap=document.getElementById('chipsWrap');
   if(!chWrap)return;
   const parents=getParents();
@@ -2007,8 +2008,8 @@ function rTxList(){
     if(gs.length>0){
       const debitTotal=gs.filter(g=>g.payType!=='credit'&&!g.isDebtPayment&&!g._isCardDebit).reduce((s,g)=>s+(+g.amount),0);
       const debtTotal=gs.filter(g=>g.isDebtPayment).reduce((s,g)=>s+(+g.amount),0);
-      // credit = card-debits (suscripciones) + cuota de cada installment activo este mes
-      const creditTotal=gs.filter(g=>g._isCardDebit||g._isInstallment||g._creditPurchase).reduce((s,g)=>{
+      // credit = suscripciones + cuota compras este mes + cuotas activas de meses anteriores
+      const creditTotal=gs.filter(g=>g._isCardDebit||g._creditPurchase||g._isInstallment).reduce((s,g)=>{
         if(g._isCardDebit)return s+(+g.amount);
         return s+(g._cuota||g.amount/(g._instTotal||1));
       },0);
@@ -2037,23 +2038,11 @@ function rTxList(){
     return;
   }
 
-  // Group by display date:
-  // - installments: purchase date shifted forward by (instNum-1) months
-  // - creditPurchase: purchase date as-is
-  // - everything else: g.date
+  // Group by display date — prevInstallments already have date adjusted to current month
   const grp={};
   gs.forEach(g=>{
-    let key;
-    if(g._isInstallment){
-      const s=new Date(g.date+'T12:00:00');
-      const instNum=g._instNum||1;
-      const computeDate=new Date(s.getFullYear(),s.getMonth()+(instNum-1),s.getDate());
-      key=computeDate.toISOString().split('T')[0];
-    } else {
-      key=g.date;
-    }
-    if(!grp[key])grp[key]=[];
-    grp[key].push(g);
+    if(!grp[g.date])grp[g.date]=[];
+    grp[g.date].push(g);
   });
 
   let h='<div class="txl">';
