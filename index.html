@@ -3102,14 +3102,8 @@ function rCredit(){
   const consumedInstAmt2=creditBoughtThisMonth.reduce((s,g)=>s+(+g.amount)/(+g.installments||1),0);
   const consumedAmt=consumedInstAmt2+cardDebitThisAmt;
 
-  // Card-debits de JULIO (para totalNextMonth — lo que vas a pagar en julio)
-  const _savCM=CM,_savCY=CY;
-  CM=nextM;CY=nextY;
-  const _allCardDebitNext=mGastos().filter(g=>g._isCardDebit);
-  CM=_savCM;CY=_savCY;
-  const cardDebitNextAmt=_allCardDebitNext.reduce((s,g)=>s+(+g.amount),0);
   const previousAmt=previousInNext.reduce((s,g)=>s+(g._cuota||g.amount/(+g.installments||1)),0);
-  const totalNextMonth=consumedInstAmt2+previousAmt+cardDebitNextAmt; // lo que vas a pagar en julio
+  const totalNextMonth=consumedInstAmt2+previousAmt+cardDebitThisAmt; // lo que vas a pagar en julio = crDue(julio) + suscripciones de junio
 
   // ── Cards HTML ───────────────────────────────────────────────────────────
   const svgUp='<svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="#ef4444" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="7 17 17 7"/><polyline points="7 7 17 7 17 17"/></svg>';
