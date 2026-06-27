@@ -2009,12 +2009,14 @@ function rTxList(){
     if(gs.length>0){
       const debitTotal=gs.filter(g=>g.payType!=='credit'&&!g.isDebtPayment&&!g._isCardDebit).reduce((s,g)=>s+(+g.amount),0);
       const debtTotal=gs.filter(g=>g.isDebtPayment).reduce((s,g)=>s+(+g.amount),0);
-      // creditTotal = crDue(mes siguiente) + suscripciones de este mes
-      // = lo que vas a pagar el mes que viene, misma fuente que "= USD X en [nextM]" de tab Crédito
+      // creditTotal = crDue(mes siguiente) + suscripciones del mes siguiente
       const nextM2=CM===11?0:CM+1, nextY2=CM===11?CY+1:CY;
-      const cardDebitThis=mGastos().filter(g=>g._isCardDebit).reduce((s,g)=>s+(+g.amount),0);
+      const _savCMx=CM,_savCYx=CY;
+      CM=nextM2;CY=nextY2;
+      const cardDebitNext=mGastos().filter(g=>g._isCardDebit).reduce((s,g)=>s+(+g.amount),0);
+      CM=_savCMx;CY=_savCYx;
       const crDueNext=crDue(nextM2,nextY2).reduce((s,g)=>s+(g._cuota||g.amount/(+g.installments||1)),0);
-      const creditTotal=crDueNext+cardDebitThis;
+      const creditTotal=crDueNext+cardDebitNext;
       const total=debitTotal+creditTotal;
       const count=gs.length;
       const label=q?`"${q}"`:filt!=='Todos'?filt:'';
@@ -3096,9 +3098,14 @@ function rCredit(){
   const consumedAmt=consumedInstAmt2+cardDebitThisAmt;
 
   const previousAmt=previousInNext.reduce((s,g)=>s+(g._cuota||g.amount/(+g.installments||1)),0);
-  // totalNextMonth = crDue(julio) + suscripciones de junio — misma fuente que creditTotal en tab Gastos
+  // totalNextMonth = crDue(julio) + suscripciones de julio
+  const _savCM3=CM,_savCY3=CY;
+  CM=nextM;CY=nextY;
+  const _allCardDebitNext=mGastos().filter(g=>g._isCardDebit);
+  CM=_savCM3;CY=_savCY3;
+  const cardDebitNextAmt=_allCardDebitNext.reduce((s,g)=>s+(+g.amount),0);
   const crDueNextAmt=nextDue.reduce((s,g)=>s+(g._cuota||g.amount/(+g.installments||1)),0);
-  const totalNextMonth=crDueNextAmt+cardDebitThisAmt;
+  const totalNextMonth=crDueNextAmt+cardDebitNextAmt;
 
   // ── Cards HTML ───────────────────────────────────────────────────────────
   const svgUp='<svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="#ef4444" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="7 17 17 7"/><polyline points="7 7 17 7 17 17"/></svg>';
