@@ -2008,11 +2008,15 @@ function rTxList(){
     if(gs.length>0){
       const debitTotal=gs.filter(g=>g.payType!=='credit'&&!g.isDebtPayment&&!g._isCardDebit).reduce((s,g)=>s+(+g.amount),0);
       const debtTotal=gs.filter(g=>g.isDebtPayment).reduce((s,g)=>s+(+g.amount),0);
-      // credit = suscripciones + cuota compras este mes + cuotas activas de meses anteriores
-      const creditTotal=gs.filter(g=>g._isCardDebit||g._creditPurchase||g._isInstallment).reduce((s,g)=>{
-        if(g._isCardDebit)return s+(+g.amount);
-        return s+(g._cuota||g.amount/(g._instTotal||1));
-      },0);
+      // creditTotal = lo que vas a pagar el mes siguiente = crDue(nextM) + suscripciones nextM
+      // Esto coincide exactamente con "Pago en Julio" de tab Crédito
+      const nextM=CM===11?0:CM+1, nextY=CM===11?CY+1:CY;
+      const _savCM=CM,_savCY=CY;
+      CM=nextM;CY=nextY;
+      const cardDebitNext=mGastos().filter(g=>g._isCardDebit).reduce((s,g)=>s+(+g.amount),0);
+      CM=_savCM;CY=_savCY;
+      const crDueNext=crDue(nextM,nextY).reduce((s,g)=>s+(g._cuota||g.amount/(+g.installments||1)),0);
+      const creditTotal=crDueNext+cardDebitNext;
       const total=debitTotal+creditTotal;
       const count=gs.length;
       const label=q?`"${q}"`:filt!=='Todos'?filt:'';
