@@ -1884,7 +1884,8 @@ function mGastos(){
   S.gastos.filter(g=>g.payType==='credit').forEach(g=>{
     const s=new Date(g.date+'T12:00:00');
     const inst=+g.installments||1;
-    // Cierre día 6: compra el 1-6 → cobra ese mismo mes; compra el 7+ → cobra mes siguiente
+    // Cierre: compra antes del cierre → resumen ese mes → paga mes siguiente (mes+1)
+    // Compra después del cierre → resumen mes siguiente → paga dos meses después (mes+2)
     const firstCuotaMonth = (function(d,s){var cd=getClosingDay(d,s.getMonth(),s.getFullYear());var eom=cd>=28;return s.getDate()<=cd?(eom?s.getMonth()+1:s.getMonth()):(eom?s.getMonth()+2:s.getMonth()+1);})(g.cardId,s);
     const firstCuotaYear = s.getFullYear() + Math.floor(firstCuotaMonth/12);
     const fm = ((firstCuotaMonth%12)+12)%12;
@@ -2008,15 +2009,12 @@ function rTxList(){
     if(gs.length>0){
       const debitTotal=gs.filter(g=>g.payType!=='credit'&&!g.isDebtPayment&&!g._isCardDebit).reduce((s,g)=>s+(+g.amount),0);
       const debtTotal=gs.filter(g=>g.isDebtPayment).reduce((s,g)=>s+(+g.amount),0);
-      // creditTotal = lo que vas a pagar el mes siguiente = crDue(nextM) + suscripciones nextM
-      // Esto coincide exactamente con "Pago en Julio" de tab Crédito
-      const nextM=CM===11?0:CM+1, nextY=CM===11?CY+1:CY;
-      const _savCM=CM,_savCY=CY;
-      CM=nextM;CY=nextY;
-      const cardDebitNext=mGastos().filter(g=>g._isCardDebit).reduce((s,g)=>s+(+g.amount),0);
-      CM=_savCM;CY=_savCY;
-      const crDueNext=crDue(nextM,nextY).reduce((s,g)=>s+(g._cuota||g.amount/(+g.installments||1)),0);
-      const creditTotal=crDueNext+cardDebitNext;
+      // creditTotal = lo que vas a pagar el mes siguiente = crDue(nextM) + suscripciones de ESTE mes
+      // Las suscripciones de junio se pagan en julio (igual que las cuotas)
+      const nextM2=CM===11?0:CM+1, nextY2=CM===11?CY+1:CY;
+      const cardDebitThis=mGastos().filter(g=>g._isCardDebit).reduce((s,g)=>s+(+g.amount),0);
+      const crDueNext=crDue(nextM2,nextY2).reduce((s,g)=>s+(g._cuota||g.amount/(+g.installments||1)),0);
+      const creditTotal=crDueNext+cardDebitThis;
       const total=debitTotal+creditTotal;
       const count=gs.length;
       const label=q?`"${q}"`:filt!=='Todos'?filt:'';
@@ -3060,9 +3058,14 @@ function rCredit(){
     const paidAtViewed=Math.max(0,Math.min(inst,diff));
     return s+Math.max(0,inst-paidAtViewed)*cuota;
   },0);
-  // Total a pagar este mes = cuotas normales + suscripciones en tarjeta
+  // Total a pagar este mes = cuotas normales + suscripciones del mes ANTERIOR
+  // (suscripciones se cobran en X y se pagan en X+1, igual que las cuotas)
   const _allCrDue=crDue(CM,CY);
+  const prevM=CM===0?11:CM-1, prevY=CM===0?CY-1:CY;
+  const _savCM2=CM,_savCY2=CY;
+  CM=prevM;CY=prevY;
   const _allCardDebit=mGastos().filter(g=>g._isCardDebit);
+  CM=_savCM2;CY=_savCY2;
   const crDueItems=S._crCardFilt?_allCrDue.filter(g=>g.cardId===S._crCardFilt):_allCrDue;
   const cardDebitItems=S._crCardFilt?_allCardDebit.filter(g=>g.cardId===S._crCardFilt):_allCardDebit;
   const cardDebitTotal=cardDebitItems.reduce((s,g)=>s+(+g.amount),0);
@@ -3217,7 +3220,7 @@ function rCredit(){
       const inst=+g.installments||1;
       const cuota=g.amount/inst;
       const s=new Date(g.date+'T12:00:00');
-      const paid=g._paidCount!==undefined?g._paidCount:(()=>{const s2=new Date(g.date+'T12:00:00');const firstM=(function(d2,s3){var cd=getClosingDay(d2,s3.getMonth(),s3.getFullYear());var eom=cd>=28;return s3.getDate()<=cd?(eom?s3.getMonth()+1:s3.getMonth()):(eom?s3.getMonth()+2:s3.getMonth()+1);})(g.cardId,s2);const firstY=s2.getFullYear()+Math.floor(firstM/12);const fm=((firstM%12)+12)%12;const diff=(CY-firstY)*12+(CM-fm);return Math.max(0,Math.min(inst,diff));})();
+      const paid=g._paidCount!==undefined?g._paidCount:(()=>{const s2=new Date(g.date+'T12:00:00');const firstM=(function(d2,s3){var cd=getClosingDay(d2,s3.getMonth(),s3.getFullYear());return s3.getDate()<=cd?s3.getMonth()+1:s3.getMonth()+2;})(g.cardId,s2);const firstY=s2.getFullYear()+Math.floor(firstM/12);const fm=((firstM%12)+12)%12;const diff=(CY-firstY)*12+(CM-fm);return Math.max(0,Math.min(inst,diff));})();
       const cat=S.categories.find(c=>c.name===g.category);
       const border=gi>0?'border-top:1px solid var(--border-light,#f3f3f3)':'';
       return '<div class="tx-day-item" style="'+border+'" onclick="openGastoDetail(&apos;'+g.id+'&apos;,false,'+(paid+1)+','+inst+')">'+
