@@ -1737,6 +1737,11 @@ function ensureDefaults() {
   const validCatIds=new Set(S.categories.map(c=>c.id||c.name).filter(Boolean));
   S.categories.forEach(c=>{if(c.parentId&&!validCatIds.has(c.parentId))c.parentId=null;});
 
+  // Migration: gastos directamente bajo "Restaurantes" (categoría padre) → "Salidas / Juntadas"
+  (S.gastos||[]).forEach(g=>{
+    if(g.category==='Restaurantes') g.category='Salidas / Juntadas';
+  });
+
   // Always ensure credit gastos have a card assigned (idempotent migration)
   (S.gastos||[]).forEach(g=>{if(g.payType==='credit'&&!g.cardId)g.cardId='itau';});
 }
