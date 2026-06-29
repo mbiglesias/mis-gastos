@@ -2247,7 +2247,7 @@ function acreditarSalario() {
 
 function rSummary(){
   const gs=mGastos();
-  const debitGs=gs.filter(g=>g.payType!=='credit'); // pure debit only (card-debits move to cuotas)
+  const debitGs=gs.filter(g=>g.payType!=='credit'&&!g._isInstallment); // pure debit only
   const cardDebitGs=gs.filter(g=>g._isCardDebit); // suscripciones — now counted in cuotas
   const spent=debitGs.reduce((s,g)=>s+(+g.amount),0);
   const budgetSpent=debitGs.filter(g=>!g.isDebtPayment).reduce((s,g)=>s+(+g.amount),0);
@@ -2388,7 +2388,7 @@ function rSummary(){
 function rCatRows(){
   if(!window._catRowOpen)window._catRowOpen={};
   // Unified: debit + credit installments due this month, both under their original category
-  const debitGs=mGastos().filter(g=>(g.payType!=='credit'||g._isCardDebit)&&!g.isDebtPayment&&!g._isSaving);
+  const debitGs=mGastos().filter(g=>(g.payType!=='credit'||g._isCardDebit)&&!g.isDebtPayment&&!g._isSaving&&!g._isInstallment);
   const creditDueGs=crDue(CM,CY);
 
   function calcSpend(catName){
@@ -2779,7 +2779,7 @@ function rAlerts(){
 
   // Collect categories with budgets and check spend %
   const gs=mGastos();
-  const debitGs=gs.filter(g=>(g.payType!=='credit'||g._isCardDebit)&&!g.isDebtPayment);
+  const debitGs=gs.filter(g=>(g.payType!=='credit'||g._isCardDebit)&&!g.isDebtPayment&&!g._isInstallment);
   const crGs=crDue(CM,CY);
   const allGs=[...debitGs,...crGs];
 
@@ -2829,7 +2829,7 @@ window.dismissAlert=function(monthKey,idx){
   const con=document.getElementById('alertsContainer');
   const btns=con?con.querySelectorAll('button[onclick]'):[];
   // Re-resolve by index from current alerts
-  const gs=mGastos();const debitGs=gs.filter(g=>g.payType!=='credit'||g._isCardDebit);const crGs=crDue(CM,CY);const allGs=[...debitGs,...crGs];
+  const gs=mGastos();const debitGs=gs.filter(g=>(g.payType!=='credit'||g._isCardDebit)&&!g._isInstallment);const crGs=crDue(CM,CY);const allGs=[...debitGs,...crGs];
   const dismissed=(S.dismissedAlerts&&S.dismissedAlerts[monthKey])||[];
   const alerts=[];
   S.categories.forEach(cat=>{const bu=getBudgetUSD(cat);if(!bu||bu<=0)return;if(dismissed.includes(cat.name))return;const sp=allGs.filter(g=>g.category===cat.name).reduce((s,g)=>s+(g._cuota||+g.amount),0);if(Math.round(sp*100)>Math.round(bu*100))alerts.push(cat.name);});
