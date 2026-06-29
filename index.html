@@ -2394,6 +2394,7 @@ function rCatRows(){
   function calcSpend(catName){
     const debit=debitGs.filter(g=>g.category===catName).reduce((s,g)=>s+(+g.amount),0);
     const credit=creditDueGs.filter(g=>g.category===catName).reduce((s,g)=>s+(g._cuota||+g.amount/(+g.installments||1)),0);
+    if(catName==='Peya')console.log('calcSpend Peya — debitGs:',debitGs.filter(g=>g.category===catName).map(g=>({desc:g.desc,amt:g.amount,date:g.date,isInst:g._isInstallment})),'credit:',creditDueGs.filter(g=>g.category===catName).map(g=>({desc:g.desc,amt:g._cuota||g.amount})),'total:',debit+credit);
     return debit+credit;
   }
 
