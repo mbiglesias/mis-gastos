@@ -2015,7 +2015,9 @@ function rTxList(){
       const debitTotal=gs.filter(g=>g.payType!=='credit'&&!g.isDebtPayment&&!g._isCardDebit&&!g._isInstallment).reduce((s,g)=>s+(+g.amount),0);
       const debtTotal=gs.filter(g=>g.isDebtPayment).reduce((s,g)=>s+(+g.amount),0);
       const installmentTotal=gs.filter(g=>g._isInstallment).reduce((s,g)=>s+(g._cuota||g.amount/(g._instTotal||1)),0);
-      // creditTotal = crDue(mes siguiente) + suscripciones del mes siguiente
+      const cardDebitTotal=gs.filter(g=>g._isCardDebit).reduce((s,g)=>s+(+g.amount),0);
+      const creditPurchaseTotal=gs.filter(g=>g._creditPurchase).reduce((s,g)=>s+(g._cuota||g.amount/(g._instTotal||1)),0);
+      // creditTotal global (only for Todos view)
       const nextM2=CM===11?0:CM+1, nextY2=CM===11?CY+1:CY;
       const _savCMx=CM,_savCYx=CY;
       CM=nextM2;CY=nextY2;
@@ -2023,8 +2025,12 @@ function rTxList(){
       CM=_savCMx;CY=_savCYx;
       const crDueNext=crDue(nextM2,nextY2).reduce((s,g)=>s+(g._cuota||g.amount/(+g.installments||1)),0);
       const creditTotal=crDueNext+cardDebitNext;
-      const total=debitTotal+installmentTotal+creditTotal;
-      const count=gs.filter(g=>!g._isInstallment).length+gs.filter(g=>g._isInstallment).length;
+      // When filtered: sum only what's in gs (debit + installments + card-debits + credit purchases)
+      const isFilteredView=filt!=='Todos'||q;
+      const total=isFilteredView
+        ? debitTotal+installmentTotal+cardDebitTotal+creditPurchaseTotal
+        : debitTotal+creditTotal;
+      const count=gs.length;
       const label=q?`"${q}"`:filt!=='Todos'?filt:'';
       let summary='';
       if(filt==='Todos'&&!q){
