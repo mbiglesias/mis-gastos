@@ -2299,7 +2299,7 @@ function rSummary(){
   const savedThisMonth=S.goals.reduce((s,g)=>{
     if(g.noDisponible)return s;
     const entries=g.entries||[];
-    return s+entries.filter(e=>{const d=new Date(e.date+'T12:00:00');return d.getMonth()===CM&&d.getFullYear()===CY&&+e.amount>0;}).reduce((a,e)=>a+(+e.amount),0);
+    return s+entries.filter(e=>{const d=new Date(e.date+'T12:00:00');return d.getMonth()===CM&&d.getFullYear()===CY;}).reduce((a,e)=>a+(+e.amount),0);
   },0);
   const left=totalIncome-spent-savedThisMonth-creditThisMonth;
 
@@ -3031,7 +3031,7 @@ function confirmQuickSaving(){
   if(!g.entries)g.entries=[];
   g.entries.push({date:new Date().toISOString().slice(0,10),amount:finalAmt,note});
   g.saved=(+g.saved||0)+finalAmt;
-  save();rSavings();closeM('mQuickSaving');
+  save();rSavings();rSummary();closeM('mQuickSaving');
   toast(type==='withdrawal'?`Retiro registrado en ${g.name}`:`Ahorro guardado en ${g.name}`);
 }
 
@@ -3416,7 +3416,7 @@ function delGoalEntry(goalIdx,entryIdx){
   if(!confirm(`¿Eliminar este ahorro de ${fmt(entry.amount)}?`))return;
   goal.entries.splice(entryIdx,1);
   goal.saved=goal.entries.reduce((s,e)=>s+(+e.amount),0);
-  save();rSavings();rCasa();toast('Entrada eliminada');
+  save();rSavings();rCasa();rSummary();toast('Entrada eliminada');
 }
 
 // ============================================================
@@ -3989,7 +3989,7 @@ function confirmAddGoal(){
   }
   goal.entries.push({id:Date.now().toString(),amount:amtUSD,date,note,currency:txCur.addgoal,origAmount:v,tcAtSave:txCur.addgoal==='UYU'?XR:null});
   goal.saved=goal.entries.reduce((s,e)=>s+(+e.amount),0);
-  save();rSavings();rCasa();closeM('mAddGoal');
+  save();rSavings();rCasa();rSummary();closeM('mAddGoal');
   toast(_isWithdrawal?'Retiro registrado ✓':'Ahorro registrado ✓');
 }
 
@@ -4029,7 +4029,7 @@ function saveEditGoalEntry(){
   entry.currency=txCur.editentry;
   entry.tcAtSave=txCur.editentry==='UYU'?XR:null;
   goal.saved=goal.entries.reduce((s,e)=>s+(+e.amount),0);
-  save();rSavings();rCasa();closeM('mEditGoalEntry');toast('Entrada actualizada ✓');
+  save();rSavings();rCasa();rSummary();closeM('mEditGoalEntry');toast('Entrada actualizada ✓');
 }
 function delGoal(i){if(!confirm(`¿Eliminar "${S.goals[i].name}"?`))return;S.goals.splice(i,1);save();rSavings();rCasa();toast('Objetivo eliminado');}
 
