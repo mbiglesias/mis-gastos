@@ -1272,12 +1272,6 @@ onAuthStateChanged(auth, (user) => {
           <input type="checkbox" id="mRecurring" style="width:16px;height:16px;accent-color:var(--accent)">
           Pago recurrente (se repite cada mes)
         </label>
-        <div id="debtLinkRow" style="display:none;margin-bottom:8px">
-          <div class="fl" style="margin-bottom:4px">Pago de deuda</div>
-          <select class="fi" id="mDebtLink" style="width:100%">
-            <option value="">— No vincular —</option>
-          </select>
-        </div>
         <button class="btn bp" onclick="goConfirm('manual')" style="width:100%">Agregar gasto</button>
       </div>
     </div>
@@ -1737,11 +1731,6 @@ function ensureDefaults() {
   const validCatIds=new Set(S.categories.map(c=>c.id||c.name).filter(Boolean));
   S.categories.forEach(c=>{if(c.parentId&&!validCatIds.has(c.parentId))c.parentId=null;});
 
-  // Migration: gastos directamente bajo "Restaurantes" (categoría padre) → "Salidas / Juntadas"
-  (S.gastos||[]).forEach(g=>{
-    if(g.category==='Restaurantes') g.category='Salidas / Juntadas';
-  });
-
   // Always ensure credit gastos have a card assigned (idempotent migration)
   (S.gastos||[]).forEach(g=>{if(g.payType==='credit'&&!g.cardId)g.cardId='itau';});
 }
@@ -1889,8 +1878,7 @@ function mGastos(){
   S.gastos.filter(g=>g.payType==='credit').forEach(g=>{
     const s=new Date(g.date+'T12:00:00');
     const inst=+g.installments||1;
-    // Cierre: compra antes del cierre → resumen ese mes → paga mes siguiente (mes+1)
-    // Compra después del cierre → resumen mes siguiente → paga dos meses después (mes+2)
+    // Cierre día 6: compra el 1-6 → cobra ese mismo mes; compra el 7+ → cobra mes siguiente
     const firstCuotaMonth = (function(d,s){var cd=getClosingDay(d,s.getMonth(),s.getFullYear());var eom=cd>=28;return s.getDate()<=cd?(eom?s.getMonth()+1:s.getMonth()):(eom?s.getMonth()+2:s.getMonth()+1);})(g.cardId,s);
     const firstCuotaYear = s.getFullYear() + Math.floor(firstCuotaMonth/12);
     const fm = ((firstCuotaMonth%12)+12)%12;
@@ -1926,25 +1914,14 @@ function rTxList(){
   if(!con)return;
   // Base: debit purchases + card-debit subscriptions from mGastos
   let gs=mGastos().filter(g=>!g._isSaving&&!g._isInstallment);
-  // Credit purchases MADE this month: show with badge "Cuota 1/X"
+  // Add credit purchases MADE this month (by purchase date, full amount)
   const creditBoughtThisMonth=S.gastos.filter(g=>{
     if(g.payType!=='credit')return false;
-    if(g.recurring&&(+g.installments||1)===1)return false;
+    if(g.recurring&&(+g.installments||1)===1)return false; // card-debits already in gs
     const d=new Date(g.date+'T12:00:00');
     return d.getMonth()===CM&&d.getFullYear()===CY;
-  }).map(g=>({...g,_creditPurchase:true,_instTotal:+g.installments||1,_cuota:g.amount/(+g.installments||1)}));
-  const creditBoughtIds=new Set(creditBoughtThisMonth.map(g=>g.id));
-  // Installments from previous months due this month — adjust date to current month for display
-  const prevInstallments=mGastos().filter(g=>{
-    if(!g._isInstallment)return false;
-    if(creditBoughtIds.has(g.id))return false; // already shown as _creditPurchase
-    return true;
-  }).map(g=>{
-    const s=new Date(g.date+'T12:00:00');
-    const virtDate=`${CY}-${String(CM+1).padStart(2,'0')}-${String(s.getDate()).padStart(2,'0')}`;
-    return {...g,date:virtDate};
-  });
-  gs=[...gs,...creditBoughtThisMonth,...prevInstallments];
+  }).map(g=>({...g,_creditPurchase:true,_instTotal:+g.installments||1}));
+  gs=[...gs,...creditBoughtThisMonth];
   const chWrap=document.getElementById('chipsWrap');
   if(!chWrap)return;
   const parents=getParents();
@@ -2012,24 +1989,14 @@ function rTxList(){
   const isFiltered=filt!=='Todos'||q;
   if(filtTotalEl){
     if(gs.length>0){
-      const debitTotal=gs.filter(g=>g.payType!=='credit'&&!g.isDebtPayment&&!g._isCardDebit&&!g._isInstallment).reduce((s,g)=>s+(+g.amount),0);
+      const debitTotal=gs.filter(g=>g.payType!=='credit'&&!g.isDebtPayment&&!g._isCardDebit).reduce((s,g)=>s+(+g.amount),0);
       const debtTotal=gs.filter(g=>g.isDebtPayment).reduce((s,g)=>s+(+g.amount),0);
-      const installmentTotal=gs.filter(g=>g._isInstallment).reduce((s,g)=>s+(g._cuota||g.amount/(g._instTotal||1)),0);
-      const cardDebitTotal=gs.filter(g=>g._isCardDebit).reduce((s,g)=>s+(+g.amount),0);
-      const creditPurchaseTotal=gs.filter(g=>g._creditPurchase).reduce((s,g)=>s+(g._cuota||g.amount/(g._instTotal||1)),0);
-      // creditTotal global (only for Todos view)
-      const nextM2=CM===11?0:CM+1, nextY2=CM===11?CY+1:CY;
-      const _savCMx=CM,_savCYx=CY;
-      CM=nextM2;CY=nextY2;
-      const cardDebitNext=mGastos().filter(g=>g._isCardDebit).reduce((s,g)=>s+(+g.amount),0);
-      CM=_savCMx;CY=_savCYx;
-      const crDueNext=crDue(nextM2,nextY2).reduce((s,g)=>s+(g._cuota||g.amount/(+g.installments||1)),0);
-      const creditTotal=crDueNext+cardDebitNext;
-      // When filtered: sum only what's in gs (debit + installments + card-debits + credit purchases)
-      const isFilteredView=filt!=='Todos'||q;
-      const total=isFilteredView
-        ? debitTotal+installmentTotal+cardDebitTotal+creditPurchaseTotal
-        : debitTotal+creditTotal;
+      // credit = card-debits (monthly) + first cuota of credit purchases
+      const creditTotal=gs.filter(g=>g._isCardDebit||g._creditPurchase).reduce((s,g)=>{
+        if(g._creditPurchase)return s+(+g.amount)/(g._instTotal||1);
+        return s+(+g.amount);
+      },0);
+      const total=debitTotal+creditTotal;
       const count=gs.length;
       const label=q?`"${q}"`:filt!=='Todos'?filt:'';
       let summary='';
@@ -2054,19 +2021,34 @@ function rTxList(){
     return;
   }
 
-  // Group by display date — prevInstallments already have date adjusted to current month
+  // Group by date: installments use compute date = purchase date + (instNum-1) months
   const grp={};
   gs.forEach(g=>{
-    if(!grp[g.date])grp[g.date]=[];
-    grp[g.date].push(g);
+    let key;
+    if(g._isInstallment){
+      const s=new Date(g.date+'T12:00:00');
+      const instNum=g._instNum||1;
+      const computeDate=new Date(s.getFullYear(),s.getMonth()+(instNum-1),s.getDate());
+      const iso=computeDate.toISOString().split('T')[0];
+      key=`inst-${iso}-${g.id}`;
+    } else {
+      key=g.date;
+    }
+    if(!grp[key])grp[key]=[];
+    grp[key].push(g);
   });
 
   let h='<div class="txl">';
-  const keys=Object.keys(grp).sort((a,b)=>b.localeCompare(a));
+  const keys=Object.keys(grp).sort((a,b)=>{
+    const da=a.startsWith('inst-')?a.slice(5,15):a;
+    const db=b.startsWith('inst-')?b.slice(5,15):b;
+    return db.localeCompare(da);
+  });
 
   keys.forEach(key=>{
     const its=grp[key];
-    const d=new Date(key+'T12:00:00');
+    const dateStr=key.startsWith('inst-')?key.slice(5,15):key;
+    const d=new Date(dateStr+'T12:00:00');
     const _isToday=d.toDateString()===new Date().toDateString();
     h+='<div class="tx-day"'+(_isToday?' data-today="1"':'')+'>'
       +'<div class="tx-day-lbl">'
@@ -2096,7 +2078,7 @@ function rTxList(){
         : g._isCardDebit
         ? `<span class="tx-badge tx-badge-db">Tarjeta</span>`
         : g._creditPurchase
-        ? `<span class="tx-badge tx-badge-cr">${g._instTotal>1?'Cuota 1/'+g._instTotal:'Crédito'}</span>`
+        ? `<span class="tx-badge tx-badge-cr">${g._instTotal>1?g._instTotal+' cuotas':'Crédito'}</span>`
         : isCr
           ? isInst
             ? `<span class="tx-badge tx-badge-cr">Cuota ${instNum}/${inst}</span>`
@@ -2230,15 +2212,6 @@ function calcPrevSobrante() {
   } catch(e) { CM = savCM; CY = savCY; return 0; }
 }
 
-window.toggleConsumiDetail=function(){
-  const el=document.getElementById('consumiDetail');
-  const ch=document.getElementById('consumiChevron');
-  if(!el)return;
-  const open=el.style.display==='block';
-  el.style.display=open?'none':'block';
-  if(ch)ch.textContent=open?'▸':'▾';
-};
-
 function setCrFilter(f){
   S._crFilter=(S._crFilter===f)?'all':f; // toggle off if same
   rCredit();
@@ -2254,7 +2227,7 @@ function acreditarSalario() {
 
 function rSummary(){
   const gs=mGastos();
-  const debitGs=gs.filter(g=>g.payType!=='credit'&&!g._isInstallment); // pure debit only
+  const debitGs=gs.filter(g=>g.payType!=='credit'); // pure debit only (card-debits move to cuotas)
   const cardDebitGs=gs.filter(g=>g._isCardDebit); // suscripciones — now counted in cuotas
   const spent=debitGs.reduce((s,g)=>s+(+g.amount),0);
   const budgetSpent=debitGs.filter(g=>!g.isDebtPayment).reduce((s,g)=>s+(+g.amount),0);
@@ -2299,7 +2272,7 @@ function rSummary(){
   const savedThisMonth=S.goals.reduce((s,g)=>{
     if(g.noDisponible)return s;
     const entries=g.entries||[];
-    return s+entries.filter(e=>{const d=new Date(e.date+'T12:00:00');return d.getMonth()===CM&&d.getFullYear()===CY;}).reduce((a,e)=>a+(+e.amount),0);
+    return s+entries.filter(e=>{const d=new Date(e.date+'T12:00:00');return d.getMonth()===CM&&d.getFullYear()===CY&&+e.amount>0;}).reduce((a,e)=>a+(+e.amount),0);
   },0);
   const left=totalIncome-spent-savedThisMonth-creditThisMonth;
 
@@ -2351,7 +2324,7 @@ function rSummary(){
   }
 
   const ahorrosEl=document.getElementById('sumAhorros');
-  if(ahorrosEl)ahorrosEl.textContent=savedWithCreditSavings>0?fmt(savedWithCreditSavings):'—';
+  if(ahorrosEl)ahorrosEl.textContent=savedThisMonth>0?fmt(savedThisMonth):'—';
   const deudaEl=document.getElementById('sumDeuda');
   const deudaCard=document.getElementById('sumDeudaCard');
   if(deudaEl)deudaEl.textContent=debtPaidThisMonthCalc>0?fmt(debtPaidThisMonthCalc):'—';
@@ -2395,7 +2368,7 @@ function rSummary(){
 function rCatRows(){
   if(!window._catRowOpen)window._catRowOpen={};
   // Unified: debit + credit installments due this month, both under their original category
-  const debitGs=mGastos().filter(g=>(g.payType!=='credit'||g._isCardDebit)&&!g.isDebtPayment&&!g._isSaving&&!g._isInstallment);
+  const debitGs=mGastos().filter(g=>(g.payType!=='credit'||g._isCardDebit)&&!g.isDebtPayment&&!g._isSaving);
   const creditDueGs=crDue(CM,CY);
 
   function calcSpend(catName){
@@ -2786,7 +2759,7 @@ function rAlerts(){
 
   // Collect categories with budgets and check spend %
   const gs=mGastos();
-  const debitGs=gs.filter(g=>(g.payType!=='credit'||g._isCardDebit)&&!g.isDebtPayment&&!g._isInstallment);
+  const debitGs=gs.filter(g=>(g.payType!=='credit'||g._isCardDebit)&&!g.isDebtPayment);
   const crGs=crDue(CM,CY);
   const allGs=[...debitGs,...crGs];
 
@@ -2836,7 +2809,7 @@ window.dismissAlert=function(monthKey,idx){
   const con=document.getElementById('alertsContainer');
   const btns=con?con.querySelectorAll('button[onclick]'):[];
   // Re-resolve by index from current alerts
-  const gs=mGastos();const debitGs=gs.filter(g=>(g.payType!=='credit'||g._isCardDebit)&&!g._isInstallment);const crGs=crDue(CM,CY);const allGs=[...debitGs,...crGs];
+  const gs=mGastos();const debitGs=gs.filter(g=>g.payType!=='credit'||g._isCardDebit);const crGs=crDue(CM,CY);const allGs=[...debitGs,...crGs];
   const dismissed=(S.dismissedAlerts&&S.dismissedAlerts[monthKey])||[];
   const alerts=[];
   S.categories.forEach(cat=>{const bu=getBudgetUSD(cat);if(!bu||bu<=0)return;if(dismissed.includes(cat.name))return;const sp=allGs.filter(g=>g.category===cat.name).reduce((s,g)=>s+(g._cuota||+g.amount),0);if(Math.round(sp*100)>Math.round(bu*100))alerts.push(cat.name);});
@@ -3031,7 +3004,7 @@ function confirmQuickSaving(){
   if(!g.entries)g.entries=[];
   g.entries.push({date:new Date().toISOString().slice(0,10),amount:finalAmt,note});
   g.saved=(+g.saved||0)+finalAmt;
-  save();rSavings();rSummary();closeM('mQuickSaving');
+  save();rSavings();closeM('mQuickSaving');
   toast(type==='withdrawal'?`Retiro registrado en ${g.name}`:`Ahorro guardado en ${g.name}`);
 }
 
@@ -3072,14 +3045,9 @@ function rCredit(){
     const paidAtViewed=Math.max(0,Math.min(inst,diff));
     return s+Math.max(0,inst-paidAtViewed)*cuota;
   },0);
-  // Total a pagar este mes = cuotas normales + suscripciones del mes ANTERIOR
-  // (suscripciones se cobran en X y se pagan en X+1, igual que las cuotas)
+  // Total a pagar este mes = cuotas normales + suscripciones en tarjeta
   const _allCrDue=crDue(CM,CY);
-  const prevM=CM===0?11:CM-1, prevY=CM===0?CY-1:CY;
-  const _savCM2=CM,_savCY2=CY;
-  CM=prevM;CY=prevY;
   const _allCardDebit=mGastos().filter(g=>g._isCardDebit);
-  CM=_savCM2;CY=_savCY2;
   const crDueItems=S._crCardFilt?_allCrDue.filter(g=>g.cardId===S._crCardFilt):_allCrDue;
   const cardDebitItems=S._crCardFilt?_allCardDebit.filter(g=>g.cardId===S._crCardFilt):_allCardDebit;
   const cardDebitTotal=cardDebitItems.reduce((s,g)=>s+(+g.amount),0);
@@ -3102,22 +3070,16 @@ function rCredit(){
     const d=new Date(g.date+'T12:00:00');
     return !(d.getMonth()===CM&&d.getFullYear()===CY);
   });
-  // Consumí este mes = cuotas de crDue(julio) que son compras de junio + suscripciones de junio
-  // Usar crDue(nextM) como fuente de verdad (excluye compras antes del cierre que van a crDue(junio))
-  const _allCardDebitThis=mGastos().filter(g=>g._isCardDebit);
-  const cardDebitThisAmt=_allCardDebitThis.reduce((s,g)=>s+(+g.amount),0);
-  const consumedInstAmt2=consumedInNext.reduce((s,g)=>s+(g._cuota||g.amount/(+g.installments||1)),0);
-  const consumedAmt=consumedInstAmt2+cardDebitThisAmt;
-
-  const previousAmt=previousInNext.reduce((s,g)=>s+(g._cuota||g.amount/(+g.installments||1)),0);
-  // totalNextMonth = crDue(julio) + suscripciones de julio
-  const _savCM3=CM,_savCY3=CY;
+  // Card-debits active in NEXT month (not current — a new sub after cutoff starts next month)
+  const _savCM=CM,_savCY=CY;
   CM=nextM;CY=nextY;
   const _allCardDebitNext=mGastos().filter(g=>g._isCardDebit);
-  CM=_savCM3;CY=_savCY3;
+  CM=_savCM;CY=_savCY;
   const cardDebitNextAmt=_allCardDebitNext.reduce((s,g)=>s+(+g.amount),0);
-  const crDueNextAmt=nextDue.reduce((s,g)=>s+(g._cuota||g.amount/(+g.installments||1)),0);
-  const totalNextMonth=crDueNextAmt+cardDebitNextAmt;
+  const consumedInstAmt2=consumedInNext.reduce((s,g)=>s+(g._cuota||g.amount/(+g.installments||1)),0);
+  const consumedAmt=consumedInstAmt2+cardDebitNextAmt; // June cuotas + subscriptions
+  const previousAmt=previousInNext.reduce((s,g)=>s+(g._cuota||g.amount/(+g.installments||1)),0);
+  const totalNextMonth=consumedAmt+previousAmt; // = full crDue(July) + subscriptions
 
   // ── Cards HTML ───────────────────────────────────────────────────────────
   const svgUp='<svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="#ef4444" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="7 17 17 7"/><polyline points="7 7 17 7 17 17"/></svg>';
@@ -3125,29 +3087,10 @@ function rCredit(){
 
   const crSummEl=document.getElementById('crModeSummary');
   if(crSummEl){
-    // Build consumed detail HTML — cuotas nuevas + suscripciones de tarjeta
-    const allConsumedItems=[
-      ...consumedInNext.map(g=>{
-        const inst=+g.installments||1;
-        const cuota=g._cuota||g.amount/inst;
-        return {desc:g.desc,amt:cuota,badge:inst>1?'Cuota 1/'+inst:'Crédito'};
-      }),
-      ..._allCardDebitThis.map(g=>({desc:g.desc,amt:+g.amount,badge:'Tarjeta'}))
-    ];
-    const consumedDetailHTML=allConsumedItems.length===0?'':allConsumedItems.map((item,i)=>
-      '<div style="display:flex;align-items:center;justify-content:space-between;padding:7px 0'+(i>0?';border-top:1px solid var(--border)':'')+'">'+
-        '<div style="display:flex;align-items:center;gap:6px;flex:1;min-width:0">'+
-          '<span class="tx-badge '+(item.badge==='Tarjeta'?'tx-badge-db':'tx-badge-cr')+'" style="flex-shrink:0">'+item.badge+'</span>'+
-          '<div style="font-size:12px;font-weight:600;color:var(--text);white-space:nowrap;overflow:hidden;text-overflow:ellipsis">'+item.desc+'</div>'+
-        '</div>'+
-        '<div style="font-size:12px;font-weight:700;color:var(--text);margin-left:8px;flex-shrink:0">'+fmt(item.amt)+'</div>'+
-      '</div>'
-    ).join('');
-
     crSummEl.innerHTML=
       '<div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-bottom:12px">'+
-        // Consumí este mes — tappable
-        '<div class="r-card" style="padding:14px;cursor:pointer" onclick="toggleConsumiDetail()">'+
+        // Consumí este mes
+        '<div class="r-card" style="padding:14px">'+
           '<div class="r-row" style="margin-bottom:8px">'+
             '<div class="r-label">Consumí en '+MOS[CM]+'</div>'+
             '<div class="r-icon" style="width:28px;height:28px;border-radius:7px;background:rgba(239,68,68,.1);display:flex;align-items:center;justify-content:center">'+svgUp+'</div>'+
@@ -3157,7 +3100,6 @@ function rCredit(){
             (previousAmt>0?'+ '+fmt(previousAmt)+' cuotas activas':'nuevas cuotas '+MOS[CM])+
           '</div>'+
           (previousAmt>0?'<div style="font-size:11px;font-weight:700;color:var(--accent);margin-top:3px">= '+fmt(totalNextMonth)+' en '+MOS[nextM]+'</div>':'')+
-          (allConsumedItems.length>0?'<div style="font-size:10px;color:var(--text-muted);margin-top:6px;display:flex;align-items:center;gap:3px"><span id="consumiChevron">▸</span> ver detalle</div>':'')+
         '</div>'+
         // Pago este mes
         '<div class="r-card" style="padding:14px">'+
@@ -3168,14 +3110,7 @@ function rCredit(){
           '<div style="font-size:22px;font-weight:800;color:var(--text);letter-spacing:-.5px">'+fmt(pagoAmt)+'</div>'+
           '<div style="font-size:11px;color:var(--text-muted);margin-top:3px">'+thisMonCount+' cuota'+(thisMonCount!==1?'s':'')+' que vencen</div>'+
         '</div>'+
-      '</div>'+
-      // Detalle expandible de Consumí
-      (allConsumedItems.length>0?
-        '<div id="consumiDetail" style="display:none;background:var(--white);border:1px solid var(--border);border-radius:var(--R);padding:12px 14px;margin-bottom:12px">'+
-          '<div style="font-size:11px;font-weight:700;color:var(--text-muted);text-transform:uppercase;letter-spacing:.5px;margin-bottom:4px">Compras de '+MOS[CM]+' → resumen de '+MOS[nextM]+'</div>'+
-          consumedDetailHTML+
-        '</div>'
-      :'');
+      '</div>';
   }
 
   // ── Card filter chips only ────────────────────────────────────────────────
@@ -3201,20 +3136,12 @@ function rCredit(){
   } else if(disclaimer) disclaimer.style.display='none';
   if(!displayActive.length){con.innerHTML='<div class="empty"><div class="ee" style="font-size:32px">✓</div><div class="et">Sin cuotas activas</div><div class="es">Tus compras en cuotas aparecen acá</div></div>';return;}
 
-  // Group by cuota date (purchase date shifted forward by paid cuotas)
+  // Group by purchase date
   const crGrp={};
   displayActive.forEach(g=>{
-    const inst=+g.installments||1;
-    const s=new Date(g.date+'T12:00:00');
-    const firstM=(function(d2,s2){var cd=getClosingDay(d2,s2.getMonth(),s2.getFullYear());var eom=cd>=28;return s2.getDate()<=cd?(eom?s2.getMonth()+1:s2.getMonth()):(eom?s2.getMonth()+2:s2.getMonth()+1);})(g.cardId,s);
-    const firstY=s.getFullYear()+Math.floor(firstM/12);
-    const fm=((firstM%12)+12)%12;
-    const diff=(CY-firstY)*12+(CM-fm);
-    const paid=Math.max(0,Math.min(inst,diff));
-    const cuotaDate=new Date(s.getFullYear(),s.getMonth()+paid,s.getDate());
-    const key=cuotaDate.toISOString().split('T')[0];
+    const key=g.date;
     if(!crGrp[key])crGrp[key]=[];
-    crGrp[key].push({...g,_paidCount:paid});
+    crGrp[key].push(g);
   });
   const crKeys=Object.keys(crGrp).sort((a,b)=>b.localeCompare(a));
 
@@ -3228,7 +3155,11 @@ function rCredit(){
       const inst=+g.installments||1;
       const cuota=g.amount/inst;
       const s=new Date(g.date+'T12:00:00');
-      const paid=g._paidCount!==undefined?g._paidCount:(()=>{const s2=new Date(g.date+'T12:00:00');const firstM=(function(d2,s3){var cd=getClosingDay(d2,s3.getMonth(),s3.getFullYear());return s3.getDate()<=cd?s3.getMonth()+1:s3.getMonth()+2;})(g.cardId,s2);const firstY=s2.getFullYear()+Math.floor(firstM/12);const fm=((firstM%12)+12)%12;const diff=(CY-firstY)*12+(CM-fm);return Math.max(0,Math.min(inst,diff));})();
+      const firstM=(function(d2,s2){var cd=getClosingDay(d2,s2.getMonth(),s2.getFullYear());var eom=cd>=28;return s2.getDate()<=cd?(eom?s2.getMonth()+1:s2.getMonth()):(eom?s2.getMonth()+2:s2.getMonth()+1);})(g.cardId,s);
+      const firstY=s.getFullYear()+Math.floor(firstM/12);
+      const fm=((firstM%12)+12)%12;
+      const diff=(CY-firstY)*12+(CM-fm);
+      const paid=Math.max(0,Math.min(inst,diff));
       const cat=S.categories.find(c=>c.name===g.category);
       const border=gi>0?'border-top:1px solid var(--border-light,#f3f3f3)':'';
       return '<div class="tx-day-item" style="'+border+'" onclick="openGastoDetail(&apos;'+g.id+'&apos;,false,'+(paid+1)+','+inst+')">'+
@@ -3416,7 +3347,7 @@ function delGoalEntry(goalIdx,entryIdx){
   if(!confirm(`¿Eliminar este ahorro de ${fmt(entry.amount)}?`))return;
   goal.entries.splice(entryIdx,1);
   goal.saved=goal.entries.reduce((s,e)=>s+(+e.amount),0);
-  save();rSavings();rCasa();rSummary();toast('Entrada eliminada');
+  save();rSavings();rCasa();toast('Entrada eliminada');
 }
 
 // ============================================================
@@ -3900,15 +3831,13 @@ function confirmPay(){
   const payType=isCr?'credit':'debit';
   const inst=isCr?parseInt(document.getElementById('instSel').value):1;
   const g=pendC;
-  const debtSel=document.getElementById('mDebtLink');
-  const debtId=debtSel&&debtSel.value?debtSel.value:null;
   const cardSel=document.getElementById('mCardId');
   const cardId=payType==='credit'&&cardSel&&cardSel.value?cardSel.value:undefined;
-  S.gastos.push({id:Date.now()+Math.random().toString(36).substr(2,5),desc:g.desc,amount:+g.amount,category:g.category,date:g.date,note:g.note||'',payType,installments:inst,recurring:g.recurring||false,origAmount:g.origAmount,origCur:g.origCur,tcAtSave:g.origCur==='UYU'?XR:null,debtId:debtId||undefined,cardId:cardId||undefined});
+  S.gastos.push({id:Date.now()+Math.random().toString(36).substr(2,5),desc:g.desc,amount:+g.amount,category:g.category,date:g.date,note:g.note||'',payType,installments:inst,recurring:g.recurring||false,origAmount:g.origAmount,origCur:g.origCur,tcAtSave:g.origCur==='UYU'?XR:null,cardId:cardId||undefined});
   save();renderAll();closeM('mPayType');
   toast(payType==='credit'&&inst>1?`Crédito en ${inst} cuotas registrado ✓`:'Gasto agregado ✓');
   if(pendSrc==='scan')cancelPrev();
-  else{['md','ma','mn'].forEach(id=>document.getElementById(id).value='');const rc=document.getElementById('mRecurring');if(rc)rc.checked=false;const dl=document.getElementById('mDebtLink');if(dl)dl.value='';const cs=document.getElementById('mCardId');if(cs)cs.value='';}
+  else{['md','ma','mn'].forEach(id=>document.getElementById(id).value='');const rc=document.getElementById('mRecurring');if(rc)rc.checked=false;const cs=document.getElementById('mCardId');if(cs)cs.value='';}
   pendC=null;tab('gastos');
 }
 
@@ -3989,7 +3918,7 @@ function confirmAddGoal(){
   }
   goal.entries.push({id:Date.now().toString(),amount:amtUSD,date,note,currency:txCur.addgoal,origAmount:v,tcAtSave:txCur.addgoal==='UYU'?XR:null});
   goal.saved=goal.entries.reduce((s,e)=>s+(+e.amount),0);
-  save();rSavings();rCasa();rSummary();closeM('mAddGoal');
+  save();rSavings();rCasa();closeM('mAddGoal');
   toast(_isWithdrawal?'Retiro registrado ✓':'Ahorro registrado ✓');
 }
 
@@ -4029,7 +3958,7 @@ function saveEditGoalEntry(){
   entry.currency=txCur.editentry;
   entry.tcAtSave=txCur.editentry==='UYU'?XR:null;
   goal.saved=goal.entries.reduce((s,e)=>s+(+e.amount),0);
-  save();rSavings();rCasa();rSummary();closeM('mEditGoalEntry');toast('Entrada actualizada ✓');
+  save();rSavings();rCasa();closeM('mEditGoalEntry');toast('Entrada actualizada ✓');
 }
 function delGoal(i){if(!confirm(`¿Eliminar "${S.goals[i].name}"?`))return;S.goals.splice(i,1);save();rSavings();rCasa();toast('Objetivo eliminado');}
 
@@ -4080,14 +4009,8 @@ function toggleEgInstall(){
   const egCS=document.getElementById('egCardId');
   if(egCR&&egCS){
     egCR.style.display=pt==='credit'?'block':'none';
-    // Solo repoblar si el select está vacío (no tiene opciones de tarjetas cargadas)
-    // Así no se pisa la tarjeta ya seleccionada al abrir el modal de edición
-    if(pt==='credit'&&egCS.options.length<=1){
-      const cur=egCS.value;
-      egCS.innerHTML='<option value="">— Sin tarjeta —</option>'+
-        getCards().map(c=>`<option value="${c.id}">${c.name}</option>`).join('');
-      if(cur)egCS.value=cur;
-    }
+    if(pt==='credit')egCS.innerHTML='<option value="">— Sin tarjeta —</option>'+
+      getCards().map(c=>`<option value="${c.id}">${c.name}</option>`).join('');
   }
   const isCr=pt==='credit';
   document.getElementById('egInstallField').style.opacity=isCr?'1':'0.3';
