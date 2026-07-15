@@ -1726,6 +1726,14 @@ function ensureDefaults() {
   if (!S.salaryCredited) S.salaryCredited = {};
   if (!S.sobrantes) S.sobrantes = {};
   if (!S.cards) S.cards = [];
+  // One-time migration: Casa tracker used to live only in device-local localStorage —
+  // pull it into S.casa so it starts syncing via save()/Firebase like everything else.
+  if (!S.casa) {
+    const legacyCasa = localStorage.getItem('mg_casa');
+    if (legacyCasa) {
+      try { S.casa = JSON.parse(legacyCasa); } catch(e) {}
+    }
+  }
   // One-time migration: assign Itaú to credit gastos without cardId
   // Fix orphaned categories: parentId pointing to a non-existent category
   const validCatIds=new Set(S.categories.map(c=>c.id||c.name).filter(Boolean));
@@ -5673,15 +5681,14 @@ const CASA_CONCEPTOS_DEFAULT=[
 ];
 
 function getCasaState(){
-  const saved=localStorage.getItem('mg_casa');
-  if(saved)return JSON.parse(saved);
+  if(S.casa)return S.casa;
   return{
     conceptos:JSON.parse(JSON.stringify(CASA_CONCEPTOS_DEFAULT)),
     aportePadres:30000,
     boleto:29500
   };
 }
-function saveCasaState(state){localStorage.setItem('mg_casa',JSON.stringify(state));}
+function saveCasaState(state){S.casa=state;save();}
 function saveCasaConfig(){
   const state=getCasaState();
   const cn=getCasaState();
