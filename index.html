@@ -1696,19 +1696,36 @@ function updTCDisplay(){
 // PERSIST — localStorage + Firebase cloud sync
 // ============================================================
 let _saveTimer = null;
+let _pendingCloudSave = false;
 
 function save() {
   localStorage.setItem('mg4', JSON.stringify(S));
   clearTimeout(_saveTimer);
-  _saveTimer = setTimeout(async () => {
-    if (window._fbSave) {
-      try { await window._fbSave(JSON.stringify(S)); }
-      catch(e) { console.error('Cloud save error:', e); }
-    }
-  }, 1200);
+  _pendingCloudSave = true;
+  _saveTimer = setTimeout(flushCloudSave, 1200);
   // Sync to Google Sheets if connected
   triggerSheetsSync();
 }
+
+async function flushCloudSave() {
+  clearTimeout(_saveTimer);
+  if (!_pendingCloudSave) return;
+  if (window._fbSave) {
+    try {
+      await window._fbSave(JSON.stringify(S));
+      _pendingCloudSave = false;
+    }
+    catch(e) { console.error('Cloud save error:', e); }
+  }
+}
+
+// Flush any pending cloud save the moment the tab/app is backgrounded or closed —
+// otherwise the 1.2s debounce can get killed by the browser before it fires
+// (common on mobile when switching apps right after editing).
+document.addEventListener('visibilitychange', () => {
+  if (document.visibilityState === 'hidden') flushCloudSave();
+});
+window.addEventListener('pagehide', () => { flushCloudSave(); });
 
 function ensureDefaults() {
   if (!S.goals) S.goals = [];
@@ -1774,17 +1791,23 @@ function init() {
       // Load from cloud, merge into S
       if (window._fbLoad) {
         try {
-          const json = await window._fbLoad();
-          if (json) {
-            const data = JSON.parse(json);
-            // Only merge if cloud has actual data
-            if (data.gastos || data.categories || data.salary) {
-              Object.assign(S, data);
-              ensureDefaults();
-              // Save AFTER ensureDefaults so migration is persisted
-              const migratedJson = JSON.stringify(S);
-              localStorage.setItem('mg4', migratedJson);
-              if(window._fbSave) window._fbSave(migratedJson).catch(e=>console.error('Migration save error:',e));
+          if (_pendingCloudSave) {
+            // There's a local edit that hasn't reached the cloud yet — send it
+            // first instead of letting a cloud fetch overwrite it.
+            await flushCloudSave();
+          } else {
+            const json = await window._fbLoad();
+            if (json) {
+              const data = JSON.parse(json);
+              // Only merge if cloud has actual data
+              if (data.gastos || data.categories || data.salary) {
+                Object.assign(S, data);
+                ensureDefaults();
+                // Save AFTER ensureDefaults so migration is persisted
+                const migratedJson = JSON.stringify(S);
+                localStorage.setItem('mg4', migratedJson);
+                if(window._fbSave) window._fbSave(migratedJson).catch(e=>console.error('Migration save error:',e));
+              }
             }
           }
         } catch(e) { console.error('Cloud load error:', e); }
