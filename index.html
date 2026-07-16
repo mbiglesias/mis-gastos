@@ -1505,16 +1505,8 @@ onAuthStateChanged(auth, (user) => {
         </div>
         <div style="padding:12px 14px;display:flex;flex-direction:column;gap:12px">
           <div>
-            <div style="font-size:11px;color:var(--text-muted);margin-bottom:4px">Boleto de reserva (USD)</div>
-            <input type="number" class="fi" id="casaBoleto" oninput="saveCasaConfig();rCasa()">
-          </div>
-          <div>
-            <div style="font-size:11px;color:var(--text-muted);margin-bottom:4px">Ahorros propios (USD) <span style="font-size:9px;background:rgba(34,197,94,.08);color:#16a34a;border-radius:4px;padding:1px 5px;font-weight:700">live</span></div>
+            <div style="font-size:11px;color:var(--text-muted);margin-bottom:4px">En el bolsillo "Ahorro mio" (USD) <span style="font-size:9px;background:rgba(34,197,94,.08);color:#16a34a;border-radius:4px;padding:1px 5px;font-weight:700">live</span></div>
             <div style="padding:10px 12px;background:var(--bg);border-radius:var(--r);font-size:14px;font-weight:700;color:var(--green)" id="casaAhorrosLive">—</div>
-          </div>
-          <div>
-            <div style="font-size:11px;color:var(--text-muted);margin-bottom:4px">Préstamo padres (USD)</div>
-            <input type="number" class="fi" id="casaPrestamoPadres" oninput="saveCasaConfig();rCasa()">
           </div>
           <!-- Extras tengo -->
           <div id="casaExtrasTengo"></div>
@@ -1533,24 +1525,39 @@ onAuthStateChanged(auth, (user) => {
           <span style="font-size:13px;font-weight:700" id="casaTotalNecesito">—</span>
         </div>
         <div style="padding:12px 14px;display:flex;flex-direction:column;gap:12px">
-          <div>
-            <div style="font-size:11px;color:var(--text-muted);margin-bottom:4px">Líquido para hipoteca (USD)</div>
+          <div id="casaRow-hipoteca">
+            <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:4px">
+              <div style="font-size:11px;color:var(--text-muted)">Líquido para hipoteca (USD)</div>
+              <label style="display:flex;align-items:center;gap:4px;font-size:10px;color:var(--text-muted);cursor:pointer;white-space:nowrap"><input type="checkbox" onchange="toggleCasaPaid('hipoteca','Líquido para hipoteca')" style="cursor:pointer;width:14px;height:14px">Pagado</label>
+            </div>
             <input type="number" class="fi" id="casaHipoteca" oninput="saveCasaConfig();rCasa()">
           </div>
-          <div>
-            <div style="font-size:11px;color:var(--text-muted);margin-bottom:4px">Comisión inmobiliaria (USD)</div>
+          <div id="casaRow-comision">
+            <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:4px">
+              <div style="font-size:11px;color:var(--text-muted)">Comisión inmobiliaria (USD)</div>
+              <label style="display:flex;align-items:center;gap:4px;font-size:10px;color:var(--text-muted);cursor:pointer;white-space:nowrap"><input type="checkbox" onchange="toggleCasaPaid('comision','Comisión inmobiliaria')" style="cursor:pointer;width:14px;height:14px">Pagado</label>
+            </div>
             <input type="number" class="fi" id="casaComision" oninput="saveCasaConfig();rCasa()">
           </div>
-          <div>
-            <div style="font-size:11px;color:var(--text-muted);margin-bottom:4px">Conexiones (USD)</div>
+          <div id="casaRow-conexiones">
+            <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:4px">
+              <div style="font-size:11px;color:var(--text-muted)">Conexiones (USD)</div>
+              <label style="display:flex;align-items:center;gap:4px;font-size:10px;color:var(--text-muted);cursor:pointer;white-space:nowrap"><input type="checkbox" onchange="toggleCasaPaid('conexiones','Conexiones')" style="cursor:pointer;width:14px;height:14px">Pagado</label>
+            </div>
             <input type="number" class="fi" id="casaConexiones" oninput="saveCasaConfig();rCasa()">
           </div>
-          <div>
-            <div style="font-size:11px;color:var(--text-muted);margin-bottom:4px">Gastos notariales (USD)</div>
+          <div id="casaRow-notariales">
+            <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:4px">
+              <div style="font-size:11px;color:var(--text-muted)">Gastos notariales (USD)</div>
+              <label style="display:flex;align-items:center;gap:4px;font-size:10px;color:var(--text-muted);cursor:pointer;white-space:nowrap"><input type="checkbox" onchange="toggleCasaPaid('notariales','Gastos notariales')" style="cursor:pointer;width:14px;height:14px">Pagado</label>
+            </div>
             <input type="number" class="fi" id="casaNotariales" oninput="saveCasaConfig();rCasa()">
           </div>
-          <div>
-            <div style="font-size:11px;color:var(--text-muted);margin-bottom:4px">Gastos escrituras (USD) <span style="font-size:9px;background:rgba(249,115,22,.1);color:var(--orange);border-radius:4px;padding:1px 5px">excluido en "sin escrituras"</span></div>
+          <div id="casaRow-escrituras">
+            <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:4px">
+              <div style="font-size:11px;color:var(--text-muted)">Gastos escrituras (USD) <span style="font-size:9px;background:rgba(249,115,22,.1);color:var(--orange);border-radius:4px;padding:1px 5px">excluido en "sin escrituras"</span></div>
+              <label style="display:flex;align-items:center;gap:4px;font-size:10px;color:var(--text-muted);cursor:pointer;white-space:nowrap"><input type="checkbox" onchange="toggleCasaPaid('escrituras','Gastos escrituras')" style="cursor:pointer;width:14px;height:14px">Pagado</label>
+            </div>
             <input type="number" class="fi" id="casaEscrituras" oninput="saveCasaConfig();rCasa()">
           </div>
           <!-- Extras necesito -->
@@ -1559,6 +1566,11 @@ onAuthStateChanged(auth, (user) => {
         <div style="padding:0 14px 14px">
           <button onclick="addCasaExtra('necesito')" style="width:100%;padding:9px;border-radius:var(--r);border:1px dashed var(--border);background:transparent;font-family:inherit;font-size:12px;font-weight:600;color:var(--text-muted);cursor:pointer;transition:all .15s" onmouseover="this.style.borderColor='var(--accent)';this.style.color='var(--accent)'" onmouseout="this.style.borderColor='var(--border)';this.style.color='var(--text-muted)'">+ Agregar gasto</button>
         </div>
+      </div>
+      <!-- Pagados -->
+      <div id="casaPagadosSection" style="display:none;background:var(--white);border-radius:var(--R);overflow:hidden;margin-bottom:8px">
+        <div style="padding:10px 14px;border-bottom:1px solid var(--border);font-size:12px;color:var(--text-muted)">Ya pagados (desde "Ahorro mio")</div>
+        <div id="casaPagadosList" style="padding:10px 14px 14px;display:flex;flex-direction:column;gap:10px"></div>
       </div>
     </div>
   </div>
@@ -5716,8 +5728,6 @@ function saveCasaConfig(){
   const state=getCasaState();
   const cn=getCasaState();
   const pn=(id,def)=>{const v=parseFloat(document.getElementById(id)?.value);return isNaN(v)?def:v;};
-  cn.boleto=pn('casaBoleto',29500);
-  cn.prestamoPadres=pn('casaPrestamoPadres',35000);
   cn.hipoteca=pn('casaHipoteca',81493);
   cn.comision=pn('casaComision',9726);
   cn.conexiones=pn('casaConexiones',5900);
@@ -5766,18 +5776,131 @@ function removeCasaExtra(tipo,id){
 }
 
 function renderCasaExtras(tipo,cn){
+  cn=cn||getCasaState();
   const key='extra'+tipo[0].toUpperCase()+tipo.slice(1);
   const container=document.getElementById('casaExtras'+tipo[0].toUpperCase()+tipo.slice(1));
   if(!container)return;
-  const items=(cn||getCasaState())[key]||[];
+  const fullList=cn[key]||[];
+  const items=tipo==='necesito'?fullList.filter(x=>!x.paid):fullList;
   if(!items.length){container.innerHTML='';return;}
-  container.innerHTML=items.map((item,i)=>
+  container.innerHTML=items.map((item)=>{
+    const i=fullList.indexOf(item);
+    const checkbox=tipo==='necesito'
+      ?'<div style="display:flex;justify-content:flex-end;margin-bottom:2px"><label style="display:flex;align-items:center;gap:4px;font-size:10px;color:var(--text-muted);cursor:pointer;white-space:nowrap"><input type="checkbox" onchange="toggleCasaExtraPaid('+item.id+')" style="cursor:pointer;width:14px;height:14px">Pagado</label></div>'
+      :'';
+    return checkbox+
     '<div style="display:grid;grid-template-columns:1fr auto auto;gap:6px;align-items:center;padding-top:4px">'+
       '<input type="text" class="fi" placeholder="Descripción" data-extra-lbl="'+i+'" value="'+item.label+'" oninput="saveCasaConfig();rCasa()" style="font-size:12px;padding:8px 10px">'+
       '<input type="number" class="fi" placeholder="0" data-extra-amt="'+i+'" value="'+(item.amount||'')+'" oninput="saveCasaConfig();rCasa()" style="font-size:12px;padding:8px 10px;width:100px">'+
       '<button onclick="removeCasaExtra(&apos;'+tipo+'&apos;,'+item.id+')" style="width:30px;height:36px;border-radius:var(--r);border:1px solid var(--border);background:var(--bg);cursor:pointer;display:flex;align-items:center;justify-content:center;flex-shrink:0;color:var(--text-muted)">'+
         '<svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>'+
       '</button>'+
+    '</div>';
+  }).join('');
+}
+
+function getCasaGoalIdx(){
+  return S.goals.findIndex(g=>g.name&&g.name.trim().toLowerCase()==='ahorro mio');
+}
+
+function toggleCasaPaid(key,label){
+  const cn=getCasaState();
+  if(!cn.pagados)cn.pagados={};
+  const gi=getCasaGoalIdx();
+  if(cn.pagados[key]){
+    // Undo: remove the withdrawal entry
+    if(gi>=0){
+      const goal=S.goals[gi];
+      goal.entries=(goal.entries||[]).filter(e=>e.id!==cn.pagados[key].entryId);
+      goal.saved=goal.entries.reduce((s,e)=>s+(+e.amount),0);
+    }
+    delete cn.pagados[key];
+    saveCasaState(cn);rSavings();rCasa();
+    toast('Pago deshecho');
+    return;
+  }
+  if(gi<0){
+    toast('Creá primero el bolsillo "Ahorro mio" en Ahorros');
+    rCasa();
+    return;
+  }
+  const amount=(+cn[key])||0;
+  if(amount<=0){
+    toast('Cargá un monto antes de marcar como pagado');
+    rCasa();
+    return;
+  }
+  const goal=S.goals[gi];
+  if(!goal.entries)goal.entries=[];
+  const entryId=Date.now().toString()+Math.random().toString(36).substr(2,4);
+  goal.entries.push({id:entryId,amount:-amount,date:new Date().toISOString().split('T')[0],note:'Pago casa: '+label,currency:'USD',origAmount:amount,tcAtSave:null});
+  goal.saved=goal.entries.reduce((s,e)=>s+(+e.amount),0);
+  cn.pagados[key]={entryId,amount,label};
+  saveCasaState(cn);rSavings();rCasa();
+  toast('Pago registrado — se retiró de "Ahorro mio" ✓');
+}
+
+function toggleCasaExtraPaid(id){
+  const cn=getCasaState();
+  const items=cn.extraNecesito||[];
+  const item=items.find(x=>x.id===id);
+  if(!item)return;
+  const gi=getCasaGoalIdx();
+  if(item.paid){
+    if(gi>=0){
+      const goal=S.goals[gi];
+      goal.entries=(goal.entries||[]).filter(e=>e.id!==item.entryId);
+      goal.saved=goal.entries.reduce((s,e)=>s+(+e.amount),0);
+    }
+    item.paid=false;delete item.entryId;
+    saveCasaState(cn);rSavings();rCasa();
+    toast('Pago deshecho');
+    return;
+  }
+  if(gi<0){
+    toast('Creá primero el bolsillo "Ahorro mio" en Ahorros');
+    rCasa();
+    return;
+  }
+  const amount=(+item.amount)||0;
+  if(amount<=0){
+    toast('Cargá un monto antes de marcar como pagado');
+    rCasa();
+    return;
+  }
+  const goal=S.goals[gi];
+  if(!goal.entries)goal.entries=[];
+  const entryId=Date.now().toString()+Math.random().toString(36).substr(2,4);
+  goal.entries.push({id:entryId,amount:-amount,date:new Date().toISOString().split('T')[0],note:'Pago casa: '+(item.label||'Extra'),currency:'USD',origAmount:amount,tcAtSave:null});
+  goal.saved=goal.entries.reduce((s,e)=>s+(+e.amount),0);
+  item.paid=true;item.entryId=entryId;
+  saveCasaState(cn);rSavings();rCasa();
+  toast('Pago registrado — se retiró de "Ahorro mio" ✓');
+}
+
+function renderCasaPagados(cn){
+  const el=document.getElementById('casaPagadosList');
+  const section=document.getElementById('casaPagadosSection');
+  if(!el||!section)return;
+  const pagados=cn.pagados||{};
+  const fixedLabels={hipoteca:'Líquido para hipoteca',comision:'Comisión inmobiliaria',conexiones:'Conexiones',notariales:'Gastos notariales',escrituras:'Gastos escrituras'};
+  const rows=[];
+  Object.keys(pagados).forEach(key=>{
+    rows.push({label:fixedLabels[key]||key,amount:pagados[key].amount,action:"toggleCasaPaid('"+key+"','"+(fixedLabels[key]||key)+"')"});
+  });
+  (cn.extraNecesito||[]).filter(x=>x.paid).forEach(item=>{
+    rows.push({label:item.label||'Extra',amount:item.amount,action:'toggleCasaExtraPaid('+item.id+')'});
+  });
+  if(!rows.length){section.style.display='none';el.innerHTML='';return;}
+  section.style.display='';
+  const fmtP=v=>'USD '+Math.round(v).toLocaleString('en-US');
+  el.innerHTML=rows.map(r=>
+    '<div style="display:flex;align-items:center;justify-content:space-between;font-size:12px">'+
+      '<span style="color:var(--text-muted)">'+r.label+'</span>'+
+      '<div style="display:flex;align-items:center;gap:10px">'+
+        '<span style="font-weight:700">'+fmtP(r.amount)+'</span>'+
+        '<button onclick="'+r.action+'" style="font-size:10px;color:var(--accent);background:none;border:none;cursor:pointer;font-family:inherit;text-decoration:underline">Deshacer</button>'+
+      '</div>'+
     '</div>'
   ).join('');
 }
@@ -5785,8 +5908,6 @@ function renderCasaExtras(tipo,cn){
 function rCasa(){
   const cn=getCasaState();
   const nd=(v,def)=>v==null||v===undefined?def:v;
-  const boleto=nd(cn.boleto,29500);
-  const prestamoPadres=nd(cn.prestamoPadres,35000);
   const hipoteca=nd(cn.hipoteca,81493);
   const comision=nd(cn.comision,9726);
   const conexiones=nd(cn.conexiones,5900);
@@ -5795,31 +5916,48 @@ function rCasa(){
 
   // Populate inputs without stealing focus
   const setInput=(id,v)=>{const el=document.getElementById(id);if(el&&!el.matches(':focus'))el.value=v;};
-  setInput('casaBoleto',boleto);
-  setInput('casaPrestamoPadres',prestamoPadres);
   setInput('casaHipoteca',hipoteca);
   setInput('casaComision',comision);
   setInput('casaConexiones',conexiones);
   setInput('casaNotariales',notariales);
   setInput('casaEscrituras',escrituras);
 
-  // Ahorros propios: sum of all bolsillos (not padres)
-  const ahorrosPropios=S.goals.reduce((s,g)=>{
-    if(g.name&&g.name.toLowerCase().includes('padres'))return s;
-    return s+(+g.saved||0);
-  },0);
+  // Lo que tengo: saldo en vivo del bolsillo único "Ahorro mio"
+  const casaGoalIdx=getCasaGoalIdx();
+  const ahorrosPropios=casaGoalIdx>=0?(+S.goals[casaGoalIdx].saved||0):0;
+
+  // Necesito: excluir ítems ya marcados como pagados
+  const pagados=cn.pagados||{};
+  const necesitoItems=[
+    {key:'hipoteca',amount:hipoteca,exSin:false},
+    {key:'comision',amount:comision,exSin:false},
+    {key:'conexiones',amount:conexiones,exSin:false},
+    {key:'notariales',amount:notariales,exSin:false},
+    {key:'escrituras',amount:escrituras,exSin:true},
+  ];
+  let necesitoCon=0,necesitaSin=0;
+  necesitoItems.forEach(it=>{
+    const rowEl=document.getElementById('casaRow-'+it.key);
+    const isPaid=!!pagados[it.key];
+    if(rowEl)rowEl.style.display=isPaid?'none':'';
+    if(isPaid)return;
+    necesitoCon+=it.amount;
+    if(!it.exSin)necesitaSin+=it.amount;
+  });
 
   // Extras
   const extraTengoSum=(cn.extraTengo||[]).reduce((s,x)=>s+(+x.amount||0),0);
-  const extraNeceSum=(cn.extraNecesito||[]).reduce((s,x)=>s+(+x.amount||0),0);
+  const extraNeceUnpaid=(cn.extraNecesito||[]).filter(x=>!x.paid);
+  const extraNeceSum=extraNeceUnpaid.reduce((s,x)=>s+(+x.amount||0),0);
+  necesitoCon+=extraNeceSum;
+  necesitaSin+=extraNeceSum;
+
   // Lo que tengo
-  const tengo=boleto+ahorrosPropios+prestamoPadres+extraTengoSum;
-  // Lo que necesito
-  const necesitoCon=hipoteca+comision+conexiones+notariales+escrituras+extraNeceSum;
-  const necesitaSin=hipoteca+comision+conexiones+notariales+extraNeceSum;
-  // Render extras
+  const tengo=ahorrosPropios+extraTengoSum;
+  // Render extras + pagados
   renderCasaExtras('tengo',cn);
   renderCasaExtras('necesito',cn);
+  renderCasaPagados(cn);
   // Diferencia
   const difCon=tengo-necesitoCon;
   const difSin=tengo-necesitaSin;
