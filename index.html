@@ -1955,21 +1955,10 @@ function rTxList(){
   const con=document.getElementById('txList');
   const chEl=document.getElementById('chips');
   if(!con)return;
-  // Base: debit purchases + card-debit subscriptions from mGastos
-  let gs=mGastos().filter(g=>!g._isSaving&&!g._isInstallment);
-  // Add credit purchases MADE this month (by purchase date, full amount)
-  const creditBoughtThisMonth=S.gastos.filter(g=>{
-    if(g.payType!=='credit')return false;
-    if(g.recurring&&(+g.installments||1)===1)return false; // card-debits already in gs
-    const d=new Date(g.date+'T12:00:00');
-    return d.getMonth()===CM&&d.getFullYear()===CY;
-  }).map(g=>({...g,_creditPurchase:true,_instTotal:+g.installments||1}));
-  gs=[...gs,...creditBoughtThisMonth];
-  // Cuotas due this month from credit purchases made in a PREVIOUS month
-  // (purchases made this month are already shown above via creditBoughtThisMonth)
-  const creditBoughtIds=new Set(creditBoughtThisMonth.map(g=>g.id));
-  const prevInstallments=mGastos().filter(g=>g._isInstallment&&!g._isSaving&&!creditBoughtIds.has(g.id));
-  gs=[...gs,...prevInstallments];
+  // Base: debits + card-debit subscriptions + credit cuotas actually DUE this month (liquidity view —
+  // a credit purchase only shows up in the month it's charged, not the month it was bought,
+  // same source of truth as crDue()/Resumen)
+  let gs=mGastos().filter(g=>!g._isSaving);
   const chWrap=document.getElementById('chipsWrap');
   if(!chWrap)return;
   const parents=getParents();
@@ -2129,7 +2118,7 @@ function rTxList(){
         : g._creditPurchase
         ? `<span class="tx-badge tx-badge-cr">${g._instTotal>1?g._instTotal+' cuotas':'Crédito'}</span>`
         : isCr
-          ? isInst
+          ? isInst&&inst>1
             ? `<span class="tx-badge tx-badge-cr">Cuota ${instNum}/${inst}</span>`
             : `<span class="tx-badge tx-badge-cr">Crédito</span>`
           : g._isRecurring
@@ -2139,7 +2128,7 @@ function rTxList(){
       const displayAmt=g._creditPurchase?fmt(g.amount/(g._instTotal||1)):isInst?fmt(cuota):fmt(g.amount);
       const subAmt=g._creditPurchase&&g._instTotal>1
         ?'<div class="tx-amt-sub">'+fmt(g.amount)+' total</div>'
-        :isInst?'<div class="tx-amt-sub">Total: '+fmt(g.amount)+'</div>'
+        :isInst&&inst>1?'<div class="tx-amt-sub">Total: '+fmt(g.amount)+'</div>'
         :(isCr&&inst>1?'<div class="tx-amt-sub">'+fmt(cuota)+'/mes</div>'+'':'');
       const amtColor=g._creditPurchase?'color:var(--purple)':isInst&&!g._isCardDebit?'color:var(--purple)':'';
 
