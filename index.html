@@ -41,7 +41,7 @@ window.addEventListener('unhandledrejection',function(e){
 <!-- Firebase SDKs -->
 <script type="module">
 import { initializeApp } from 'https://www.gstatic.com/firebasejs/10.12.0/firebase-app.js';
-import { getAuth, GoogleAuthProvider, signInWithRedirect, signInWithPopup, getRedirectResult, signOut, onAuthStateChanged, browserLocalPersistence, initializeAuth }
+import { getAuth, GoogleAuthProvider, signInWithRedirect, signInWithPopup, getRedirectResult, signOut, onAuthStateChanged, browserLocalPersistence, initializeAuth, browserPopupRedirectResolver }
   from 'https://www.gstatic.com/firebasejs/10.12.0/firebase-auth.js';
 import { getFirestore, doc, getDoc, setDoc }
   from 'https://www.gstatic.com/firebasejs/10.12.0/firebase-firestore.js';
@@ -62,7 +62,8 @@ const app = initializeApp(firebaseConfig);
 // the browser, breaking sign-in with auth/argument-error until the site's storage is
 // cleared manually. localStorage doesn't have this failure mode.
 const auth = initializeAuth(app, {
-  persistence: browserLocalPersistence
+  persistence: browserLocalPersistence,
+  popupRedirectResolver: browserPopupRedirectResolver
 });
 const db = getFirestore(app);
 const provider = new GoogleAuthProvider();
