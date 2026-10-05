@@ -41,7 +41,7 @@ window.addEventListener('unhandledrejection',function(e){
 <!-- Firebase SDKs -->
 <script type="module">
 import { initializeApp } from 'https://www.gstatic.com/firebasejs/10.12.0/firebase-app.js';
-import { getAuth, GoogleAuthProvider, signInWithRedirect, signInWithPopup, getRedirectResult, signOut, onAuthStateChanged, browserLocalPersistence, initializeAuth, indexedDBLocalPersistence }
+import { getAuth, GoogleAuthProvider, signInWithRedirect, signInWithPopup, getRedirectResult, signOut, onAuthStateChanged, browserLocalPersistence, initializeAuth }
   from 'https://www.gstatic.com/firebasejs/10.12.0/firebase-auth.js';
 import { getFirestore, doc, getDoc, setDoc }
   from 'https://www.gstatic.com/firebasejs/10.12.0/firebase-firestore.js';
@@ -56,9 +56,13 @@ const firebaseConfig = {
 };
 
 const app = initializeApp(firebaseConfig);
-// Initialize auth with persistence — indexedDB first (more reliable), fallback to localStorage
+// Use plain localStorage persistence. indexedDBLocalPersistence was tried first before,
+// but on iOS/WebKit (Safari AND Chrome, which share the same engine there) its internal
+// IndexedDB connection can get stuck in a broken state that survives even force-quitting
+// the browser, breaking sign-in with auth/argument-error until the site's storage is
+// cleared manually. localStorage doesn't have this failure mode.
 const auth = initializeAuth(app, {
-  persistence: [indexedDBLocalPersistence, browserLocalPersistence]
+  persistence: browserLocalPersistence
 });
 const db = getFirestore(app);
 const provider = new GoogleAuthProvider();
