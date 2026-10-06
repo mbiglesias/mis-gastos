@@ -9,39 +9,10 @@
 <meta name="apple-mobile-web-app-title" content="Mis Gastos">
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="theme-color" content="#4772fa">
-<!-- Visible error banner: catches JS errors / failed promises and shows them on-screen,
-     so problems are diagnosable on a phone without console access. Must run before
-     everything else, including the Firebase import below, to catch load failures too. -->
-<script>
-window.__errQueue=[];
-window.__showErr=function(msg){
-  function render(){
-    let el=document.getElementById('errBanner');
-    if(!el){
-      el=document.createElement('div');
-      el.id='errBanner';
-      el.style.cssText='position:fixed;top:0;left:0;right:0;z-index:999999;background:#dc2626;color:#fff;padding:12px 16px;font-size:12px;font-family:monospace;white-space:pre-wrap;max-height:50vh;overflow:auto;box-shadow:0 2px 8px rgba(0,0,0,.3)';
-      el.onclick=function(){el.style.display='none';};
-      document.body.appendChild(el);
-    }
-    el.textContent=(el.textContent?el.textContent+'\n\n':'')+'⚠️ (tocá para cerrar) '+msg;
-    el.style.display='block';
-  }
-  if(document.body)render();else window.__errQueue.push(render);
-};
-document.addEventListener('DOMContentLoaded',function(){window.__errQueue.forEach(function(fn){fn();});window.__errQueue=[];});
-window.addEventListener('error',function(e){
-  window.__showErr('JS Error: '+(e.message||(e.error&&e.error.message)||'desconocido')+' — '+(e.filename||'')+':'+(e.lineno||'')); 
-});
-window.addEventListener('unhandledrejection',function(e){
-  const r=e.reason;
-  window.__showErr('Promise Error: '+(r&&r.message?r.message:String(r))+(r&&r.code?' (code: '+r.code+')':''));
-});
-</script>
 <!-- Firebase SDKs -->
 <script type="module">
 import { initializeApp } from 'https://www.gstatic.com/firebasejs/10.12.0/firebase-app.js';
-import { getAuth, GoogleAuthProvider, signInWithRedirect, signInWithPopup, getRedirectResult, signOut, onAuthStateChanged, browserLocalPersistence, initializeAuth, browserPopupRedirectResolver }
+import { getAuth, GoogleAuthProvider, signInWithRedirect, signInWithPopup, getRedirectResult, signOut, onAuthStateChanged, browserLocalPersistence, initializeAuth, indexedDBLocalPersistence }
   from 'https://www.gstatic.com/firebasejs/10.12.0/firebase-auth.js';
 import { getFirestore, doc, getDoc, setDoc }
   from 'https://www.gstatic.com/firebasejs/10.12.0/firebase-firestore.js';
@@ -56,14 +27,9 @@ const firebaseConfig = {
 };
 
 const app = initializeApp(firebaseConfig);
-// Use plain localStorage persistence. indexedDBLocalPersistence was tried first before,
-// but on iOS/WebKit (Safari AND Chrome, which share the same engine there) its internal
-// IndexedDB connection can get stuck in a broken state that survives even force-quitting
-// the browser, breaking sign-in with auth/argument-error until the site's storage is
-// cleared manually. localStorage doesn't have this failure mode.
+// Initialize auth with persistence — indexedDB first (more reliable), fallback to localStorage
 const auth = initializeAuth(app, {
-  persistence: browserLocalPersistence,
-  popupRedirectResolver: browserPopupRedirectResolver
+  persistence: [indexedDBLocalPersistence, browserLocalPersistence]
 });
 const db = getFirestore(app);
 const provider = new GoogleAuthProvider();
@@ -96,21 +62,13 @@ window._fbSignIn = async () => {
   }
 
   try {
-    await signInWithPopup(auth, provider);
-  } catch(e) {
-    // Only fall back to redirect for genuine popup-blocking issues — anything else
-    // (wrong password, closed by user, etc.) should surface as-is, not retry silently.
-    if (e.code === 'auth/popup-blocked' || e.code === 'auth/operation-not-supported-in-this-environment') {
-      try {
-        await signInWithRedirect(auth, provider);
-      } catch(e2) {
-        console.error('Login error (redirect fallback):', e2.code, e2.message);
-        if (window.__showErr) window.__showErr('Login error: '+e2.code+' — '+e2.message);
-      }
-    } else if (e.code !== 'auth/popup-closed-by-user' && e.code !== 'auth/cancelled-popup-request') {
-      console.error('Login error:', e.code, e.message);
-      if (window.__showErr) window.__showErr('Login error: '+e.code+' — '+e.message);
+    if (isIOS || isSafari) {
+      await signInWithRedirect(auth, provider);
+    } else {
+      await signInWithPopup(auth, provider);
     }
+  } catch(e) {
+    console.error('Login error:', e.code, e.message);
   }
 };
 
@@ -811,7 +769,7 @@ onAuthStateChanged(auth, (user) => {
 
 <div class="mo hid" id="mQuickDebtPay" onclick="overlayClose(event,'mQuickDebtPay')">
   <div class="modal"><div class="mh"></div>
-    <div class="mt">Pago de deuda</div>
+    <div class="mt" id="qdTitle">Pago de deuda</div>
     <div class="fr f1" style="margin-bottom:8px">
       <div class="fld"><div class="fl">Deuda</div>
         <select class="fi" id="qdDebtId" onchange="qdUpdateRemaining()">
@@ -838,8 +796,9 @@ onAuthStateChanged(auth, (user) => {
       <div class="fld"><div class="fl">Nota</div><input class="fi" id="qdNote" placeholder="Opcional..."></div>
     </div>
     <div style="display:flex;gap:8px">
-      <button class="btn bp" style="flex:1" onclick="confirmQuickDebtPay()">Registrar pago</button>
+      <button class="btn bp" style="flex:1" id="qdSubmitBtn" onclick="confirmQuickDebtPay()">Registrar pago</button>
       <button class="btn bg" onclick="closeM('mQuickDebtPay')">Cancelar</button>
+      <button class="btn bg" id="qdDeleteBtn" style="display:none;color:var(--red);border-color:rgba(239,68,68,.2)" onclick="deleteDebtPayFromEdit()">Eliminar</button>
     </div>
   </div>
 </div>
@@ -1074,7 +1033,7 @@ onAuthStateChanged(auth, (user) => {
   </div>
   <div class="auth-title">Mis Gastos</div>
   <div class="auth-sub">Tus finanzas sincronizadas en todos tus dispositivos</div>
-  <button class="google-btn" onclick="try{ if(typeof window._fbSignIn==='function'){ window._fbSignIn(); } else { window.__showErr('El login no cargó todavía (_fbSignIn no existe). Puede ser un problema de conexión cargando los scripts de Google — probá recargar la página.'); } } catch(e){ window.__showErr('Error al tocar login: '+e.message); }">
+  <button class="google-btn" onclick="window._fbSignIn()">
     <svg width="18" height="18" viewBox="0 0 18 18"><path fill="#4285F4" d="M17.64 9.2c0-.637-.057-1.251-.164-1.84H9v3.481h4.844c-.209 1.125-.843 2.078-1.796 2.717v2.258h2.908c1.702-1.567 2.684-3.874 2.684-6.615z"/><path fill="#34A853" d="M9 18c2.43 0 4.467-.806 5.956-2.18l-2.908-2.259c-.806.54-1.837.86-3.048.86-2.344 0-4.328-1.584-5.036-3.711H.957v2.332A8.997 8.997 0 0 0 9 18z"/><path fill="#FBBC05" d="M3.964 10.71A5.41 5.41 0 0 1 3.682 9c0-.593.102-1.17.282-1.71V4.958H.957A8.996 8.996 0 0 0 0 9c0 1.452.348 2.827.957 4.042l3.007-2.332z"/><path fill="#EA4335" d="M9 3.58c1.321 0 2.508.454 3.44 1.345l2.582-2.58C13.463.891 11.426 0 9 0A8.997 8.997 0 0 0 .957 4.958L3.964 6.29C4.672 4.163 6.656 3.58 9 3.58z"/></svg>
     Continuar con Google
   </button>
@@ -1314,6 +1273,12 @@ onAuthStateChanged(auth, (user) => {
           <input type="checkbox" id="mRecurring" style="width:16px;height:16px;accent-color:var(--accent)">
           Pago recurrente (se repite cada mes)
         </label>
+        <div id="debtLinkRow" style="display:none;margin-bottom:8px">
+          <div class="fl" style="margin-bottom:4px">Pago de deuda</div>
+          <select class="fi" id="mDebtLink" style="width:100%">
+            <option value="">— No vincular —</option>
+          </select>
+        </div>
         <button class="btn bp" onclick="goConfirm('manual')" style="width:100%">Agregar gasto</button>
       </div>
     </div>
@@ -1547,8 +1512,16 @@ onAuthStateChanged(auth, (user) => {
         </div>
         <div style="padding:12px 14px;display:flex;flex-direction:column;gap:12px">
           <div>
-            <div style="font-size:11px;color:var(--text-muted);margin-bottom:4px">En el bolsillo "Ahorro mio" (USD) <span style="font-size:9px;background:rgba(34,197,94,.08);color:#16a34a;border-radius:4px;padding:1px 5px;font-weight:700">live</span></div>
+            <div style="font-size:11px;color:var(--text-muted);margin-bottom:4px">Boleto de reserva (USD)</div>
+            <input type="number" class="fi" id="casaBoleto" oninput="saveCasaConfig();rCasa()">
+          </div>
+          <div>
+            <div style="font-size:11px;color:var(--text-muted);margin-bottom:4px">Ahorros propios (USD) <span style="font-size:9px;background:rgba(34,197,94,.08);color:#16a34a;border-radius:4px;padding:1px 5px;font-weight:700">live</span></div>
             <div style="padding:10px 12px;background:var(--bg);border-radius:var(--r);font-size:14px;font-weight:700;color:var(--green)" id="casaAhorrosLive">—</div>
+          </div>
+          <div>
+            <div style="font-size:11px;color:var(--text-muted);margin-bottom:4px">Préstamo padres (USD)</div>
+            <input type="number" class="fi" id="casaPrestamoPadres" oninput="saveCasaConfig();rCasa()">
           </div>
           <!-- Extras tengo -->
           <div id="casaExtrasTengo"></div>
@@ -1567,39 +1540,24 @@ onAuthStateChanged(auth, (user) => {
           <span style="font-size:13px;font-weight:700" id="casaTotalNecesito">—</span>
         </div>
         <div style="padding:12px 14px;display:flex;flex-direction:column;gap:12px">
-          <div id="casaRow-hipoteca">
-            <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:4px">
-              <div style="font-size:11px;color:var(--text-muted)">Líquido para hipoteca (USD)</div>
-              <label style="display:flex;align-items:center;gap:4px;font-size:10px;color:var(--text-muted);cursor:pointer;white-space:nowrap"><input type="checkbox" onchange="toggleCasaPaid('hipoteca','Líquido para hipoteca')" style="cursor:pointer;width:14px;height:14px">Pagado</label>
-            </div>
+          <div>
+            <div style="font-size:11px;color:var(--text-muted);margin-bottom:4px">Líquido para hipoteca (USD)</div>
             <input type="number" class="fi" id="casaHipoteca" oninput="saveCasaConfig();rCasa()">
           </div>
-          <div id="casaRow-comision">
-            <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:4px">
-              <div style="font-size:11px;color:var(--text-muted)">Comisión inmobiliaria (USD)</div>
-              <label style="display:flex;align-items:center;gap:4px;font-size:10px;color:var(--text-muted);cursor:pointer;white-space:nowrap"><input type="checkbox" onchange="toggleCasaPaid('comision','Comisión inmobiliaria')" style="cursor:pointer;width:14px;height:14px">Pagado</label>
-            </div>
+          <div>
+            <div style="font-size:11px;color:var(--text-muted);margin-bottom:4px">Comisión inmobiliaria (USD)</div>
             <input type="number" class="fi" id="casaComision" oninput="saveCasaConfig();rCasa()">
           </div>
-          <div id="casaRow-conexiones">
-            <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:4px">
-              <div style="font-size:11px;color:var(--text-muted)">Conexiones (USD)</div>
-              <label style="display:flex;align-items:center;gap:4px;font-size:10px;color:var(--text-muted);cursor:pointer;white-space:nowrap"><input type="checkbox" onchange="toggleCasaPaid('conexiones','Conexiones')" style="cursor:pointer;width:14px;height:14px">Pagado</label>
-            </div>
+          <div>
+            <div style="font-size:11px;color:var(--text-muted);margin-bottom:4px">Conexiones (USD)</div>
             <input type="number" class="fi" id="casaConexiones" oninput="saveCasaConfig();rCasa()">
           </div>
-          <div id="casaRow-notariales">
-            <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:4px">
-              <div style="font-size:11px;color:var(--text-muted)">Gastos notariales (USD)</div>
-              <label style="display:flex;align-items:center;gap:4px;font-size:10px;color:var(--text-muted);cursor:pointer;white-space:nowrap"><input type="checkbox" onchange="toggleCasaPaid('notariales','Gastos notariales')" style="cursor:pointer;width:14px;height:14px">Pagado</label>
-            </div>
+          <div>
+            <div style="font-size:11px;color:var(--text-muted);margin-bottom:4px">Gastos notariales (USD)</div>
             <input type="number" class="fi" id="casaNotariales" oninput="saveCasaConfig();rCasa()">
           </div>
-          <div id="casaRow-escrituras">
-            <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:4px">
-              <div style="font-size:11px;color:var(--text-muted)">Gastos escrituras (USD) <span style="font-size:9px;background:rgba(249,115,22,.1);color:var(--orange);border-radius:4px;padding:1px 5px">excluido en "sin escrituras"</span></div>
-              <label style="display:flex;align-items:center;gap:4px;font-size:10px;color:var(--text-muted);cursor:pointer;white-space:nowrap"><input type="checkbox" onchange="toggleCasaPaid('escrituras','Gastos escrituras')" style="cursor:pointer;width:14px;height:14px">Pagado</label>
-            </div>
+          <div>
+            <div style="font-size:11px;color:var(--text-muted);margin-bottom:4px">Gastos escrituras (USD) <span style="font-size:9px;background:rgba(249,115,22,.1);color:var(--orange);border-radius:4px;padding:1px 5px">excluido en "sin escrituras"</span></div>
             <input type="number" class="fi" id="casaEscrituras" oninput="saveCasaConfig();rCasa()">
           </div>
           <!-- Extras necesito -->
@@ -1608,11 +1566,6 @@ onAuthStateChanged(auth, (user) => {
         <div style="padding:0 14px 14px">
           <button onclick="addCasaExtra('necesito')" style="width:100%;padding:9px;border-radius:var(--r);border:1px dashed var(--border);background:transparent;font-family:inherit;font-size:12px;font-weight:600;color:var(--text-muted);cursor:pointer;transition:all .15s" onmouseover="this.style.borderColor='var(--accent)';this.style.color='var(--accent)'" onmouseout="this.style.borderColor='var(--border)';this.style.color='var(--text-muted)'">+ Agregar gasto</button>
         </div>
-      </div>
-      <!-- Pagados -->
-      <div id="casaPagadosSection" style="display:none;background:var(--white);border-radius:var(--R);overflow:hidden;margin-bottom:8px">
-        <div style="padding:10px 14px;border-bottom:1px solid var(--border);font-size:12px;color:var(--text-muted)">Ya pagados (desde "Ahorro mio")</div>
-        <div id="casaPagadosList" style="padding:10px 14px 14px;display:flex;flex-direction:column;gap:10px"></div>
       </div>
     </div>
   </div>
@@ -1750,36 +1703,19 @@ function updTCDisplay(){
 // PERSIST — localStorage + Firebase cloud sync
 // ============================================================
 let _saveTimer = null;
-let _pendingCloudSave = false;
 
 function save() {
   localStorage.setItem('mg4', JSON.stringify(S));
   clearTimeout(_saveTimer);
-  _pendingCloudSave = true;
-  _saveTimer = setTimeout(flushCloudSave, 1200);
+  _saveTimer = setTimeout(async () => {
+    if (window._fbSave) {
+      try { await window._fbSave(JSON.stringify(S)); }
+      catch(e) { console.error('Cloud save error:', e); }
+    }
+  }, 1200);
   // Sync to Google Sheets if connected
   triggerSheetsSync();
 }
-
-async function flushCloudSave() {
-  clearTimeout(_saveTimer);
-  if (!_pendingCloudSave) return;
-  if (window._fbSave) {
-    try {
-      await window._fbSave(JSON.stringify(S));
-      _pendingCloudSave = false;
-    }
-    catch(e) { console.error('Cloud save error:', e); }
-  }
-}
-
-// Flush any pending cloud save the moment the tab/app is backgrounded or closed —
-// otherwise the 1.2s debounce can get killed by the browser before it fires
-// (common on mobile when switching apps right after editing).
-document.addEventListener('visibilitychange', () => {
-  if (document.visibilityState === 'hidden') flushCloudSave();
-});
-window.addEventListener('pagehide', () => { flushCloudSave(); });
 
 function ensureDefaults() {
   if (!S.goals) S.goals = [];
@@ -1797,14 +1733,6 @@ function ensureDefaults() {
   if (!S.salaryCredited) S.salaryCredited = {};
   if (!S.sobrantes) S.sobrantes = {};
   if (!S.cards) S.cards = [];
-  // One-time migration: Casa tracker used to live only in device-local localStorage —
-  // pull it into S.casa so it starts syncing via save()/Firebase like everything else.
-  if (!S.casa) {
-    const legacyCasa = localStorage.getItem('mg_casa');
-    if (legacyCasa) {
-      try { S.casa = JSON.parse(legacyCasa); } catch(e) {}
-    }
-  }
   // One-time migration: assign Itaú to credit gastos without cardId
   // Fix orphaned categories: parentId pointing to a non-existent category
   const validCatIds=new Set(S.categories.map(c=>c.id||c.name).filter(Boolean));
@@ -1845,23 +1773,17 @@ function init() {
       // Load from cloud, merge into S
       if (window._fbLoad) {
         try {
-          if (_pendingCloudSave) {
-            // There's a local edit that hasn't reached the cloud yet — send it
-            // first instead of letting a cloud fetch overwrite it.
-            await flushCloudSave();
-          } else {
-            const json = await window._fbLoad();
-            if (json) {
-              const data = JSON.parse(json);
-              // Only merge if cloud has actual data
-              if (data.gastos || data.categories || data.salary) {
-                Object.assign(S, data);
-                ensureDefaults();
-                // Save AFTER ensureDefaults so migration is persisted
-                const migratedJson = JSON.stringify(S);
-                localStorage.setItem('mg4', migratedJson);
-                if(window._fbSave) window._fbSave(migratedJson).catch(e=>console.error('Migration save error:',e));
-              }
+          const json = await window._fbLoad();
+          if (json) {
+            const data = JSON.parse(json);
+            // Only merge if cloud has actual data
+            if (data.gastos || data.categories || data.salary) {
+              Object.assign(S, data);
+              ensureDefaults();
+              // Save AFTER ensureDefaults so migration is persisted
+              const migratedJson = JSON.stringify(S);
+              localStorage.setItem('mg4', migratedJson);
+              if(window._fbSave) window._fbSave(migratedJson).catch(e=>console.error('Migration save error:',e));
             }
           }
         } catch(e) { console.error('Cloud load error:', e); }
@@ -1997,10 +1919,16 @@ function rTxList(){
   const con=document.getElementById('txList');
   const chEl=document.getElementById('chips');
   if(!con)return;
-  // Base: debits + card-debit subscriptions + credit cuotas actually DUE this month (liquidity view —
-  // a credit purchase only shows up in the month it's charged, not the month it was bought,
-  // same source of truth as crDue()/Resumen)
-  let gs=mGastos().filter(g=>!g._isSaving);
+  // Base: debit purchases + card-debit subscriptions from mGastos
+  let gs=mGastos().filter(g=>!g._isSaving&&!g._isInstallment);
+  // Add credit purchases MADE this month (by purchase date, full amount)
+  const creditBoughtThisMonth=S.gastos.filter(g=>{
+    if(g.payType!=='credit')return false;
+    if(g.recurring&&(+g.installments||1)===1)return false; // card-debits already in gs
+    const d=new Date(g.date+'T12:00:00');
+    return d.getMonth()===CM&&d.getFullYear()===CY;
+  }).map(g=>({...g,_creditPurchase:true,_instTotal:+g.installments||1}));
+  gs=[...gs,...creditBoughtThisMonth];
   const chWrap=document.getElementById('chipsWrap');
   if(!chWrap)return;
   const parents=getParents();
@@ -2070,10 +1998,9 @@ function rTxList(){
     if(gs.length>0){
       const debitTotal=gs.filter(g=>g.payType!=='credit'&&!g.isDebtPayment&&!g._isCardDebit).reduce((s,g)=>s+(+g.amount),0);
       const debtTotal=gs.filter(g=>g.isDebtPayment).reduce((s,g)=>s+(+g.amount),0);
-      // credit = card-debits (monthly) + first cuota of credit purchases + cuotas of prior-month purchases
-      const creditTotal=gs.filter(g=>g._isCardDebit||g._creditPurchase||g._isInstallment).reduce((s,g)=>{
+      // credit = card-debits (monthly) + first cuota of credit purchases
+      const creditTotal=gs.filter(g=>g._isCardDebit||g._creditPurchase).reduce((s,g)=>{
         if(g._creditPurchase)return s+(+g.amount)/(g._instTotal||1);
-        if(g._isInstallment)return s+(+(g._cuota||g.amount/(+g.installments||1)));
         return s+(+g.amount);
       },0);
       const total=debitTotal+creditTotal;
@@ -2160,7 +2087,7 @@ function rTxList(){
         : g._creditPurchase
         ? `<span class="tx-badge tx-badge-cr">${g._instTotal>1?g._instTotal+' cuotas':'Crédito'}</span>`
         : isCr
-          ? isInst&&inst>1
+          ? isInst
             ? `<span class="tx-badge tx-badge-cr">Cuota ${instNum}/${inst}</span>`
             : `<span class="tx-badge tx-badge-cr">Crédito</span>`
           : g._isRecurring
@@ -2170,7 +2097,7 @@ function rTxList(){
       const displayAmt=g._creditPurchase?fmt(g.amount/(g._instTotal||1)):isInst?fmt(cuota):fmt(g.amount);
       const subAmt=g._creditPurchase&&g._instTotal>1
         ?'<div class="tx-amt-sub">'+fmt(g.amount)+' total</div>'
-        :isInst&&inst>1?'<div class="tx-amt-sub">Total: '+fmt(g.amount)+'</div>'
+        :isInst?'<div class="tx-amt-sub">Total: '+fmt(g.amount)+'</div>'
         :(isCr&&inst>1?'<div class="tx-amt-sub">'+fmt(cuota)+'/mes</div>'+'':'');
       const amtColor=g._creditPurchase?'color:var(--purple)':isInst&&!g._isCardDebit?'color:var(--purple)':'';
 
@@ -2404,7 +2331,7 @@ function rSummary(){
   }
 
   const ahorrosEl=document.getElementById('sumAhorros');
-  if(ahorrosEl)ahorrosEl.textContent=savedThisMonth>0?fmt(savedThisMonth):'—';
+  if(ahorrosEl)ahorrosEl.textContent=savedWithCreditSavings>0?fmt(savedWithCreditSavings):'—';
   const deudaEl=document.getElementById('sumDeuda');
   const deudaCard=document.getElementById('sumDeudaCard');
   if(deudaEl)deudaEl.textContent=debtPaidThisMonthCalc>0?fmt(debtPaidThisMonthCalc):'—';
@@ -2994,19 +2921,39 @@ function rSavingsProjection(){
     '</div>';
 }
 
-function openQuickDebtPay(){
+let editingDebtPayId=null;
+
+// Lo pagado de una deuda, excluyendo opcionalmente un pago (el que se está editando)
+function debtPaidExcl(debtId,exclId){
+  return S.gastos.filter(g=>g.debtId===debtId&&g.id!==exclId).reduce((s,g)=>s+(+g.amount),0);
+}
+
+function fillDebtPaySelect(currentDebtId){
   const sel=document.getElementById('qdDebtId');
-  if(!sel)return;
-  const activeDebts=(S.debts||[]).filter(d=>{
-    const paid=S.gastos.filter(g=>g.debtId===d.id).reduce((s,g)=>s+(+g.amount),0);
-    return paid<+d.total;
-  });
+  const debts=(S.debts||[]).filter(d=>d.id===currentDebtId||debtPaidExcl(d.id,editingDebtPayId)<+d.total);
   sel.innerHTML='<option value="">— Seleccionar deuda —</option>'+
-    activeDebts.map(d=>{
-      const paid=S.gastos.filter(g=>g.debtId===d.id).reduce((s,g)=>s+(+g.amount),0);
-      const rem=+d.total-paid;
-      return `<option value="${d.id}">${d.desc}${d.person?' ('+d.person+')':''} — ${d.currency} ${rem.toLocaleString('es-UY',{maximumFractionDigits:0})} pendiente</option>`;
+    debts.map(d=>{
+      const rem=+d.total-debtPaidExcl(d.id,editingDebtPayId);
+      return `<option value="${d.id}"${d.id===currentDebtId?' selected':''}>${d.desc}${d.person?' ('+d.person+')':''} — ${d.currency} ${rem.toLocaleString('es-UY',{maximumFractionDigits:0})} pendiente</option>`;
     }).join('');
+}
+
+function setDebtPayMode(isEdit){
+  document.getElementById('qdTitle').textContent=isEdit?'Editar pago de deuda':'Pago de deuda';
+  document.getElementById('qdSubmitBtn').textContent=isEdit?'Guardar cambios':'Registrar pago';
+  document.getElementById('qdDeleteBtn').style.display=isEdit?'':'none';
+  // Montos guardados en USD → toggle en USD
+  txCur.qdamt='USD';
+  document.getElementById('cur-qdamt').querySelectorAll('.mini-cur-btn').forEach(b=>{
+    b.className='mini-cur-btn'+(b.textContent==='USD'?' on':'');
+  });
+}
+
+function openQuickDebtPay(){
+  if(!document.getElementById('qdDebtId'))return;
+  editingDebtPayId=null;
+  setDebtPayMode(false);
+  fillDebtPaySelect(null);
   document.getElementById('qdAmount').value='';
   document.getElementById('qdNote').value='';
   document.getElementById('qdDate').value=new Date().toISOString().slice(0,10);
@@ -3015,19 +2962,43 @@ function openQuickDebtPay(){
   openM('mQuickDebtPay');
 }
 
-window.qdUpdateRemaining=function(){
+function openEditDebtPay(id){
+  const g=S.gastos.find(x=>x.id===id);
+  if(!g)return;
+  editingDebtPayId=id;
+  setDebtPayMode(true);
+  fillDebtPaySelect(g.debtId);
+  document.getElementById('qdAmount').value=(+g.amount||0).toFixed(2);
+  document.getElementById('qdNote').value=g.note||'';
+  document.getElementById('qdDate').value=g.date||'';
+  updDateDisplay('qdDate','qdDateDisp');
+  qdShowRemaining();
+  openM('mQuickDebtPay');
+}
+
+function deleteDebtPayFromEdit(){
+  if(!confirm('¿Eliminar este pago de deuda?'))return;
+  S.gastos=S.gastos.filter(g=>g.id!==editingDebtPayId);
+  editingDebtPayId=null;
+  save();renderAll();closeM('mQuickDebtPay');toast('Pago eliminado');
+}
+
+// Muestra el saldo pendiente sin tocar el monto
+function qdShowRemaining(){
   const debtId=document.getElementById('qdDebtId').value;
   const row=document.getElementById('qdRemainingRow');
-  const amtEl=document.getElementById('qdRemainingAmt');
-  if(!debtId){row.style.display='none';return;}
   const d=(S.debts||[]).find(x=>x.id===debtId);
-  if(!d){row.style.display='none';return;}
-  const paid=S.gastos.filter(g=>g.debtId===d.id).reduce((s,g)=>s+(+g.amount),0);
-  const rem=+d.total-paid;
-  amtEl.textContent=d.currency+' '+rem.toLocaleString('es-UY',{maximumFractionDigits:0});
+  if(!d){row.style.display='none';return null;}
+  const rem=+d.total-debtPaidExcl(d.id,editingDebtPayId);
+  document.getElementById('qdRemainingAmt').textContent=d.currency+' '+rem.toLocaleString('es-UY',{maximumFractionDigits:0});
   row.style.display='block';
-  // Prefill with remaining amount
-  document.getElementById('qdAmount').value=rem>0?rem.toFixed(0):'';
+  return rem;
+}
+
+window.qdUpdateRemaining=function(){
+  const rem=qdShowRemaining();
+  // Prefill con el saldo solo al registrar uno nuevo
+  if(rem!==null&&!editingDebtPayId)document.getElementById('qdAmount').value=rem>0?rem.toFixed(0):'';
 };
 
 function confirmQuickDebtPay(){
@@ -3041,6 +3012,16 @@ function confirmQuickDebtPay(){
   const d=(S.debts||[]).find(x=>x.id===debtId);
   if(!d){toast('Deuda no encontrada');return;}
   const usdAmt=toUSD(amt,txCur.qdamt||'USD');
+  if(editingDebtPayId){
+    const g=S.gastos.find(x=>x.id===editingDebtPayId);
+    if(g){
+      Object.assign(g,{desc:'Pago: '+d.desc,amount:usdAmt,category:'Deudas',date,note,debtId,isDebtPayment:true,payType:'debit',installments:1,recurring:false});
+    }
+    editingDebtPayId=null;
+    save();renderAll();closeM('mQuickDebtPay');
+    toast('Pago actualizado ✓');
+    return;
+  }
   // Save as gasto with isDebtPayment:true — reduces disponible but NOT budget categories
   S.gastos.push({
     id:Date.now()+Math.random().toString(36).substr(2,5),
@@ -3911,13 +3892,15 @@ function confirmPay(){
   const payType=isCr?'credit':'debit';
   const inst=isCr?parseInt(document.getElementById('instSel').value):1;
   const g=pendC;
+  const debtSel=document.getElementById('mDebtLink');
+  const debtId=debtSel&&debtSel.value?debtSel.value:null;
   const cardSel=document.getElementById('mCardId');
   const cardId=payType==='credit'&&cardSel&&cardSel.value?cardSel.value:undefined;
-  S.gastos.push({id:Date.now()+Math.random().toString(36).substr(2,5),desc:g.desc,amount:+g.amount,category:g.category,date:g.date,note:g.note||'',payType,installments:inst,recurring:g.recurring||false,origAmount:g.origAmount,origCur:g.origCur,tcAtSave:g.origCur==='UYU'?XR:null,cardId:cardId||undefined});
+  S.gastos.push({id:Date.now()+Math.random().toString(36).substr(2,5),desc:g.desc,amount:+g.amount,category:g.category,date:g.date,note:g.note||'',payType,installments:inst,recurring:g.recurring||false,origAmount:g.origAmount,origCur:g.origCur,tcAtSave:g.origCur==='UYU'?XR:null,debtId:debtId||undefined,cardId:cardId||undefined});
   save();renderAll();closeM('mPayType');
   toast(payType==='credit'&&inst>1?`Crédito en ${inst} cuotas registrado ✓`:'Gasto agregado ✓');
   if(pendSrc==='scan')cancelPrev();
-  else{['md','ma','mn'].forEach(id=>document.getElementById(id).value='');const rc=document.getElementById('mRecurring');if(rc)rc.checked=false;const cs=document.getElementById('mCardId');if(cs)cs.value='';}
+  else{['md','ma','mn'].forEach(id=>document.getElementById(id).value='');const rc=document.getElementById('mRecurring');if(rc)rc.checked=false;const dl=document.getElementById('mDebtLink');if(dl)dl.value='';const cs=document.getElementById('mCardId');if(cs)cs.value='';}
   pendC=null;tab('gastos');
 }
 
@@ -4050,6 +4033,7 @@ let editingGastoId=null;
 function openEditGasto(id){
   const g=S.gastos.find(x=>x.id===id);
   if(!g)return;
+  if(g.isDebtPayment){openEditDebtPay(id);return;}
   editingGastoId=id;
   document.getElementById('egDesc').value=g.desc||'';
   // Show in display currency
@@ -5753,18 +5737,21 @@ const CASA_CONCEPTOS_DEFAULT=[
 ];
 
 function getCasaState(){
-  if(S.casa)return S.casa;
+  const saved=localStorage.getItem('mg_casa');
+  if(saved)return JSON.parse(saved);
   return{
     conceptos:JSON.parse(JSON.stringify(CASA_CONCEPTOS_DEFAULT)),
     aportePadres:30000,
     boleto:29500
   };
 }
-function saveCasaState(state){S.casa=state;save();}
+function saveCasaState(state){localStorage.setItem('mg_casa',JSON.stringify(state));}
 function saveCasaConfig(){
   const state=getCasaState();
   const cn=getCasaState();
   const pn=(id,def)=>{const v=parseFloat(document.getElementById(id)?.value);return isNaN(v)?def:v;};
+  cn.boleto=pn('casaBoleto',29500);
+  cn.prestamoPadres=pn('casaPrestamoPadres',35000);
   cn.hipoteca=pn('casaHipoteca',81493);
   cn.comision=pn('casaComision',9726);
   cn.conexiones=pn('casaConexiones',5900);
@@ -5813,131 +5800,18 @@ function removeCasaExtra(tipo,id){
 }
 
 function renderCasaExtras(tipo,cn){
-  cn=cn||getCasaState();
   const key='extra'+tipo[0].toUpperCase()+tipo.slice(1);
   const container=document.getElementById('casaExtras'+tipo[0].toUpperCase()+tipo.slice(1));
   if(!container)return;
-  const fullList=cn[key]||[];
-  const items=tipo==='necesito'?fullList.filter(x=>!x.paid):fullList;
+  const items=(cn||getCasaState())[key]||[];
   if(!items.length){container.innerHTML='';return;}
-  container.innerHTML=items.map((item)=>{
-    const i=fullList.indexOf(item);
-    const checkbox=tipo==='necesito'
-      ?'<div style="display:flex;justify-content:flex-end;margin-bottom:2px"><label style="display:flex;align-items:center;gap:4px;font-size:10px;color:var(--text-muted);cursor:pointer;white-space:nowrap"><input type="checkbox" onchange="toggleCasaExtraPaid('+item.id+')" style="cursor:pointer;width:14px;height:14px">Pagado</label></div>'
-      :'';
-    return checkbox+
+  container.innerHTML=items.map((item,i)=>
     '<div style="display:grid;grid-template-columns:1fr auto auto;gap:6px;align-items:center;padding-top:4px">'+
       '<input type="text" class="fi" placeholder="Descripción" data-extra-lbl="'+i+'" value="'+item.label+'" oninput="saveCasaConfig();rCasa()" style="font-size:12px;padding:8px 10px">'+
       '<input type="number" class="fi" placeholder="0" data-extra-amt="'+i+'" value="'+(item.amount||'')+'" oninput="saveCasaConfig();rCasa()" style="font-size:12px;padding:8px 10px;width:100px">'+
       '<button onclick="removeCasaExtra(&apos;'+tipo+'&apos;,'+item.id+')" style="width:30px;height:36px;border-radius:var(--r);border:1px solid var(--border);background:var(--bg);cursor:pointer;display:flex;align-items:center;justify-content:center;flex-shrink:0;color:var(--text-muted)">'+
         '<svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>'+
       '</button>'+
-    '</div>';
-  }).join('');
-}
-
-function getCasaGoalIdx(){
-  return S.goals.findIndex(g=>g.name&&g.name.trim().toLowerCase()==='ahorro mio');
-}
-
-function toggleCasaPaid(key,label){
-  const cn=getCasaState();
-  if(!cn.pagados)cn.pagados={};
-  const gi=getCasaGoalIdx();
-  if(cn.pagados[key]){
-    // Undo: remove the withdrawal entry
-    if(gi>=0){
-      const goal=S.goals[gi];
-      goal.entries=(goal.entries||[]).filter(e=>e.id!==cn.pagados[key].entryId);
-      goal.saved=goal.entries.reduce((s,e)=>s+(+e.amount),0);
-    }
-    delete cn.pagados[key];
-    saveCasaState(cn);rSavings();rCasa();
-    toast('Pago deshecho');
-    return;
-  }
-  if(gi<0){
-    toast('Creá primero el bolsillo "Ahorro mio" en Ahorros');
-    rCasa();
-    return;
-  }
-  const amount=(+cn[key])||0;
-  if(amount<=0){
-    toast('Cargá un monto antes de marcar como pagado');
-    rCasa();
-    return;
-  }
-  const goal=S.goals[gi];
-  if(!goal.entries)goal.entries=[];
-  const entryId=Date.now().toString()+Math.random().toString(36).substr(2,4);
-  goal.entries.push({id:entryId,amount:-amount,date:new Date().toISOString().split('T')[0],note:'Pago casa: '+label,currency:'USD',origAmount:amount,tcAtSave:null});
-  goal.saved=goal.entries.reduce((s,e)=>s+(+e.amount),0);
-  cn.pagados[key]={entryId,amount,label};
-  saveCasaState(cn);rSavings();rCasa();
-  toast('Pago registrado — se retiró de "Ahorro mio" ✓');
-}
-
-function toggleCasaExtraPaid(id){
-  const cn=getCasaState();
-  const items=cn.extraNecesito||[];
-  const item=items.find(x=>x.id===id);
-  if(!item)return;
-  const gi=getCasaGoalIdx();
-  if(item.paid){
-    if(gi>=0){
-      const goal=S.goals[gi];
-      goal.entries=(goal.entries||[]).filter(e=>e.id!==item.entryId);
-      goal.saved=goal.entries.reduce((s,e)=>s+(+e.amount),0);
-    }
-    item.paid=false;delete item.entryId;
-    saveCasaState(cn);rSavings();rCasa();
-    toast('Pago deshecho');
-    return;
-  }
-  if(gi<0){
-    toast('Creá primero el bolsillo "Ahorro mio" en Ahorros');
-    rCasa();
-    return;
-  }
-  const amount=(+item.amount)||0;
-  if(amount<=0){
-    toast('Cargá un monto antes de marcar como pagado');
-    rCasa();
-    return;
-  }
-  const goal=S.goals[gi];
-  if(!goal.entries)goal.entries=[];
-  const entryId=Date.now().toString()+Math.random().toString(36).substr(2,4);
-  goal.entries.push({id:entryId,amount:-amount,date:new Date().toISOString().split('T')[0],note:'Pago casa: '+(item.label||'Extra'),currency:'USD',origAmount:amount,tcAtSave:null});
-  goal.saved=goal.entries.reduce((s,e)=>s+(+e.amount),0);
-  item.paid=true;item.entryId=entryId;
-  saveCasaState(cn);rSavings();rCasa();
-  toast('Pago registrado — se retiró de "Ahorro mio" ✓');
-}
-
-function renderCasaPagados(cn){
-  const el=document.getElementById('casaPagadosList');
-  const section=document.getElementById('casaPagadosSection');
-  if(!el||!section)return;
-  const pagados=cn.pagados||{};
-  const fixedLabels={hipoteca:'Líquido para hipoteca',comision:'Comisión inmobiliaria',conexiones:'Conexiones',notariales:'Gastos notariales',escrituras:'Gastos escrituras'};
-  const rows=[];
-  Object.keys(pagados).forEach(key=>{
-    rows.push({label:fixedLabels[key]||key,amount:pagados[key].amount,action:"toggleCasaPaid('"+key+"','"+(fixedLabels[key]||key)+"')"});
-  });
-  (cn.extraNecesito||[]).filter(x=>x.paid).forEach(item=>{
-    rows.push({label:item.label||'Extra',amount:item.amount,action:'toggleCasaExtraPaid('+item.id+')'});
-  });
-  if(!rows.length){section.style.display='none';el.innerHTML='';return;}
-  section.style.display='';
-  const fmtP=v=>'USD '+Math.round(v).toLocaleString('en-US');
-  el.innerHTML=rows.map(r=>
-    '<div style="display:flex;align-items:center;justify-content:space-between;font-size:12px">'+
-      '<span style="color:var(--text-muted)">'+r.label+'</span>'+
-      '<div style="display:flex;align-items:center;gap:10px">'+
-        '<span style="font-weight:700">'+fmtP(r.amount)+'</span>'+
-        '<button onclick="'+r.action+'" style="font-size:10px;color:var(--accent);background:none;border:none;cursor:pointer;font-family:inherit;text-decoration:underline">Deshacer</button>'+
-      '</div>'+
     '</div>'
   ).join('');
 }
@@ -5945,6 +5819,8 @@ function renderCasaPagados(cn){
 function rCasa(){
   const cn=getCasaState();
   const nd=(v,def)=>v==null||v===undefined?def:v;
+  const boleto=nd(cn.boleto,29500);
+  const prestamoPadres=nd(cn.prestamoPadres,35000);
   const hipoteca=nd(cn.hipoteca,81493);
   const comision=nd(cn.comision,9726);
   const conexiones=nd(cn.conexiones,5900);
@@ -5953,48 +5829,31 @@ function rCasa(){
 
   // Populate inputs without stealing focus
   const setInput=(id,v)=>{const el=document.getElementById(id);if(el&&!el.matches(':focus'))el.value=v;};
+  setInput('casaBoleto',boleto);
+  setInput('casaPrestamoPadres',prestamoPadres);
   setInput('casaHipoteca',hipoteca);
   setInput('casaComision',comision);
   setInput('casaConexiones',conexiones);
   setInput('casaNotariales',notariales);
   setInput('casaEscrituras',escrituras);
 
-  // Lo que tengo: saldo en vivo del bolsillo único "Ahorro mio"
-  const casaGoalIdx=getCasaGoalIdx();
-  const ahorrosPropios=casaGoalIdx>=0?(+S.goals[casaGoalIdx].saved||0):0;
-
-  // Necesito: excluir ítems ya marcados como pagados
-  const pagados=cn.pagados||{};
-  const necesitoItems=[
-    {key:'hipoteca',amount:hipoteca,exSin:false},
-    {key:'comision',amount:comision,exSin:false},
-    {key:'conexiones',amount:conexiones,exSin:false},
-    {key:'notariales',amount:notariales,exSin:false},
-    {key:'escrituras',amount:escrituras,exSin:true},
-  ];
-  let necesitoCon=0,necesitaSin=0;
-  necesitoItems.forEach(it=>{
-    const rowEl=document.getElementById('casaRow-'+it.key);
-    const isPaid=!!pagados[it.key];
-    if(rowEl)rowEl.style.display=isPaid?'none':'';
-    if(isPaid)return;
-    necesitoCon+=it.amount;
-    if(!it.exSin)necesitaSin+=it.amount;
-  });
+  // Ahorros propios: sum of all bolsillos (not padres)
+  const ahorrosPropios=S.goals.reduce((s,g)=>{
+    if(g.name&&g.name.toLowerCase().includes('padres'))return s;
+    return s+(+g.saved||0);
+  },0);
 
   // Extras
   const extraTengoSum=(cn.extraTengo||[]).reduce((s,x)=>s+(+x.amount||0),0);
-  const extraNeceUnpaid=(cn.extraNecesito||[]).filter(x=>!x.paid);
-  const extraNeceSum=extraNeceUnpaid.reduce((s,x)=>s+(+x.amount||0),0);
-  necesitoCon+=extraNeceSum;
-  necesitaSin+=extraNeceSum;
-
+  const extraNeceSum=(cn.extraNecesito||[]).reduce((s,x)=>s+(+x.amount||0),0);
   // Lo que tengo
-  const tengo=ahorrosPropios+extraTengoSum;
-  // Render extras + pagados
+  const tengo=boleto+ahorrosPropios+prestamoPadres+extraTengoSum;
+  // Lo que necesito
+  const necesitoCon=hipoteca+comision+conexiones+notariales+escrituras+extraNeceSum;
+  const necesitaSin=hipoteca+comision+conexiones+notariales+extraNeceSum;
+  // Render extras
   renderCasaExtras('tengo',cn);
   renderCasaExtras('necesito',cn);
-  renderCasaPagados(cn);
   // Diferencia
   const difCon=tengo-necesitoCon;
   const difSin=tengo-necesitaSin;
