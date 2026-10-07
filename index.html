@@ -4903,7 +4903,8 @@ function rAnual(){
   let ySpent=0,yIncome=0;
   const rows=MOS.map((mName,m)=>{
     // Debit purchases (excl debt payments counted separately)
-    const gs=S.gastos.filter(g=>{const d=new Date(g.date+'T12:00:00');return d.getMonth()===m&&d.getFullYear()===CY_annual&&g.payType!=='credit';});
+    // mGastosFor incluye los débitos recurrentes en cada mes (no solo el de inicio)
+    const gs=mGastosFor(m,CY_annual).filter(g=>g.payType!=='credit'&&!g._isSaving);
     const debitSpent=gs.filter(g=>!g.isDebtPayment).reduce((s,g)=>s+(+g.amount),0);
     // Credit installments due this month + card-debit subscriptions
     const cuotasDue=crDue(m,CY_annual).reduce((s,g)=>s+(g._cuota||g.amount/(+g.installments||1)),0);
@@ -4961,11 +4962,22 @@ function rAnual(){
   if(!activeMonths.length){matrixEl.innerHTML='<div style="padding:16px;text-align:center;color:var(--text-muted);font-size:13px">Sin datos</div>';return;}
 
   // For each cat, compute spend per active month
-  function catMonthSpend(catName, m){
-    return S.gastos.filter(g=>{
+  // Movimientos de cada mes, igual que la lista mensual:
+  // débitos + recurrentes (débito y tarjeta) + compras con crédito por fecha de compra
+  const monthTxCache={};
+  function monthTx(m){
+    if(monthTxCache[m])return monthTxCache[m];
+    const base=mGastosFor(m,CY_annual).filter(g=>!g._isSaving&&!g._isInstallment);
+    const creditBought=S.gastos.filter(g=>{
+      if(g.payType!=='credit'||g.isSaving)return false;
+      if(g.recurring&&(+g.installments||1)===1)return false; // ya están en base como débito de tarjeta
       const d=new Date(g.date+'T12:00:00');
-      return d.getMonth()===m&&d.getFullYear()===CY_annual&&g.category===catName;
-    }).reduce((s,g)=>s+(+g.amount),0);
+      return d.getMonth()===m&&d.getFullYear()===CY_annual;
+    });
+    return monthTxCache[m]=[...base,...creditBought];
+  }
+  function catMonthSpend(catName, m){
+    return monthTx(m).filter(g=>g.category===catName).reduce((s,g)=>s+(+g.amount),0);
   }
 
   const parents=getParents();
