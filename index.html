@@ -1973,6 +1973,15 @@ function rTxList(){
   chWrap.innerHTML=mainRow+subRow;
 
   const q=(document.getElementById('txSearch')?.value||'').toLowerCase().trim();
+  // Con filtro de categoría (o búsqueda), la lista tiene que cerrar con el Resumen,
+  // que cuenta las cuotas que se cobran este mes aunque la compra sea de un mes anterior.
+  if(filt!=='Todos'||q){
+    const prevCuotas=crDue(CM,CY).filter(g=>{
+      const d=new Date(g.date+'T12:00:00');
+      return !(d.getMonth()===CM&&d.getFullYear()===CY); // las de este mes ya están como compra
+    }).map(g=>({...g,_isInstallment:true,_prevCuota:true}));
+    gs=[...gs,...prevCuotas];
+  }
   if(filt!=='Todos'){
     // Check if filt is a parent category — if so show all children too
     const filtCat=S.categories.find(c=>c.name===filt);
@@ -1999,8 +2008,9 @@ function rTxList(){
       const debitTotal=gs.filter(g=>g.payType!=='credit'&&!g.isDebtPayment&&!g._isCardDebit).reduce((s,g)=>s+(+g.amount),0);
       const debtTotal=gs.filter(g=>g.isDebtPayment).reduce((s,g)=>s+(+g.amount),0);
       // credit = card-debits (monthly) + first cuota of credit purchases
-      const creditTotal=gs.filter(g=>g._isCardDebit||g._creditPurchase).reduce((s,g)=>{
+      const creditTotal=gs.filter(g=>g._isCardDebit||g._creditPurchase||g._prevCuota).reduce((s,g)=>{
         if(g._creditPurchase)return s+(+g.amount)/(g._instTotal||1);
+        if(g._prevCuota)return s+(+g._cuota||0);
         return s+(+g.amount);
       },0);
       const total=debitTotal+creditTotal;
@@ -2032,7 +2042,9 @@ function rTxList(){
   const grp={};
   gs.forEach(g=>{
     let key;
-    if(g._isInstallment){
+    if(g._prevCuota){
+      key='cuotas';
+    } else if(g._isInstallment){
       const s=new Date(g.date+'T12:00:00');
       const instNum=g._instNum||1;
       const computeDate=new Date(s.getFullYear(),s.getMonth()+(instNum-1),s.getDate());
@@ -2047,6 +2059,8 @@ function rTxList(){
 
   let h='<div class="txl">';
   const keys=Object.keys(grp).sort((a,b)=>{
+    if(a==='cuotas')return 1;
+    if(b==='cuotas')return -1;
     const da=a.startsWith('inst-')?a.slice(5,15):a;
     const db=b.startsWith('inst-')?b.slice(5,15):b;
     return db.localeCompare(da);
@@ -2054,12 +2068,13 @@ function rTxList(){
 
   keys.forEach(key=>{
     const its=grp[key];
+    const isCuotasSec=key==='cuotas';
     const dateStr=key.startsWith('inst-')?key.slice(5,15):key;
     const d=new Date(dateStr+'T12:00:00');
-    const _isToday=d.toDateString()===new Date().toDateString();
+    const _isToday=!isCuotasSec&&d.toDateString()===new Date().toDateString();
     h+='<div class="tx-day"'+(_isToday?' data-today="1"':'')+'>'
       +'<div class="tx-day-lbl">'
-      +d.toLocaleDateString('es-UY',{weekday:'short',day:'numeric',month:'short'})
+      +(isCuotasSec?'Cuotas de este mes · compras anteriores':d.toLocaleDateString('es-UY',{weekday:'short',day:'numeric',month:'short'}))
       +(_isToday?' <span style="font-size:9px;font-weight:700;background:var(--accent);color:#fff;border-radius:10px;padding:1px 7px">HOY</span>':'')
       +'</div>';
     // Open day box is inside the loop
@@ -2444,6 +2459,21 @@ function rCatRows(){
             +'<div style="color:var(--text-muted);display:flex;align-items:center">'+svgChevR+'</div>'
           +'</div>';
         });
+        // Gastos cargados directo en el grupo (sin subcategoría): antes sumaban al total pero no se veían
+        if(directSp>0){
+          html+='<div class="cr" style="cursor:pointer" onclick="setF(&apos;'+cat.name+'&apos;);tab(\'gastos\')">'
+            +'<div style="width:24px;height:24px;border-radius:7px;border:1.5px dashed var(--border);display:flex;align-items:center;justify-content:center;flex-shrink:0;color:var(--text-muted);font-size:13px;font-weight:700">?</div>'
+            +'<div style="flex:1">'
+              +'<div class="cn" style="font-size:12px;color:var(--text-mid)">Sin subcategoría</div>'
+              +'<div class="cbw"><div class="cbf" style="width:0%"></div></div>'
+            +'</div>'
+            +'<div>'
+              +'<div class="ca" style="font-size:11px;color:inherit">'+fmt(directSp)+'</div>'
+              +'<div class="cbl">sin asignar</div>'
+            +'</div>'
+            +'<div style="color:var(--text-muted);display:flex;align-items:center">'+svgChevR+'</div>'
+          +'</div>';
+        }
         html+='</div>';
       }
       html+='</div>';
