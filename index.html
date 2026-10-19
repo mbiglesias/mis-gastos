@@ -402,6 +402,11 @@ onAuthStateChanged(auth, (user) => {
   /* BULK REVIEW */
   .bulk-item{background:var(--white);border-radius:var(--r);padding:10px 12px;margin-bottom:6px;border:1px solid var(--border)}
   .bulk-item.excluded{opacity:.4}
+  .bulk-item.is-dup{opacity:1;background:var(--bg);border-left:3px solid #f59e0b}
+  .bulk-item.is-dup .bulk-item-fields,.bulk-item.is-dup .bulk-dup-extra{display:none!important}
+  .dup-note{display:flex;align-items:center;gap:8px;margin-top:6px;padding:7px 9px;border-radius:var(--r);background:rgba(245,158,11,.09);color:#92400e;font-size:11.5px;line-height:1.35}
+  .dup-note b{font-weight:700}
+  .dup-note button{margin-left:auto;flex-shrink:0;border:1px solid rgba(146,64,14,.25);background:var(--white);color:#92400e;border-radius:6px;padding:4px 9px;font-family:inherit;font-size:11px;font-weight:700;cursor:pointer}
   .bulk-item-top{display:flex;align-items:center;gap:8px;margin-bottom:6px}
   .bulk-item-desc{flex:1;font-size:13px;font-weight:600;min-width:0;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
   .bulk-item-amt{font-size:13px;font-weight:700;color:var(--text);flex-shrink:0;white-space:nowrap}
@@ -1208,6 +1213,7 @@ onAuthStateChanged(auth, (user) => {
     <div class="prev" id="prev">
       <div class="prevh"><svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="#fff" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="22 12 18 12 15 21 9 3 6 12 2 12"/></svg><div class="prevht">Revisá y confirmá</div></div>
       <div class="prevb">
+        <div id="prevDup" class="dup-note" style="display:none;margin:0 0 10px"></div>
         <div class="fr f1" style="margin-bottom:0">
           <div class="fld"><div class="fl">Descripción</div><input type="text" class="fi" id="pd" placeholder="¿Qué fue?"></div>
         </div>
@@ -3936,6 +3942,7 @@ function confirmPay(){
 
 function cancelPrev(){
   document.getElementById('prev').classList.remove('sh');
+  const dupEl=document.getElementById('prevDup');if(dupEl)dupEl.style.display='none';
   ['pd','pa','pn'].forEach(id=>document.getElementById(id).value='');
 }
 
@@ -4638,6 +4645,12 @@ Si no encontrás transacciones devolvé [].`}
       installments:1,
     }));
 
+    // Revisar si ya están anotados: los que coinciden vienen desmarcados
+    const used=new Set();
+    parsed.forEach(tx=>{
+      const m=findExistingGasto(tx,used);
+      if(m){used.add(m.g.id);tx._dupOf=m;tx._excluded=true;}
+    });
     bulkTxs=parsed;
     renderBulk();
 
@@ -4651,37 +4664,36 @@ Si no encontrás transacciones devolvé [].`}
 function renderBulk(){
   const container=document.getElementById('bulkReview');
   const list=document.getElementById('bulkList');
-  // Detect duplicates
-  bulkTxs.forEach(tx=>{
-    if(tx._excluded){tx._isDuplicate=false;return;}
-    const amtUSD=tx.amountUSD||+tx.amount||0;
-    tx._isDuplicate=S.gastos.some(g=>{
-      const sameAmt=Math.abs(+g.amount-amtUSD)<0.5;
-      const sameDesc=g.desc&&tx.desc&&g.desc.toLowerCase().trim()===tx.desc.toLowerCase().trim();
-      const sameDate=g.date===tx.date;
-      return (sameAmt&&sameDate)||(sameDesc&&sameDate);
-    });
-  });
-  const dups=bulkTxs.filter(t=>t._isDuplicate&&!t._excluded).length;
+  const dups=bulkTxs.filter(t=>t._dupOf).length;
   const active=bulkTxs.filter(t=>!t._excluded);
-  document.getElementById('bulkTitle').textContent=`${bulkTxs.length} transacciones encontradas${dups>0?' · ⚠️ '+dups+' posible'+(dups>1?'s':'')+' duplicado'+(dups>1?'s':''):''}`;
+  const nuevos=bulkTxs.length-dups;
+  document.getElementById('bulkTitle').textContent=dups>0
+    ?`${bulkTxs.length} encontradas · ${dups} ya anotada${dups>1?'s':''} · ${nuevos} nueva${nuevos!==1?'s':''}`
+    :`${bulkTxs.length} transacciones encontradas · ninguna anotada todavía`;
   document.getElementById('bulkCount').textContent=`${active.length} seleccionadas`;
-  document.getElementById('bulkConfirmBtn').textContent=`Agregar ${active.length} gastos`;
+  document.getElementById('bulkConfirmBtn').textContent=active.length?`Agregar ${active.length} gasto${active.length!==1?'s':''}`:'Nada nuevo para agregar';
 
   const catOpts=S.categories.map(c=>`<option value="${c.name}">${c.name}</option>`).join('')
     +'<option value="__new__">+ Nueva categoría...</option>';
 
   list.innerHTML=bulkTxs.map((tx,i)=>{
-    const excBtn=tx._excluded
+    const isDupOff=tx._dupOf&&tx._excluded;
+    const dupNote=tx._dupOf
+      ?(tx._excluded
+        ?`<div class="dup-note"><span>${dupLabel(tx._dupOf)}</span><button onclick="toggleBulk(${i})">Agregar igual</button></div>`
+        :`<div class="dup-note"><span>${dupLabel(tx._dupOf)} — <b>se va a agregar igual</b></span><button onclick="toggleBulk(${i})">No agregar</button></div>`)
+      :'';
+    const excBtn=isDupOff?'':tx._excluded
       ?`<button class="bulk-include" onclick="toggleBulk(${i})">↩</button>`
       :`<button class="bulk-exclude" onclick="toggleBulk(${i})"><svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg></button>`;
     const amtDisp=(+tx.amount||0).toLocaleString('es-UY',{minimumFractionDigits:0,maximumFractionDigits:2});
-    return `<div class="bulk-item${tx._excluded?' excluded':''}" id="bulk-item-${i}" style="${tx._isDuplicate?'border-left:3px solid #f59e0b':''}">
+    return `<div class="bulk-item${isDupOff?' is-dup':(tx._excluded?' excluded':'')}" id="bulk-item-${i}" style="${tx._dupOf&&!tx._excluded?'border-left:3px solid #f59e0b':''}">
       <div class="bulk-item-top">
         <input class="fi bulk-item-desc" value="${(tx.desc||'Sin descripción').replace(/"/g,'&quot;')}" style="font-size:13px;font-weight:600;padding:5px 8px;flex:1;min-width:0" oninput="bulkTxs[${i}].desc=this.value" placeholder="Descripción">
         <div class="bulk-item-amt" style="flex-shrink:0;padding-left:6px">${tx.currency==='USD'?'USD':'$U'} ${amtDisp}</div>
         ${excBtn}
       </div>
+      ${dupNote}
       <div class="bulk-item-fields">
         <div class="fld">
           <div class="fl">Categoría</div>
@@ -4695,10 +4707,10 @@ function renderBulk(){
                   opts+=`<optgroup label="${p.name}">`;
                   if(tx.category===p.name)opts+=`<option value="${p.name}" selected>${p.name} (todos)</option>`;
                   else opts+=`<option value="${p.name}">${p.name} (todos)</option>`;
-                  children.forEach(c=>opts+=`<option value="${c.name}"${c.name===tx.category?' selected':''}>${c.emoji} ${c.name}</option>`);
+                  children.forEach(c=>opts+=`<option value="${c.name}"${c.name===tx.category?' selected':''}>${c.emoji?c.emoji+' ':''}${c.name}</option>`);
                   opts+=`</optgroup>`;
                 } else {
-                  opts+=`<option value="${p.name}"${p.name===tx.category?' selected':''}>${p.emoji} ${p.name}</option>`;
+                  opts+=`<option value="${p.name}"${p.name===tx.category?' selected':''}>${p.emoji?p.emoji+' ':''}${p.name}</option>`;
                 }
               });
               return opts;
@@ -4714,7 +4726,7 @@ function renderBulk(){
           </div>
         </div>
       </div>
-      <div style="display:flex;gap:8px;margin-top:6px;align-items:center;flex-wrap:wrap">
+      <div class="bulk-dup-extra" style="display:flex;gap:8px;margin-top:6px;align-items:center;flex-wrap:wrap">
         <div style="display:flex;gap:4px">
           <button class="mini-cur-btn${tx.payType!=='credit'?' on':''}" style="border-radius:6px;padding:3px 8px" onclick="bulkTxs[${i}].payType='debit';bulkTxs[${i}].installments=1;this.className='mini-cur-btn on';this.nextElementSibling.className='mini-cur-btn';document.getElementById('bulk-inst-${i}').style.display='none'">Débito</button>
           <button class="mini-cur-btn${tx.payType==='credit'?' on':''}" style="border-radius:6px;padding:3px 8px" onclick="bulkTxs[${i}].payType='credit';this.className='mini-cur-btn on';this.previousElementSibling.className='mini-cur-btn';document.getElementById('bulk-inst-${i}').style.display='flex'">Crédito</button>
@@ -4780,6 +4792,9 @@ function confirmBulk(){
       note:tx.note||'',
       payType:tx.payType||'debit',
       installments:tx.payType==='credit'?(+tx.installments||1):1,
+      origAmount:+tx.amount,
+      origCur:tx.currency||'UYU',
+      tcAtSave:(tx.currency||'UYU')==='UYU'?XR:null,
     });
   });
 
@@ -4864,9 +4879,90 @@ function showPreview(data){
       txCur.scan=cur;
     }
   }
+  const dupEl=document.getElementById('prevDup');
+  if(dupEl){
+    const m=findExistingGasto({desc:data.desc,amount:data.amount,currency:data.currency||txCur.scan||'UYU',date:data.date||new Date().toISOString().slice(0,10)});
+    if(m){dupEl.innerHTML='<span>⚠️</span><span>'+dupLabel(m)+'. Si es otro gasto, confirmá igual.</span>';dupEl.style.display='flex';}
+    else{dupEl.style.display='none';dupEl.innerHTML='';}
+  }
   document.getElementById('prev').classList.add('sh');
   document.getElementById('prev').scrollIntoView({behavior:'smooth',block:'start'});
 }
+// ============================================================
+// DUPLICADOS — ¿este gasto ya está anotado?
+// ============================================================
+const _DUP_STOP=new Set(['compra','compras','pago','pagos','pos','debito','credito','visa','master','mastercard','oca','uy','sa','srl','ltda','www','com','the','del','los','las','con','por','para','cuota','cuotas','montevideo','uruguay']);
+function _dupTokens(str){
+  return (str||'').toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g,'')
+    .replace(/[^a-z0-9 ]/g,' ').split(/\s+/).filter(w=>w.length>=3&&!_DUP_STOP.has(w)&&!/^\d+$/.test(w));
+}
+function _dupDescSimilar(a,b){
+  const ta=_dupTokens(a),tb=_dupTokens(b);
+  if(!ta.length||!tb.length)return false;
+  if(ta.some(w=>tb.includes(w)))return true;
+  const ja=ta.join(''),jb=tb.join('');
+  return ja.length>=4&&jb.length>=4&&(ja.includes(jb)||jb.includes(ja));
+}
+function _dupDays(a,b){return Math.abs(new Date(a+'T12:00:00')-new Date(b+'T12:00:00'))/86400000;}
+// ¿El monto del gasto guardado coincide con el de la captura? Compara en la misma moneda cuando puede.
+function _dupAmountMatch(g,amt,cur,divisor){
+  const d=divisor||1;
+  if(g.origAmount&&g.origCur===cur){
+    const v=(+g.origAmount)/d;
+    return Math.abs(v-amt)<=Math.max(1,amt*0.01);
+  }
+  const usd=toUSD(amt,cur);
+  const v=(+g.amount)/d;
+  return Math.abs(v-usd)<=Math.max(0.5,usd*0.03); // tolera variación de tipo de cambio
+}
+function _dupFmt(g){
+  const amt=g.origAmount&&g.origCur
+    ?(g.origCur==='UYU'?'$U '+Math.round(g.origAmount).toLocaleString('es-UY'):'USD '+(+g.origAmount).toLocaleString('es-UY',{maximumFractionDigits:2}))
+    :fmt(+g.amount);
+  return amt;
+}
+// Devuelve {g, why} con el gasto ya anotado que coincide, o null.
+// usedIds evita que un mismo gasto "tape" dos movimientos iguales de la misma captura.
+function findExistingGasto(tx,usedIds){
+  const amt=+tx.amount||0, cur=tx.currency||'UYU', date=tx.date;
+  if(!amt||!date)return null;
+  const td=new Date(date+'T12:00:00');
+  let best=null,bestScore=0;
+  (S.gastos||[]).forEach(g=>{
+    if(g.isSaving||(usedIds&&usedIds.has(g.id)))return;
+    const inst=+g.installments||1;
+    const desc=_dupDescSimilar(g.desc,tx.desc);
+    let score=0,why='';
+    // Recurrente: se repite todos los meses, se compara contra la copia del mes de la captura
+    if(g.recurring){
+      const st=new Date(g.date+'T12:00:00');
+      const startOk=td.getFullYear()>st.getFullYear()||(td.getFullYear()===st.getFullYear()&&td.getMonth()>=st.getMonth());
+      const endOk=!g.endDate||new Date(g.endDate+'T12:00:00')>=new Date(td.getFullYear(),td.getMonth(),1);
+      if(startOk&&endOk&&_dupAmountMatch(g,amt,cur)&&desc){score=3;why='recurrente';}
+    }
+    // Mismo gasto: monto igual y fecha cercana
+    if(!score&&_dupAmountMatch(g,amt,cur)){
+      const dd=_dupDays(g.date,date);
+      if(dd<=1)score=desc?5:4;
+      else if(dd<=4&&desc)score=3;
+    }
+    // Cuota de una compra en cuotas anotada antes
+    if(!score&&g.payType==='credit'&&inst>1&&desc&&_dupAmountMatch(g,amt,cur,inst)){
+      const st=new Date(g.date+'T12:00:00');
+      const months=(td.getFullYear()-st.getFullYear())*12+(td.getMonth()-st.getMonth());
+      if(months>=0&&months<=inst+1){score=2;why='cuota';}
+    }
+    if(score>bestScore){bestScore=score;best={g,why};}
+  });
+  return best;
+}
+function dupLabel(m){
+  const g=m.g;
+  const when=g.recurring&&m.why==='recurrente'?'recurrente desde '+fmtDateDisp(g.date):fmtDateDisp(g.date);
+  const extra=m.why==='cuota'?' (cuota de compra en '+(+g.installments)+' cuotas)':'';
+  return '<b>Ya anotado:</b> '+(g.desc||'Sin descripción').replace(/</g,'&lt;')+' · '+_dupFmt(g)+' · '+when+extra;
+}
+
 function toB64(file){return new Promise((res,rej)=>{const r=new FileReader();r.onload=()=>res(r.result.split(',')[1]);r.onerror=rej;r.readAsDataURL(file);});}
 
 // ============================================================
