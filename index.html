@@ -674,7 +674,7 @@ onAuthStateChanged(auth, (user) => {
       <div class="fld"><div class="fl">Descripción</div><input type="text" class="fi" id="egDesc" placeholder="¿Qué fue?"></div>
       <div class="fld">
         <div class="fl-row"><div class="fl">Monto</div><div class="mini-cur" id="cur-edit"><button class="mini-cur-btn on" onclick="selTxCur('edit','USD',this)">USD</button><button class="mini-cur-btn" onclick="selTxCur('edit','UYU',this)">UYU</button></div></div>
-        <input type="number" class="fi" id="egAmt" placeholder="0">
+        <input type="number" class="fi" id="egAmt" placeholder="0" oninput="updEgFromRow()">
       </div>
     </div>
     <div class="fr" style="margin-bottom:8px">
@@ -722,8 +722,13 @@ onAuthStateChanged(auth, (user) => {
       <select class="fi" id="egCardId" style="width:100%"><option value="">— Sin tarjeta —</option></select>
     </div>
     <div style="display:flex;align-items:center;gap:10px;margin-bottom:8px;padding:10px 12px;background:var(--bg);border-radius:var(--r)">
-      <input type="checkbox" id="egRecurring" style="width:18px;height:18px;cursor:pointer;accent-color:var(--accent)" onchange="document.getElementById('egEndDateRow').style.display=this.checked?'':'none'">
+      <input type="checkbox" id="egRecurring" style="width:18px;height:18px;cursor:pointer;accent-color:var(--accent)" onchange="document.getElementById('egEndDateRow').style.display=this.checked?'':'none';updEgFromRow()">
       <label for="egRecurring" style="font-size:13px;font-weight:600;cursor:pointer">Pago recurrente (se repite cada mes)</label>
+    </div>
+    <div id="egFromRow" style="display:none;margin-bottom:10px;padding:10px 12px;background:rgba(71,114,250,.06);border:1px solid rgba(71,114,250,.18);border-radius:var(--r)">
+      <div class="fl" style="margin-bottom:4px">El nuevo monto aplica desde</div>
+      <input type="month" class="fi" id="egFrom">
+      <div style="font-size:11px;color:var(--text-muted);margin-top:6px" id="egFromHint"></div>
     </div>
     <div id="egEndDateRow" style="display:none;margin-bottom:14px">
       <div class="fld"><div class="fl">Fecha de fin (opcional — dejar vacío si sigue activo)</div>
@@ -1642,7 +1647,7 @@ onAuthStateChanged(auth, (user) => {
     </div>
     <div class="fr" style="margin-bottom:8px">
       <div class="fld"><div class="fl">Monto mensual (USD)</div>
-        <input type="number" class="fi" id="csAmt" placeholder="500">
+        <input type="number" class="fi" id="csAmt" placeholder="500" oninput="updCsFromRow()">
       </div>
       <div class="fld"><div class="fl">Tarjeta</div>
         <select class="fi" id="csCard" onchange="updateCsPrimerCobro()"></select>
@@ -1655,6 +1660,11 @@ onAuthStateChanged(auth, (user) => {
           <div class="date-display" id="csDateDisp"><span>DD/MM/AAAA</span></div>
         </div>
       </div>
+    </div>
+    <div id="csFromRow" style="display:none;margin-bottom:12px;padding:10px 12px;background:rgba(71,114,250,.06);border:1px solid rgba(71,114,250,.18);border-radius:var(--r)">
+      <div class="fl" style="margin-bottom:4px">El nuevo monto aplica desde</div>
+      <input type="month" class="fi" id="csFrom">
+      <div style="font-size:11px;color:var(--text-muted);margin-top:6px" id="csFromHint"></div>
     </div>
     <div id="csPrimerCobro" style="margin-bottom:14px;padding:8px 12px;background:var(--bg);border-radius:var(--r);font-size:12px;color:var(--text-muted)">Se cobra automáticamente todos los meses</div>
     <button class="btn bg" onclick="saveCreditSaving()">Guardar</button>
@@ -2145,6 +2155,39 @@ function chM(d){
   if(CM>11){CM=0;CY++;}if(CM<0){CM=11;CY--;}
   renderAll();
 }
+// ============================================================
+// HISTORIAL DE MONTOS (recurrentes y ahorros en tarjeta)
+// Cambiar el monto aplica desde un mes en adelante; los meses anteriores conservan el suyo.
+// amountHistory: [{from:'YYYY-MM', amount(USD), origAmount, origCur, tcAtSave}] ordenado por from
+// ============================================================
+function _ymKey(m,y){return y+'-'+String(m+1).padStart(2,'0');}
+function curYM(){const d=new Date();return _ymKey(d.getMonth(),d.getFullYear());}
+function recEntry(g,m,y){
+  if(!g.amountHistory||!g.amountHistory.length)return null;
+  const k=_ymKey(m,y);let e=null;
+  g.amountHistory.forEach(h=>{if(h.from<=k)e=h;});
+  return e||g.amountHistory[0];
+}
+// Copia virtual de un recurrente para el mes m/y, con el monto que correspondía ese mes
+function withRecAmount(v,g,m,y){
+  const e=recEntry(g,m,y);
+  if(!e)return v;
+  v.amount=e.amount;
+  if(e.origCur){v.origAmount=e.origAmount;v.origCur=e.origCur;v.tcAtSave=e.tcAtSave||null;}
+  else{delete v.origAmount;delete v.origCur;}
+  return v;
+}
+function applyAmountChange(g,fromYM,newUSD,origAmount,origCur){
+  const hist=g.amountHistory&&g.amountHistory.length?g.amountHistory.slice()
+    :[{from:'0000-00',amount:+g.amount,origAmount:g.origAmount,origCur:g.origCur,tcAtSave:g.tcAtSave||null}];
+  const entry={from:fromYM,amount:newUSD,origAmount,origCur,tcAtSave:origCur==='UYU'?XR:null};
+  g.amountHistory=hist.filter(h=>h.from<fromYM).concat([entry]).sort((a,b)=>a.from.localeCompare(b.from));
+  // el monto "actual" del gasto es el del último tramo
+  const last=g.amountHistory[g.amountHistory.length-1];
+  g.amount=last.amount;g.origAmount=last.origAmount;g.origCur=last.origCur;g.tcAtSave=last.tcAtSave;
+}
+function fmtYM(ym){const [y,m]=ym.split('-').map(Number);return new Date(y,m-1,1).toLocaleDateString('es-UY',{month:'long',year:'numeric'});}
+
 // Returns debit gastos of the month + a virtual entry per credit installment due this month
 function mGastos(){
   const debits=S.gastos.filter(g=>{
@@ -2158,7 +2201,7 @@ function mGastos(){
     if(CY>startY||(CY===startY&&CM>=startM)){
       // Check not already manually added this month
       const virtDate=`${CY}-${String(CM+1).padStart(2,'0')}-${String(start.getDate()).padStart(2,'0')}`;
-      return {...g,date:virtDate,_isRecurring:true,id:g.id+'_rec_'+CY+'_'+CM};
+      return withRecAmount({...g,date:virtDate,_isRecurring:true,id:g.id+'_rec_'+CY+'_'+CM},g,CM,CY);
     }
     return null;
   }).filter(Boolean);
@@ -2179,10 +2222,10 @@ function mGastos(){
       const virtDate=`${CY}-${String(CM+1).padStart(2,'0')}-${String(s.getDate()).padStart(2,'0')}`;
       if(g.isSaving){
         // Credit saving: counts as ahorro (in savedThisMonth), not as cuota
-        recurringDue.push({...g,date:virtDate,_isRecurring:true,_isSaving:true,id:g.id+'_rec_'+CY+'_'+CM});
+        recurringDue.push(withRecAmount({...g,date:virtDate,_isRecurring:true,_isSaving:true,id:g.id+'_rec_'+CY+'_'+CM},g,CM,CY));
       } else {
         // Card-debit subscription: counts as gasto
-        recurringDue.push({...g,date:virtDate,_isRecurring:true,_isCardDebit:true,id:g.id+'_rec_'+CY+'_'+CM});
+        recurringDue.push(withRecAmount({...g,date:virtDate,_isRecurring:true,_isCardDebit:true,id:g.id+'_rec_'+CY+'_'+CM},g,CM,CY));
       }
     } else if(g.recurring&&diff>=0){
       // Recurring multi-cuota credit: show every month from first cuota onwards
@@ -3572,7 +3615,7 @@ function rSavings(){
   rDebts();
   rSavingsProjection();
   const con=document.getElementById('goalList');
-  if(!S.goals.length){con.innerHTML=`<div class="empty"><div class="et">Sin ahorros todavía</div><div class="es">Creá tu primer objetivo o bolsillo de ahorro</div></div>`;return;}
+  if(!S.goals.length&&!S.gastos.some(g=>g.payType==='credit'&&g.isSaving&&g.recurring)){con.innerHTML=`<div class="empty"><div class="et">Sin ahorros todavía</div><div class="es">Creá tu primer objetivo o bolsillo de ahorro</div></div>`;return;}
   // Credit savings section — identical UI to bolsillos
   const creditSavingGs=S.gastos.filter(g=>g.payType==='credit'&&g.isSaving&&g.recurring);
   function buildCreditSavingHistory(g){
@@ -3595,7 +3638,7 @@ function rSavings(){
   const creditSavingSection=creditSavingGs.map(function(g){
     var card=getCards().find(function(c){return c.id===g.cardId;})||{name:'Tarjeta',color:'#6b7280'};
     var history=buildCreditSavingHistory(g);
-    var totalSaved=history.length*(+g.amount);
+    var totalSaved=history.reduce(function(s,h){var e=recEntry(g,h.m,h.y);return s+(e?+e.amount:+g.amount);},0);
     var entriesHTML=history.length
       ?'<div style="margin-top:10px;border-top:1px solid var(--border);padding-top:8px">'
         +'<div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:6px">'
@@ -3605,7 +3648,7 @@ function rSavings(){
           var label=new Date(h.y,h.m,1).toLocaleDateString('es-UY',{day:'numeric',month:'short',year:'numeric'});
           return '<div style="display:flex;align-items:center;gap:8px;padding:8px 0;border-bottom:1px solid var(--border-light)">'
             +'<div style="flex:1">'
-            +'<div style="font-size:12px;font-weight:700;color:var(--green)">+ '+fmt(g.amount)+'</div>'
+            +'<div style="font-size:12px;font-weight:700;color:var(--green)">+ '+fmt((recEntry(g,h.m,h.y)||g).amount)+'</div>'
             +'<div style="font-size:10px;color:var(--text-muted)">Depósito · '+label+' · automático</div>'
             +'</div>'
             +'</div>';
@@ -4377,6 +4420,9 @@ function openEditGasto(id){
   if(egEndDateRow)egEndDateRow.style.display=g.recurring?'':'none';
   const egEndDateEl=document.getElementById('egEndDate');
   if(egEndDateEl){egEndDateEl.value=g.endDate||'';updDateDisplay('egEndDate','egEndDateDisp');}
+  window._egOrigUSD=+g.amount||0;
+  const egFrom=document.getElementById('egFrom');if(egFrom)egFrom.value=_ymKey(CM,CY);
+  updEgFromRow();
   toggleEgInstall();
   popCats();
   const catSel=document.getElementById('egCat');
@@ -4384,6 +4430,15 @@ function openEditGasto(id){
   openM('mEditGasto');
 }
 
+function updEgFromRow(){
+  const row=document.getElementById('egFromRow');if(!row)return;
+  const g=S.gastos.find(x=>x.id===editingGastoId);
+  const amt=parseFloat(document.getElementById('egAmt').value);
+  const rec=document.getElementById('egRecurring')?.checked;
+  const show=!!g&&!!g.recurring&&rec&&!isNaN(amt)&&Math.abs(toUSD(amt,txCur.edit)-(window._egOrigUSD||0))>0.004;
+  row.style.display=show?'block':'none';
+  if(show)document.getElementById('egFromHint').textContent='Los meses anteriores quedan en '+fmt(window._egOrigUSD)+'.';
+}
 function toggleEgInstall(){
   const pt=document.getElementById('egPayType').value;
   const egCR=document.getElementById('egCardRow');
@@ -4410,7 +4465,20 @@ function saveEditGasto(){
   const inst=parseInt(document.getElementById('egInstall').value)||1;
   if(!desc||isNaN(amt)||!date){toast('Completá descripción, monto y fecha');return;}
   g.desc=desc;
-  g.amount=toUSD(amt,txCur.edit);
+  const newUSD=toUSD(amt,txCur.edit);
+  const wasRecurring=!!g.recurring;
+  let amtMsg='';
+  if(Math.abs(newUSD-(+g.amount||0))>0.004){
+    const stillRec=document.getElementById('egRecurring')?.checked;
+    if(wasRecurring&&stillRec){
+      const from=document.getElementById('egFrom').value||_ymKey(CM,CY);
+      applyAmountChange(g,from,newUSD,amt,txCur.edit);
+      amtMsg=' · nuevo monto desde '+fmtYM(from);
+    }else{
+      g.amount=newUSD;g.origAmount=amt;g.origCur=txCur.edit;g.tcAtSave=txCur.edit==='UYU'?XR:null;
+      delete g.amountHistory;
+    }
+  }
   g.category=cat;
   g.date=date;
   g.note=note;
@@ -4421,7 +4489,7 @@ function saveEditGasto(){
   const egCS=document.getElementById('egCardId');
   if(g.payType==='credit'&&egCS&&egCS.value)g.cardId=egCS.value;
   else if(g.payType!=='credit')g.cardId=undefined;
-  save();renderAll();closeM('mEditGasto');toast('Gasto actualizado');
+  save();renderAll();closeM('mEditGasto');toast('Gasto actualizado'+amtMsg);
 }
 
 function deleteFromEdit(){
@@ -4607,11 +4675,22 @@ function openEditCreditSaving(id){
   updDateDisplay('csDate','csDateDisp');
   // Store id for save
   window._editCreditSavingId=id;
+  window._csOrigAmount=+g.amount||0;
+  document.getElementById('csFrom').value=curYM();
+  updCsFromRow();
   openM('mCreditSaving');
 }
 
+function updCsFromRow(){
+  const row=document.getElementById('csFromRow');if(!row)return;
+  const amt=parseFloat(document.getElementById('csAmt').value);
+  const show=!!window._editCreditSavingId&&!isNaN(amt)&&Math.abs(amt-(window._csOrigAmount||0))>0.004;
+  row.style.display=show?'block':'none';
+  if(show)document.getElementById('csFromHint').textContent='Los meses anteriores quedan en '+fmt(window._csOrigAmount)+'. Si elegís un mes pasado, se corrige desde ese mes.';
+}
 function openCreditSaving(){
   window._editCreditSavingId=null;
+  const fr=document.getElementById('csFromRow');if(fr)fr.style.display='none';
   // Populate card select
   const cardSel=document.getElementById('csCard');
   if(cardSel){
@@ -4646,6 +4725,22 @@ function saveCreditSaving(){
   if(!desc){toast('Ingresá una descripción');return;}
   if(!amt||amt<=0){toast('Ingresá un monto válido');return;}
   if(!date){toast('Seleccioná una fecha');return;}
+  if(window._editCreditSavingId){
+    // Edición: se actualiza el existente (antes además se creaba uno nuevo por error)
+    const ex=S.gastos.find(x=>x.id===window._editCreditSavingId);
+    if(ex){
+      let msg='Ahorro actualizado ✓';
+      if(Math.abs(amt-(+ex.amount||0))>0.004){
+        const from=document.getElementById('csFrom').value||curYM();
+        applyAmountChange(ex,from,amt,amt,'USD');
+        msg='Nuevo monto desde '+fmtYM(from)+' ✓';
+      }
+      Object.assign(ex,{desc,cardId,date});
+      save();renderAll();closeM('mCreditSaving');toast(msg);
+    }
+    window._editCreditSavingId=null;
+    return;
+  }
   // Save as recurring 1-cuota credit gasto with isSaving flag
   const g={
     id:Date.now()+Math.random().toString(36).substr(2,5),
@@ -4665,14 +4760,6 @@ function saveCreditSaving(){
   if(d.getDate()>cd){
     const nm=new Date(d.getFullYear(),d.getMonth()+1,1);
     toastMsg='Guardado ✓ — primer cobro en '+nm.toLocaleDateString('es-UY',{month:'long'});
-  }
-  if(window._editCreditSavingId){
-    // Edit mode: update existing
-    const idx=S.gastos.findIndex(x=>x.id===window._editCreditSavingId);
-    if(idx>=0){Object.assign(S.gastos[idx],{desc,amount:amt,cardId,date});}
-    save();renderAll();closeM('mCreditSaving');toast('Ahorro actualizado ✓');
-    window._editCreditSavingId=null;
-    return;
   }
   save();renderAll();closeM('mCreditSaving');toast(toastMsg);
   document.getElementById('csDes').value='';document.getElementById('csAmt').value='';
