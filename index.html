@@ -14,7 +14,7 @@
 import { initializeApp } from 'https://www.gstatic.com/firebasejs/10.12.0/firebase-app.js';
 import { getAuth, GoogleAuthProvider, signInWithRedirect, signInWithPopup, getRedirectResult, signOut, onAuthStateChanged, browserLocalPersistence, initializeAuth, indexedDBLocalPersistence }
   from 'https://www.gstatic.com/firebasejs/10.12.0/firebase-auth.js';
-import { getFirestore, doc, getDoc, setDoc }
+import { getFirestore, doc, getDoc, setDoc, runTransaction, onSnapshot }
   from 'https://www.gstatic.com/firebasejs/10.12.0/firebase-firestore.js';
 
 const firebaseConfig = {
@@ -109,6 +109,30 @@ window._fbSave = async (stateJson) => {
     await setDoc(ref, { json: stateJson, updatedAt: Date.now() });
     console.log('Saved to Firestore OK');
   } catch(e) { console.error('Firestore save error:', e); }
+};
+
+// Lee lo que hay en la nube, lo combina con lo local (mergeFn) y escribe el resultado, todo atómico
+window._fbSync = async (mergeFn) => {
+  if (!window._fbUser) return null;
+  const ref = doc(db, 'users', window._fbUser.uid, 'data', 'state');
+  return await runTransaction(db, async (tx) => {
+    const snap = await tx.get(ref);
+    const merged = mergeFn(snap.exists() ? snap.data().json : null);
+    tx.set(ref, { json: merged, updatedAt: Date.now() });
+    return merged;
+  });
+};
+
+// Avisa cuando otro dispositivo cambia los datos, para que una pestaña abierta no quede vieja
+let _fbUnsub = null;
+window._fbListen = (cb) => {
+  if (_fbUnsub) { _fbUnsub(); _fbUnsub = null; }
+  if (!window._fbUser) return;
+  const ref = doc(db, 'users', window._fbUser.uid, 'data', 'state');
+  _fbUnsub = onSnapshot(ref, (snap) => {
+    if (!snap.exists() || snap.metadata.hasPendingWrites) return;
+    cb(snap.data().json);
+  }, (e) => console.error('Listen error:', e));
 };
 
 window._fbLoad = async () => {
@@ -536,7 +560,7 @@ onAuthStateChanged(auth, (user) => {
 <div class="mo hid" id="mApiKey" onclick="overlayClose(event,'mApiKey')">
   <div class="modal"><div class="mh"></div>
     <div class="mt">API Key de Anthropic</div>
-    <div class="ms">Para escanear recibos con IA. Conseguila en <a href="https://console.anthropic.com" target="_blank" class="link">console.anthropic.com</a>. Solo se guarda en tu dispositivo.</div>
+    <div class="ms">Opcional: solo hace falta para escanear tickets y estados de cuenta con IA. Conseguila en <a href="https://console.anthropic.com" target="_blank" class="link">console.anthropic.com</a> (el uso se cobra en esa cuenta). Se guarda en tu cuenta de esta app y nadie más la ve.</div>
     <div class="fld" style="margin-bottom:14px"><div class="fl">API Key</div><input type="password" class="fi" id="apiKeyInput" placeholder="sk-ant-..."></div>
     <div style="display:flex;gap:8px">
       <button class="btn bp" onclick="saveApiKey()">Guardar</button>
@@ -605,6 +629,7 @@ onAuthStateChanged(auth, (user) => {
       <select class="fi" id="mCardId" style="width:100%">
         <option value="">— Seleccionar —</option>
       </select>
+      <div id="mCardEmpty" style="display:none;font-size:12px;color:var(--text-muted);margin-top:6px">Todavía no tenés tarjetas. <a href="#" class="link" onclick="event.preventDefault();openCards()">Agregar una</a></div>
     </div>
     <div style="display:flex;gap:8px">
       <button class="btn bp" onclick="confirmPay()" style="flex:1">Confirmar</button>
@@ -961,12 +986,40 @@ onAuthStateChanged(auth, (user) => {
       <button class="mas-item" onclick="closeMas();tab('analisis')"><div style="width:32px;height:32px;border-radius:8px;background:#7c3aed15;border:1px solid #7c3aed25;display:flex;align-items:center;justify-content:center;flex-shrink:0"><svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="#7c3aed" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="22 12 18 12 15 21 9 3 6 12 2 12"/></svg></div><span>Análisis mensual</span></button>
       <button class="mas-item" onclick="closeMas();tab('anual')"><div style="width:32px;height:32px;border-radius:8px;background:#4772fa15;border:1px solid #4772fa25;display:flex;align-items:center;justify-content:center;flex-shrink:0"><svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="#4772fa" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="4" width="18" height="18" rx="2"/><line x1="16" y1="2" x2="16" y2="6"/><line x1="8" y1="2" x2="8" y2="6"/><line x1="3" y1="10" x2="21" y2="10"/></svg></div><span>Vista anual</span></button>
       <button class="mas-item" onclick="closeMas();tab('presupuestos')"><div style="width:32px;height:32px;border-radius:8px;background:#f9731615;border:1px solid #f9731625;display:flex;align-items:center;justify-content:center;flex-shrink:0"><svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="#f97316" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="3"/><path d="M19.07 4.93a10 10 0 0 1 1.93 11.07M4.93 4.93A10 10 0 0 0 3 12a10 10 0 0 0 4.07 8.07M12 2a10 10 0 0 1 7.07 17.07"/></svg></div><span>Presupuestos y categorías</span></button>
-      <button class="mas-item" onclick="closeMas();tab('casa')"><div style="width:32px;height:32px;border-radius:8px;background:#06b6d415;border:1px solid #06b6d425;display:flex;align-items:center;justify-content:center;flex-shrink:0"><svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="#06b6d4" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 9l9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"/><polyline points="9 22 9 12 15 12 15 22"/></svg></div><span>Tracker Casa</span></button>
+      <button class="mas-item" id="masCasa" style="display:none" onclick="closeMas();tab('casa')"><div style="width:32px;height:32px;border-radius:8px;background:#06b6d415;border:1px solid #06b6d425;display:flex;align-items:center;justify-content:center;flex-shrink:0"><svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="#06b6d4" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 9l9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"/><polyline points="9 22 9 12 15 12 15 22"/></svg></div><span>Tracker Casa</span></button>
+      <button class="mas-item" onclick="closeMas();openCards()"><div style="width:32px;height:32px;border-radius:8px;background:#4772fa15;border:1px solid #4772fa25;display:flex;align-items:center;justify-content:center;flex-shrink:0"><svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="#4772fa" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><rect x="2" y="5" width="20" height="14" rx="2"/><line x1="2" y1="10" x2="22" y2="10"/></svg></div><span>Tarjetas</span></button>
       <button class="mas-item" onclick="closeMas();openM('mSheets')"><div style="width:32px;height:32px;border-radius:8px;background:#22c55e15;border:1px solid #22c55e25;display:flex;align-items:center;justify-content:center;flex-shrink:0"><svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="#22c55e" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/><line x1="16" y1="13" x2="8" y2="13"/><line x1="16" y1="17" x2="8" y2="17"/><polyline points="10 9 9 9 8 9"/></svg></div><span id="sheetsBtnLbl">Conectar Google Sheets</span></button>
     </div>
     <div style="margin-top:16px;padding-top:14px;border-top:1px solid var(--border);display:flex;justify-content:space-between;align-items:center">
       <button class="btn bg" style="font-size:12px" onclick="openM('mApiKey');closeMas()">API Key</button>
-      <button class="btn bg" style="font-size:12px;color:var(--red);border-color:rgba(239,68,68,.2)" onclick="window._fbSignOut();closeMas()">Cerrar sesión</button>
+      <button class="btn bg" style="font-size:12px;color:var(--red);border-color:rgba(239,68,68,.2)" onclick="closeMas();signOutAndClear()">Cerrar sesión</button>
+    </div>
+  </div>
+</div>
+
+<!-- TARJETAS -->
+<div class="mo hid" id="mCards" onclick="overlayClose(event,'mCards')">
+  <div class="modal"><div class="mh"></div>
+    <div class="mt">Tus tarjetas</div>
+    <div class="ms" style="margin-bottom:12px">El día de cierre define en qué mes se cobra cada compra: lo que comprás después del cierre pasa al estado de cuenta siguiente.</div>
+    <div id="cardsList" style="margin-bottom:12px"></div>
+    <div id="cardForm" style="display:none;background:var(--bg);border-radius:var(--R);padding:12px;margin-bottom:12px">
+      <div style="font-size:13px;font-weight:700;margin-bottom:10px" id="cardFormTitle">Nueva tarjeta</div>
+      <div class="fr" style="margin-bottom:8px">
+        <div class="fld"><div class="fl">Nombre</div><input class="fi" id="cardName" placeholder="Ej: BROU Visa"></div>
+        <div class="fld" style="max-width:120px"><div class="fl">Día de cierre</div><input class="fi" type="number" min="1" max="31" inputmode="numeric" id="cardClosing" placeholder="Ej: 5"></div>
+      </div>
+      <div id="cardClosingNote" style="display:none;font-size:11px;color:var(--text-muted);margin:-2px 0 8px">Esta tarjeta tiene un cierre distinto cada mes ya cargado. Dejá el campo vacío para mantenerlo, o poné un día fijo para reemplazarlo.</div>
+      <div class="fl" style="margin-bottom:6px">Color</div>
+      <div id="cardColors" style="display:flex;gap:8px;flex-wrap:wrap;margin-bottom:12px"></div>
+      <div style="display:flex;gap:8px">
+        <button class="btn bp" style="flex:1" onclick="saveCard()">Guardar</button>
+        <button class="btn bg" onclick="closeCardForm()">Cancelar</button>
+      </div>
+    </div>
+    <div style="display:flex;gap:8px">
+      <button class="btn bp" style="flex:1" id="cardAddBtn" onclick="openCardForm()">+ Agregar tarjeta</button>
+      <button class="btn bg" onclick="closeM('mCards')">Listo</button>
     </div>
   </div>
 </div>
@@ -1329,7 +1382,7 @@ onAuthStateChanged(auth, (user) => {
   <div id="t-ingresos" style="display:none">
     <!-- salary card -->
     <div class="r-card" style="margin-bottom:10px;padding:16px;display:flex;align-items:center;justify-content:space-between">
-      <div><div class="sal-lbl">Salario base mensual</div><div class="sal-val" id="salDisp2">USD 6,300</div></div>
+      <div><div class="sal-lbl">Salario base mensual</div><div class="sal-val" id="salDisp2">USD 0</div></div>
       <button class="sal-edit" onclick="openM('mSalary')">Editar</button>
     </div>
     <!-- extra income this month -->
@@ -1467,7 +1520,7 @@ onAuthStateChanged(auth, (user) => {
     <!-- SECCIÓN: Ingresos -->
     <div style="font-size:10px;font-weight:700;color:var(--text-muted);text-transform:uppercase;letter-spacing:.6px;margin-bottom:6px">Ingresos</div>
     <div class="salary-card" style="margin-bottom:16px">
-      <div><div class="sal-lbl">Salario base mensual</div><div class="sal-val" id="salDisp">USD 6,300</div></div>
+      <div><div class="sal-lbl">Salario base mensual</div><div class="sal-val" id="salDisp">USD 0</div></div>
       <button class="sal-edit" onclick="openM('mSalary')">Editar</button>
     </div>
 
@@ -1635,7 +1688,7 @@ const DEF = {
     {name:'Ropa',emoji:'👗',color:'#ec4899',budget:0,parentId:null},
     {name:'Otros',emoji:'📦',color:'#6b7280',budget:0,parentId:null},
   ],
-  gastos:[],goals:[],ingresos:[],salary:6300,currency:'USD',apiKey:''
+  gastos:[],goals:[],ingresos:[],salary:0,currency:'USD',apiKey:''
 };
 let S={};
 let CM=new Date().getMonth(), CY=new Date().getFullYear();
@@ -1653,7 +1706,92 @@ const DEFAULT_CARDS=[
   {id:'santander-master',name:'Santander Master',emoji:'🔴',color:'#eb001b',closingDay:30}
 ];
 
-function getCards(){return(S.cards&&S.cards.length)?S.cards:DEFAULT_CARDS;}
+function getCards(){return S.cards||[];}
+
+// ---------- Administración de tarjetas ----------
+const CARD_COLORS=['#4772fa','#ff6b00','#cc0000','#16a34a','#a855f7','#0ea5e9','#ec4899','#111827'];
+let _editingCardId=null,_cardColor=CARD_COLORS[0];
+function openCards(){closeCardForm();renderCardsList();openM('mCards');}
+function cardClosingLabel(c){
+  if(c.closingDays)return 'Cierre variable por mes';
+  return c.closingDay?'Cierra el día '+c.closingDay:'Sin día de cierre';
+}
+function renderCardsList(){
+  const con=document.getElementById('cardsList');if(!con)return;
+  const cards=getCards();
+  if(!cards.length){con.innerHTML='<div style="text-align:center;padding:14px;color:var(--text-muted);font-size:13px">Todavía no agregaste tarjetas</div>';return;}
+  con.innerHTML=cards.map(c=>{
+    const n=(S.gastos||[]).filter(g=>g.cardId===c.id).length;
+    const esc=(c.name||'').replace(/</g,'&lt;');
+    return '<div style="display:flex;align-items:center;gap:10px;padding:10px 4px;border-bottom:1px solid var(--border)">'
+      +'<div style="width:30px;height:20px;border-radius:4px;background:'+c.color+';flex-shrink:0"></div>'
+      +'<div style="flex:1;min-width:0"><div style="font-size:14px;font-weight:600">'+esc+'</div>'
+      +'<div style="font-size:11px;color:var(--text-muted)">'+cardClosingLabel(c)+(n?' · '+n+' gasto'+(n!==1?'s':''):'')+'</div></div>'
+      +'<button class="btn bg" style="font-size:12px;padding:6px 10px" data-cid="'+c.id+'" onclick="openCardForm(this.dataset.cid)">Editar</button>'
+      +'<button class="btn bg" style="font-size:12px;padding:6px 10px;color:var(--red);border-color:rgba(239,68,68,.2)" data-cid="'+c.id+'" onclick="deleteCard(this.dataset.cid)">Eliminar</button>'
+      +'</div>';
+  }).join('');
+}
+function renderCardColors(){
+  const con=document.getElementById('cardColors');if(!con)return;
+  con.innerHTML=CARD_COLORS.map(col=>'<button type="button" onclick="_cardColor=\''+col+'\';renderCardColors()" aria-label="Color '+col+'" style="width:30px;height:30px;border-radius:50%;background:'+col+';cursor:pointer;border:3px solid '+(col===_cardColor?'var(--white)':'transparent')+';box-shadow:'+(col===_cardColor?'0 0 0 2px '+col:'none')+'"></button>').join('');
+}
+function openCardForm(id){
+  _editingCardId=id||null;
+  const c=id?getCards().find(x=>x.id===id):null;
+  document.getElementById('cardFormTitle').textContent=c?'Editar tarjeta':'Nueva tarjeta';
+  document.getElementById('cardName').value=c?c.name:'';
+  document.getElementById('cardClosing').value=c&&c.closingDay&&!c.closingDays?c.closingDay:'';
+  document.getElementById('cardClosing').placeholder=c&&c.closingDays?'Varía':'Ej: 5';
+  document.getElementById('cardClosingNote').style.display=c&&c.closingDays?'block':'none';
+  _cardColor=c?c.color:CARD_COLORS[getCards().length%CARD_COLORS.length];
+  renderCardColors();
+  document.getElementById('cardForm').style.display='block';
+  document.getElementById('cardAddBtn').style.display='none';
+  setTimeout(()=>document.getElementById('cardName').focus(),50);
+}
+function closeCardForm(){
+  _editingCardId=null;
+  const f=document.getElementById('cardForm');if(f)f.style.display='none';
+  const b=document.getElementById('cardAddBtn');if(b)b.style.display='';
+}
+function saveCard(){
+  const name=document.getElementById('cardName').value.trim();
+  const raw=document.getElementById('cardClosing').value.trim();
+  const day=parseInt(raw,10);
+  if(!name){toast('Poné un nombre');return;}
+  if(raw&&(isNaN(day)||day<1||day>31)){toast('El día de cierre va del 1 al 31');return;}
+  if(!S.cards)S.cards=[];
+  if(_editingCardId){
+    const c=S.cards.find(x=>x.id===_editingCardId);
+    if(!c)return;
+    c.name=name;c.color=_cardColor;
+    if(raw){c.closingDay=day;delete c.closingDays;}
+    else if(!c.closingDays){toast('Poné el día de cierre');return;}
+  }else{
+    if(!raw){toast('Poné el día de cierre');return;}
+    S.cards.push({id:'card_'+Date.now().toString(36),name,emoji:'💳',color:_cardColor,closingDay:day});
+  }
+  S.cardsCustom=true;
+  save();renderAll();closeCardForm();renderCardsList();
+  const pt=document.getElementById('mPayType');
+  if(pt&&!pt.classList.contains('hid')&&document.getElementById('btnCr').classList.contains('ac'))selPay('credit');
+  toast('Tarjeta guardada ✓');
+}
+function deleteCard(id){
+  const c=getCards().find(x=>x.id===id);if(!c)return;
+  const n=(S.gastos||[]).filter(g=>g.cardId===id).length;
+  const msg=n
+    ?'¿Eliminar "'+c.name+'"? Tiene '+n+' gasto'+(n!==1?'s':'')+' asociado'+(n!==1?'s':'')+': no se borran, quedan como crédito sin tarjeta (con cierre el día 6).'
+    :'¿Eliminar "'+c.name+'"?';
+  if(!confirm(msg))return;
+  S.cards=S.cards.filter(x=>x.id!==id);
+  (S.gastos||[]).forEach(g=>{if(g.cardId===id)delete g.cardId;});
+  if(S._crCardFilt===id)S._crCardFilt='';
+  S.cardsCustom=true;
+  save();renderAll();renderCardsList();
+  toast('Tarjeta eliminada');
+}
 
 function getClosingDay(cardId,purchaseMonth,purchaseYear){// purchaseMonth 0-indexed
   if(!cardId)return 6;// legacy fallback
@@ -1710,24 +1848,156 @@ function updTCDisplay(){
 // ============================================================
 let _saveTimer = null;
 
+// ============================================================
+// SINCRONIZACIÓN ENTRE DISPOSITIVOS
+// Cada dispositivo combina sus cambios con los de la nube, ítem por ítem,
+// en vez de reemplazar la lista entera (que hacía que un dispositivo pisara al otro).
+// ============================================================
+const MERGE_KEYS=['gastos','ingresos','debts','cards','goals','categories'];
+const RECORD_KEYS=['gastos','ingresos','debts']; // registros: en la primera sincronización siempre se suman
+const SYNC_META=new Set(['_del','_su']);
+function _itemKey(it){return it&&it.id!=null?String(it.id):(it&&it.name!=null?'n:'+it.name:JSON.stringify(it));}
+function _jsonNoU(it){if(!it||typeof it!=='object')return JSON.stringify(it);const {_u,...rest}=it;return JSON.stringify(rest);}
+function _clone(o){return o===undefined?undefined:JSON.parse(JSON.stringify(o));}
+function buildSyncBase(st){
+  const b={arrays:{},scalars:{}};
+  MERGE_KEYS.forEach(k=>{b.arrays[k]={};(st[k]||[]).forEach(it=>{b.arrays[k][_itemKey(it)]=_jsonNoU(it);});});
+  Object.keys(st).forEach(k=>{if(MERGE_KEYS.includes(k)||SYNC_META.has(k))return;b.scalars[k]=JSON.stringify(st[k]);});
+  return b;
+}
+let _syncBase=null;
+try{_syncBase=JSON.parse(localStorage.getItem('mg_base')||'null');}catch(e){_syncBase=null;}
+function setSyncBase(st){_syncBase=buildSyncBase(st);try{localStorage.setItem('mg_base',JSON.stringify(_syncBase));}catch(e){}}
+// Marca con hora lo que cambió en este dispositivo desde la última sincronización
+function stampChanges(){
+  if(!_syncBase)return;
+  const now=Date.now();
+  S._del=S._del||{};S._su=S._su||{};
+  MERGE_KEYS.forEach(k=>{
+    const base=_syncBase.arrays[k]||{};const seen=new Set();
+    (S[k]||[]).forEach(it=>{const key=_itemKey(it);seen.add(key);if(base[key]!==_jsonNoU(it))it._u=now;});
+    Object.keys(base).forEach(key=>{if(!seen.has(key))S._del[k+'|'+key]=now;});
+  });
+  Object.keys(S).forEach(k=>{if(MERGE_KEYS.includes(k)||SYNC_META.has(k))return;if(_syncBase.scalars[k]!==JSON.stringify(S[k]))S._su[k]=now;});
+}
+// Combina dos estados. prefer = qué lado gana en empate. firstSync = este dispositivo nunca sincronizó con la versión nueva
+function mergeStates(L,R,prefer,firstSync){
+  if(!R)return _clone(L);
+  const del={...(R._del||{})};
+  Object.entries(L._del||{}).forEach(([k,v])=>{if(!del[k]||v>del[k])del[k]=v;});
+  const cut=Date.now()-120*864e5;Object.keys(del).forEach(k=>{if(del[k]<cut)delete del[k];});
+  const lsu=L._su||{},rsu=R._su||{},su={...rsu};
+  Object.entries(lsu).forEach(([k,v])=>{if(!su[k]||v>su[k])su[k]=v;});
+  const out={};
+  new Set([...Object.keys(L),...Object.keys(R)]).forEach(k=>{
+    if(MERGE_KEYS.includes(k)||SYNC_META.has(k))return;
+    let useL;
+    if(!(k in R))useL=true;else if(!(k in L))useL=false;
+    else{const lt=lsu[k]||0,rt=rsu[k]||0;useL=lt>rt||(lt===rt&&prefer==='local');}
+    out[k]=_clone(useL?L[k]:R[k]);
+  });
+  MERGE_KEYS.forEach(k=>{
+    const la=L[k]||[],ra=R[k]||[];
+    if(firstSync&&!RECORD_KEYS.includes(k)&&ra.length){out[k]=_clone(ra);return;}
+    const primary=prefer==='local'?la:ra,secondary=prefer==='local'?ra:la;
+    const map=new Map(),order=[];
+    primary.forEach(it=>{const key=_itemKey(it);if(!map.has(key))order.push(key);map.set(key,{it,side:prefer});});
+    secondary.forEach(it=>{
+      const key=_itemKey(it),cur=map.get(key);
+      if(!cur){order.push(key);map.set(key,{it});return;}
+      if((it._u||0)>(cur.it._u||0))map.set(key,{it});
+    });
+    out[k]=order.map(key=>map.get(key).it)
+      .filter(it=>{const d=del[k+'|'+_itemKey(it)];return !d||(it._u||0)>d;})
+      .map(_clone);
+  });
+  out._del=del;out._su=su;
+  return out;
+}
+function _replaceS(obj){
+  Object.keys(S).forEach(k=>delete S[k]);
+  Object.assign(S,obj);
+  ensureDefaults();
+  localStorage.setItem('mg4',JSON.stringify(S));
+}
+function _rerender(){try{popCats();updCurUI();updCurLabels();renderAll();}catch(e){console.error('rerender error:',e);}}
+function _cloudHasData(R){return R&&(R.gastos||R.categories||R.salary);}
+
+let _syncing=false,_syncAgain=false;
+async function syncNow(){
+  if(!window._fbSync||!window._fbUser)return;
+  if(_syncing){_syncAgain=true;return;}
+  _syncing=true;
+  try{
+    const first=!_syncBase;
+    stampChanges();
+    const localSnap=_clone(S);
+    const mergedJson=await window._fbSync(remoteJson=>{
+      let R=null;try{R=remoteJson?JSON.parse(remoteJson):null;}catch(e){R=null;}
+      if(!_cloudHasData(R))R=null;
+      // primera vez en este dispositivo: la nube manda en configuración; los gastos de acá se suman igual
+      return JSON.stringify(mergeStates(localSnap,R,first?'remote':'local',first));
+    });
+    const M=JSON.parse(mergedJson);
+    const before=JSON.stringify(S);
+    if(before!==JSON.stringify(localSnap)){
+      // hubo cambios mientras sincronizaba: se combinan arriba y se vuelve a sincronizar
+      stampChanges();
+      const keep=mergeStates(S,M,'local',false);
+      setSyncBase(M);_replaceS(keep);_syncAgain=true;
+    }else{
+      setSyncBase(M);_replaceS(M);
+    }
+    localStorage.removeItem('mg_dirty');
+    if(JSON.stringify(S)!==before)_rerender();
+  }catch(e){
+    console.error('Sync error:',e);
+    localStorage.setItem('mg_dirty','1');
+  }finally{
+    _syncing=false;
+    if(_syncAgain){_syncAgain=false;setTimeout(syncNow,300);}
+  }
+}
+// Llegó un cambio de otro dispositivo
+function onRemoteState(json){
+  if(_syncing)return;
+  let R;try{R=JSON.parse(json);}catch(e){return;}
+  if(!_cloudHasData(R))return;
+  const before=JSON.stringify(S);
+  stampChanges();
+  const M=mergeStates(S,R,'remote',!_syncBase);
+  setSyncBase(R);
+  _replaceS(M);
+  if(JSON.stringify(S)!==before)_rerender();
+  // si acá había cambios que la nube no tiene, se suben
+  if(JSON.stringify(buildSyncBase(S))!==JSON.stringify(buildSyncBase(R))||localStorage.getItem('mg_dirty'))syncNow();
+}
+window.addEventListener('online',()=>{if(localStorage.getItem('mg_dirty'))syncNow();});
+
 function save() {
   localStorage.setItem('mg4', JSON.stringify(S));
+  localStorage.setItem('mg_dirty','1');
   clearTimeout(_saveTimer);
-  _saveTimer = setTimeout(async () => {
-    if (window._fbSave) {
-      try { await window._fbSave(JSON.stringify(S)); }
-      catch(e) { console.error('Cloud save error:', e); }
-    }
-  }, 1200);
+  _saveTimer = setTimeout(syncNow, 1200);
   // Sync to Google Sheets if connected
   triggerSheetsSync();
+}
+
+// Borra todo lo que la app guarda en este navegador (no toca la nube)
+function clearLocalUserData(){
+  ['mg4','mg_casa','mg_apikey','mgApiKey','mg_sheets_token','mg_sheets_id','mg_uid','mg_base','mg_dirty'].forEach(k=>{try{localStorage.removeItem(k);}catch(e){}});
+}
+// Cerrar sesión: limpia el navegador y recarga, así el próximo usuario arranca de cero
+function signOutAndClear(){
+  const done=()=>{clearLocalUserData();location.reload();};
+  try{Promise.resolve(window._fbSignOut&&window._fbSignOut()).then(done,done);}catch(e){done();}
 }
 
 function ensureDefaults() {
   if (!S.goals) S.goals = [];
   if (!S.ingresos) S.ingresos = [];
   if (!S.currency) S.currency = 'USD';
-  if (!S.salary) S.salary = 6300;
+  if (S.salary == null) S.salary = 0;
   if (!S.categories || !S.categories.length) S.categories = JSON.parse(JSON.stringify(DEF.categories));
   if (!S.gastos) S.gastos = [];
   if (!S.apiKey) S.apiKey = localStorage.getItem('mg_apikey') || '';
@@ -1739,13 +2009,26 @@ function ensureDefaults() {
   if (!S.salaryCredited) S.salaryCredited = {};
   if (!S.sobrantes) S.sobrantes = {};
   if (!S.cards) S.cards = [];
+  // Tarjetas: antes eran fijas (Itaú/Santander). Si esta cuenta ya tiene gastos con esas tarjetas,
+  // se copian a la cuenta tal cual (con sus cierres). Cuentas nuevas arrancan sin tarjetas.
+  if (!S.cardsCustom && !S.cards.length) {
+    const legacyIds = new Set(DEFAULT_CARDS.map(c => c.id));
+    if ((S.gastos || []).some(g => g.cardId && legacyIds.has(g.cardId)))
+      S.cards = JSON.parse(JSON.stringify(DEFAULT_CARDS));
+  }
+  // Planificador de Casa: antes vivía solo en este navegador; se pasa a la cuenta
+  if (!S.casa) { try { const lc = localStorage.getItem('mg_casa'); if (lc) S.casa = JSON.parse(lc); } catch(e) {} }
+  const masCasa = document.getElementById('masCasa');
+  if (masCasa) masCasa.style.display = S.casa ? '' : 'none';
   // One-time migration: assign Itaú to credit gastos without cardId
   // Fix orphaned categories: parentId pointing to a non-existent category
   const validCatIds=new Set(S.categories.map(c=>c.id||c.name).filter(Boolean));
   S.categories.forEach(c=>{if(c.parentId&&!validCatIds.has(c.parentId))c.parentId=null;});
 
   // Always ensure credit gastos have a card assigned (idempotent migration)
-  (S.gastos||[]).forEach(g=>{if(g.payType==='credit'&&!g.cardId)g.cardId='itau';});
+  // (solo cuentas que siguen con la configuración original de tarjetas)
+  if(!S.cardsCustom&&getCards().some(c=>c.id==='itau'))
+    (S.gastos||[]).forEach(g=>{if(g.payType==='credit'&&!g.cardId)g.cardId='itau';});
 }
 
 // ============================================================
@@ -1769,6 +2052,16 @@ function init() {
     const overlay = document.getElementById('authOverlay');
     const uInfo = document.getElementById('userInfo');
     if (user) {
+      // Si en este navegador había datos de OTRA cuenta, se descartan antes de cargar/guardar nada
+      const prevUid = localStorage.getItem('mg_uid');
+      if (prevUid && prevUid !== user.uid) {
+        clearLocalUserData();
+        _syncBase = null;
+        Object.keys(S).forEach(k => delete S[k]);
+        Object.assign(S, JSON.parse(JSON.stringify(DEF)));
+        ensureDefaults();
+      }
+      localStorage.setItem('mg_uid', user.uid);
       if (overlay) overlay.style.display = 'none';
       if (uInfo) uInfo.innerHTML = `<img src="${user.photoURL}" style="width:32px;height:32px;border-radius:50%;object-fit:cover;border:1.5px solid var(--border)">`;
       const greeting = document.getElementById('userGreeting');
@@ -1776,29 +2069,13 @@ function init() {
         const firstName = user.displayName ? user.displayName.split(' ')[0] : '';
         greeting.textContent = firstName ? 'Hi ' + firstName + '!' : 'Mis Gastos';
       }
-      // Load from cloud, merge into S
-      if (window._fbLoad) {
-        try {
-          const json = await window._fbLoad();
-          if (json) {
-            const data = JSON.parse(json);
-            // Only merge if cloud has actual data
-            if (data.gastos || data.categories || data.salary) {
-              Object.assign(S, data);
-              ensureDefaults();
-              // Save AFTER ensureDefaults so migration is persisted
-              const migratedJson = JSON.stringify(S);
-              localStorage.setItem('mg4', migratedJson);
-              if(window._fbSave) window._fbSave(migratedJson).catch(e=>console.error('Migration save error:',e));
-            }
-          }
-        } catch(e) { console.error('Cloud load error:', e); }
-      }
+      // Combinar lo de este dispositivo con la nube (incluye gastos que nunca llegaron a subir)
+      await syncNow();
+      if (window._fbListen) window._fbListen(onRemoteState);
       popCats(); updCurUI(); updCurLabels(); try{renderAll();}catch(e){console.error('renderAll auth error:',e);}
       // API key
-      if (!S.apiKey) {
-        openM('mApiKey');
-      } else {
+      // La API key es opcional (solo para escanear): se pide recién cuando se intenta escanear
+      if (S.apiKey) {
         const el = document.getElementById('apiKeyInput');
         if (el) el.value = S.apiKey;
       }
@@ -3217,6 +3494,7 @@ function rCredit(){
     crCardCon.innerHTML='<div class="chips" style="margin-bottom:10px">'+
       '<button class="chip'+(!S._crCardFilt?' on':'')+'" onclick="S._crCardFilt=\'\';rCredit()">Todas</button>'+
       getCards().map(c=>'<button class="chip'+(S._crCardFilt===c.id?' on':'')+'" onclick="S._crCardFilt=\''+c.id+'\';rCredit()" style="'+(S._crCardFilt===c.id?'background:'+c.color+'22;color:'+c.color+';border-color:'+c.color:'')+'">' +c.name+'</button>').join('')+
+      '<button class="chip" onclick="openCards()" style="border-style:dashed;color:var(--text-mid)">'+(getCards().length?'Tarjetas':'+ Agregar tarjeta')+'</button>'+
       '</div>';
   }
 
@@ -3917,6 +4195,8 @@ function selPay(t){
       sel.innerHTML='<option value="">— Seleccionar —</option>'+
         getCards().map(c=>`<option value="${c.id}">${c.name}</option>`).join('');
       if(cur)sel.value=cur;
+      else if(getCards().length===1)sel.value=getCards()[0].id;
+      const emp=document.getElementById('mCardEmpty');if(emp)emp.style.display=getCards().length?'none':'block';
     }
   }
 }
@@ -5875,6 +6155,7 @@ const CASA_CONCEPTOS_DEFAULT=[
 ];
 
 function getCasaState(){
+  if(S.casa)return JSON.parse(JSON.stringify(S.casa));
   const saved=localStorage.getItem('mg_casa');
   if(saved)return JSON.parse(saved);
   return{
@@ -5883,7 +6164,7 @@ function getCasaState(){
     boleto:29500
   };
 }
-function saveCasaState(state){localStorage.setItem('mg_casa',JSON.stringify(state));}
+function saveCasaState(state){S.casa=state;localStorage.setItem('mg_casa',JSON.stringify(state));save();}
 function saveCasaConfig(){
   const state=getCasaState();
   const cn=getCasaState();
