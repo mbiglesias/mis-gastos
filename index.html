@@ -569,6 +569,18 @@ onAuthStateChanged(auth, (user) => {
   </div>
 </div>
 
+<div class="mo hid" id="mSalaryCredit" onclick="overlayClose(event,'mSalaryCredit')">
+  <div class="modal"><div class="mh"></div>
+    <div class="mt" id="scTitle">Empezó un mes nuevo</div>
+    <div class="ms" id="scText" style="margin-bottom:14px"></div>
+    <div style="display:flex;flex-direction:column;gap:8px">
+      <button class="btn bp" id="scBoth" onclick="acreditarSalario(true)" style="width:100%"></button>
+      <button class="btn bg" id="scOnly" onclick="acreditarSalario(false)" style="width:100%"></button>
+      <button class="btn bg" onclick="closeM('mSalaryCredit')" style="width:100%;border:none;color:var(--text-muted)">Más tarde</button>
+    </div>
+  </div>
+</div>
+
 <div class="mo hid" id="mSalary" onclick="overlayClose(event,'mSalary')">
   <div class="modal"><div class="mh"></div>
     <div class="mt">Salario mensual</div>
@@ -1144,7 +1156,7 @@ onAuthStateChanged(auth, (user) => {
   <div id="t-resumen">
     <!-- Salary banner -->
     <div id="salaryBanner" style="display:none;margin-bottom:8px">
-      <button onclick="acreditarSalario()" style="width:100%;padding:14px 16px;background:var(--white);border:1px solid var(--border);border-radius:var(--R);font-family:inherit;cursor:pointer;display:flex;align-items:center;justify-content:space-between;gap:12px;text-align:left;transition:border-color .15s" onmouseover="this.style.borderColor='var(--accent)'" onmouseout="this.style.borderColor='var(--border)'">
+      <button onclick="openSalaryCredit()" style="width:100%;padding:14px 16px;background:var(--white);border:1px solid var(--border);border-radius:var(--R);font-family:inherit;cursor:pointer;display:flex;align-items:center;justify-content:space-between;gap:12px;text-align:left;transition:border-color .15s" onmouseover="this.style.borderColor='var(--accent)'" onmouseout="this.style.borderColor='var(--border)'">
         <div>
           <div style="font-size:13px;font-weight:700;color:var(--text);margin-bottom:2px">Acreditar salario</div>
           <div style="font-size:11px;color:var(--text-muted)" id="salaryBannerSub">Tocá cuando entre tu salario</div>
@@ -2083,6 +2095,7 @@ function init() {
       await syncNow();
       if (window._fbListen) window._fbListen(onRemoteState);
       popCats(); updCurUI(); updCurLabels(); try{renderAll();}catch(e){console.error('renderAll auth error:',e);}
+      setTimeout(maybeAskSalaryCredit, 700);
       // API key
       // La API key es opcional (solo para escanear): se pide recién cuando se intenta escanear
       if (S.apiKey) {
@@ -2543,7 +2556,7 @@ function calcPrevSobrante() {
     const prevPrevIsNew = (ppy>MODEL_START_Y)||(ppy===MODEL_START_Y&&ppm>=MODEL_START_M);
     const prevPrevSob = prevPrevIsNew && S.sobrantes && S.sobrantes[ppy+'_'+ppm]!==undefined
       ? Math.max(0, S.sobrantes[ppy+'_'+ppm]) : 0;
-    const totalIn = prevPrevSob + (prevCredited ? salUSD : 0) + extraUSD;
+    const totalIn = (carriesPrev(py,pm) ? prevPrevSob : 0) + (prevCredited ? salUSD : 0) + extraUSD;
     const budgetSpent = gs.filter(g=>!g.isDebtPayment&&!g._isSaving&&g.payType!=='credit').reduce((s,g)=>s+(+g.amount),0);
     const cardDebitPrev = gs.filter(g=>g._isCardDebit).reduce((s,g)=>s+(+g.amount),0);
     const creditPrev = crDue(pm,py).reduce((s,g)=>s+(g._cuota||g.amount/(+g.installments||1)),0)+cardDebitPrev;
@@ -2565,12 +2578,53 @@ function setCrFilter(f){
   rCredit();
 }
 
-function acreditarSalario() {
+// ¿Se suma el sobrante del mes anterior a este mes? (por defecto sí, como venía funcionando)
+function carriesPrev(y,m){return !(S.carryOver&&S.carryOver[y+'_'+m]===false);}
+
+function openSalaryCredit(){
+  const sal=+S.salary||0;
+  const prevSob=window._curPrevSobRaw||0;
+  const pm=CM===0?11:CM-1, py=CM===0?CY-1:CY;
+  const mes=n=>new Date(n.y,n.m,1).toLocaleDateString('es-UY',{month:'long'});
+  document.getElementById('scTitle').textContent='Empezó '+mes({y:CY,m:CM});
+  const both=document.getElementById('scBoth'),only=document.getElementById('scOnly');
+  if(prevSob>0){
+    document.getElementById('scText').textContent='Te sobraron '+fmt(prevSob)+' de '+mes({y:py,m:pm})+'. ¿Qué querés acreditar en ingresos?';
+    both.textContent='Salario + sobrante · '+fmt(sal+prevSob);
+    only.textContent='Solo el salario · '+fmt(sal);
+    only.style.display='';
+  }else{
+    document.getElementById('scText').textContent='¿Acreditar tu salario de '+fmt(sal)+'?';
+    both.textContent='Acreditar salario';
+    only.style.display='none';
+  }
+  openM('mSalaryCredit');
+}
+
+function acreditarSalario(withCarry) {
   if(!S.salaryCredited)S.salaryCredited={};
-  S.salaryCredited[CY+'_'+CM]=true;
+  if(!S.carryOver)S.carryOver={};
+  const k=CY+'_'+CM;
+  S.salaryCredited[k]=true;
+  const hadSob=(window._curPrevSobRaw||0)>0;
+  S.carryOver[k]=withCarry!==false;
+  closeM('mSalaryCredit');
   save();
   renderAll();
-  toast('Salario acreditado');
+  toast(hadSob?(withCarry!==false?'Salario + sobrante acreditados':'Salario acreditado, sin el sobrante'):'Salario acreditado');
+}
+
+// Al abrir la app en un mes nuevo, preguntar una vez por sesión
+function maybeAskSalaryCredit(){
+  const now=new Date();
+  if(CM!==now.getMonth()||CY!==now.getFullYear())return;
+  const MODEL_START_Y=2026, MODEL_START_M=5;
+  if(!((CY>MODEL_START_Y)||(CY===MODEL_START_Y&&CM>=MODEL_START_M)))return;
+  const k=CY+'_'+CM;
+  if(S.salaryCredited&&S.salaryCredited[k])return;
+  if(!(+S.salary>0)&&!(window._curPrevSobRaw>0))return;
+  try{if(sessionStorage.getItem('mg_asked_'+k))return;sessionStorage.setItem('mg_asked_'+k,'1');}catch(e){}
+  openSalaryCredit();
 }
 
 function rSummary(){
@@ -2593,7 +2647,9 @@ function rSummary(){
   const salaryCredited=!!(S.salaryCredited&&S.salaryCredited[CY+'_'+CM]);
   const _pm=CM===0?11:CM-1, _py=CM===0?CY-1:CY;
   const prevIsNew=(_py>MODEL_START_Y)||(_py===MODEL_START_Y&&_pm>=MODEL_START_M);
-  const prevSob=(isNewModel&&prevIsNew)?Math.max(0,calcPrevSobrante()):0;
+  const prevSobRaw=(isNewModel&&prevIsNew)?Math.max(0,calcPrevSobrante()):0;
+  window._curPrevSobRaw=prevSobRaw;
+  const prevSob=carriesPrev(CY,CM)?prevSobRaw:0;
   const totalIncome=isNewModel
     ?(prevSob+(salaryCredited?sal:0)+extraInc)
     :(sal+extraInc);
@@ -2604,7 +2660,7 @@ function rSummary(){
     const bannerSub=document.getElementById('salaryBannerSub');
     if(bannerSub){
       const parts=[];
-      if(prevSob>0)parts.push('Sobrante anterior: '+fmt(prevSob));
+      if(prevSobRaw>0)parts.push('Sobrante anterior: '+fmt(prevSobRaw));
       parts.push('Salario pendiente: '+fmt(sal));
       bannerSub.textContent=parts.join(' · ');
     }
